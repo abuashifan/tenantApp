@@ -32,6 +32,14 @@ return [
 
     'connections' => [
 
+        'tenant' => [
+            'driver' => 'sqlite',
+            'url' => env('TENANT_DATABASE_URL'),
+            'database' => null,
+            'prefix' => '',
+            'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
