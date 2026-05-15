@@ -1,0 +1,1 @@
+setelah selesai, buat catatan dalam satu block code agar aku copy paste sebagai catatan di progress notes. tulis juga daftar file yang kamu edit atau buat baru, lengkap dengan foldernya contoh : backend/routes/api.php
