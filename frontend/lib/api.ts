@@ -7,6 +7,16 @@ type ApiOptions = {
   body?: unknown;
 };
 
+export function getStoredToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('auth_token');
+}
+
+export function getStoredCompanyId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('active_company_id');
+}
+
 export async function apiRequest<T>(
   path: string,
   options: ApiOptions = {},
@@ -15,17 +25,20 @@ export async function apiRequest<T>(
     throw new Error('NEXT_PUBLIC_API_URL is not configured');
   }
 
+  const token = options.token ?? getStoredToken() ?? undefined;
+  const companyId = options.companyId ?? getStoredCompanyId() ?? undefined;
+
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   };
 
-  if (options.token) {
-    headers.Authorization = `Bearer ${options.token}`;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
-  if (options.companyId) {
-    headers['X-Company-ID'] = String(options.companyId);
+  if (companyId) {
+    headers['X-Company-ID'] = String(companyId);
   }
 
   const response = await fetch(`${API_URL}${path}`, {
@@ -38,7 +51,9 @@ export async function apiRequest<T>(
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data?.message ?? 'API request failed');
+    const message =
+      typeof data?.message === 'string' ? data.message : 'API request failed';
+    throw new Error(message);
   }
 
   return data as T;

@@ -1,8 +1,47 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
 type AppShellProps = {
   children: React.ReactNode;
 };
 
+type StoredActiveCompany = {
+  id: number;
+  name: string;
+  code?: string;
+  slug?: string;
+  user_role?: string;
+  tenant_database?: {
+    database_name?: string;
+  };
+};
+
 export function AppShell({ children }: AppShellProps) {
+  const router = useRouter();
+  const [activeCompany, setActiveCompany] = useState<StoredActiveCompany | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const raw = localStorage.getItem('active_company');
+    if (!raw) return;
+    try {
+      setActiveCompany(JSON.parse(raw) as StoredActiveCompany);
+    } catch {
+      setActiveCompany(null);
+    }
+  }, []);
+
+  function logout() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('active_company_id');
+    localStorage.removeItem('active_company');
+    router.push('/login');
+  }
+
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
@@ -12,8 +51,29 @@ export function AppShell({ children }: AppShellProps) {
             <h1 className="text-lg font-semibold text-slate-900">Dashboard</h1>
           </div>
 
-          <div className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
-            Company Switcher Later
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
+              <div className="text-xs text-slate-500">Active Company</div>
+              <div className="font-medium">
+                {activeCompany?.name ?? 'Not selected'}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => router.push('/select-company')}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Switch Company
+            </button>
+
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>

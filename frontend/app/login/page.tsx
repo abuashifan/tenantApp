@@ -1,0 +1,122 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { apiRequest } from '@/lib/api';
+import type { ApiResponse } from '@/types/api';
+import type { LoginResponse } from '@/types/auth';
+import type { Company } from '@/types/company';
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('admin@example.com');
+  const [password, setPassword] = useState('password');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const loginRes = await apiRequest<ApiResponse<LoginResponse>>(
+        '/auth/login',
+        {
+          method: 'POST',
+          body: { email, password },
+        },
+      );
+
+      localStorage.setItem('auth_token', loginRes.data.token);
+      localStorage.setItem('auth_user', JSON.stringify(loginRes.data.user));
+
+      const companiesRes = await apiRequest<ApiResponse<Company[]>>('/companies', {
+        token: loginRes.data.token,
+      });
+
+      const companies = companiesRes.data ?? [];
+
+      if (companies.length === 0) {
+        setError('User ini belum punya company.');
+        return;
+      }
+
+      if (companies.length === 1) {
+        localStorage.setItem('active_company_id', String(companies[0].id));
+        router.push('/dashboard');
+        return;
+      }
+
+      router.push('/select-company');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm border border-slate-200">
+        <p className="text-sm font-medium text-slate-500">Accounting App</p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">Login</h1>
+
+        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Email
+            </label>
+            <input
+              type="email"
+              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-200"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Password
+            </label>
+            <input
+              type="password"
+              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-200"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          {error ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-slate-900 px-4 py-2 text-white font-medium disabled:opacity-60"
+          >
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-sm text-slate-600">
+          Belum punya akun?{' '}
+          <button
+            type="button"
+            className="font-medium text-slate-900 underline"
+            onClick={() => router.push('/register')}
+          >
+            Register
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
