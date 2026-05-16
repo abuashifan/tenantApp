@@ -27,6 +27,7 @@ class CompanyAccountingSetting extends Model
         'require_void_reason',
         'approval_enabled',
         'tax_enabled',
+        'user_permission_mode',
         'allow_backdated_transactions',
         'max_backdate_days',
         'allow_future_transactions',
@@ -44,6 +45,7 @@ class CompanyAccountingSetting extends Model
         'require_void_reason' => 'boolean',
         'approval_enabled' => 'boolean',
         'tax_enabled' => 'boolean',
+        'user_permission_mode' => 'string',
         'allow_backdated_transactions' => 'boolean',
         'max_backdate_days' => 'integer',
         'allow_future_transactions' => 'boolean',
@@ -55,4 +57,3 @@ class CompanyAccountingSetting extends Model
         return $this->belongsTo(Company::class);
     }
 }
-

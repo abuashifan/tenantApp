@@ -28,6 +28,7 @@ class UpdateCompanyAccountingSettingRequest extends FormRequest
             'require_void_reason' => ['nullable', 'boolean'],
             'approval_enabled' => ['nullable', 'boolean'],
             'tax_enabled' => ['nullable', 'boolean'],
+            'user_permission_mode' => ['nullable', 'in:role_template,manual_per_user'],
             'allow_backdated_transactions' => ['nullable', 'boolean'],
             'max_backdate_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
             'allow_future_transactions' => ['nullable', 'boolean'],
@@ -56,4 +57,3 @@ class UpdateCompanyAccountingSettingRequest extends FormRequest
         });
     }
 }
-

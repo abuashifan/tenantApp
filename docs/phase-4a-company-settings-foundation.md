@@ -14,6 +14,12 @@ Tabel baru:
 - `company_accounting_settings` (unique `company_id`)
 - `company_module_settings` (unique `company_id`)
 
+Tambahan field (Phase 4B readiness):
+- `company_accounting_settings.user_permission_mode`:
+  - default `role_template`
+  - allowed: `role_template`, `manual_per_user`
+  - `manual_per_user` akan diimplementasikan penuh di Phase 14 (permission override per user)
+
 ## API Endpoints
 
 Semua endpoint wajib middleware:
@@ -69,4 +75,3 @@ Jalankan:
 
 Commit message:
 `add company settings foundation`
-

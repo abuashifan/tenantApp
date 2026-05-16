@@ -26,6 +26,7 @@ class CompanySettingService
                 'require_void_reason' => true,
                 'approval_enabled' => false,
                 'tax_enabled' => false,
+                'user_permission_mode' => 'role_template',
                 'allow_backdated_transactions' => true,
                 'max_backdate_days' => null,
                 'allow_future_transactions' => false,
@@ -136,4 +137,3 @@ class CompanySettingService
         }
     }
 }
-
