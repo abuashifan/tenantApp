@@ -72,5 +72,14 @@ class Company extends Model
     {
         return $this->hasMany(CompanyInvitation::class);
     }
-}
 
+    public function accountingSetting(): HasOne
+    {
+        return $this->hasOne(CompanyAccountingSetting::class);
+    }
+
+    public function moduleSetting(): HasOne
+    {
+        return $this->hasOne(CompanyModuleSetting::class);
+    }
+}

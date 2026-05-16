@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Companies\CompanyController;
+use App\Http\Controllers\Api\Settings\CompanySettingController;
 use App\Http\Controllers\Api\Tenant\TenantContextTestController;
 
 Route::get('/health', [HealthController::class, 'index']);
@@ -25,6 +26,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware(['auth:sanctum', 'company.access'])->group(function () {
     Route::get('/tenant-context-test', TenantContextTestController::class);
+
+    Route::get('/settings/company', [CompanySettingController::class, 'show']);
+    Route::patch('/settings/company/accounting', [CompanySettingController::class, 'updateAccounting']);
+    Route::patch('/settings/company/modules', [CompanySettingController::class, 'updateModules']);
 });
 
 // NOTE: Phase 1B demo endpoint `/api/my-companies-demo` has been disabled in Phase 2A.
