@@ -82,4 +82,19 @@ class Company extends Model
     {
         return $this->hasOne(CompanyModuleSetting::class);
     }
+
+    public function fiscalYears(): HasMany
+    {
+        return $this->hasMany(FiscalYear::class);
+    }
+
+    public function activeFiscalYear(): HasOne
+    {
+        return $this->hasOne(FiscalYear::class)->where('is_active', true);
+    }
+
+    public function accountingPeriods(): HasMany
+    {
+        return $this->hasMany(AccountingPeriod::class);
+    }
 }

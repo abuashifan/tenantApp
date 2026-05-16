@@ -10,6 +10,7 @@ use App\Services\Permissions\PermissionService;
 use App\Services\Settings\CompanySettingService;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionPolicyService;
+use App\Support\Transaction\DependencyCheckResult;
 use App\Support\Transaction\TransactionAction;
 use App\Support\Transaction\TransactionPolicyResult;
 use Tests\TestCase;
@@ -67,6 +68,13 @@ class TransactionPolicyServiceTest extends TestCase
         $dependencyChecker = new class($hasDependency) implements TransactionDependencyChecker {
             public function __construct(private readonly bool $hasDependency)
             {
+            }
+
+            public function check(mixed $transaction, string $action, string $module): DependencyCheckResult
+            {
+                return $this->hasDependency
+                    ? DependencyCheckResult::blocked([['reason' => 'blocking']])
+                    : DependencyCheckResult::clear();
             }
 
             public function hasBlockingDependencies(mixed $transaction, string $action, string $module): bool

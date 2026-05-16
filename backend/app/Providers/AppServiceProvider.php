@@ -5,8 +5,8 @@ namespace App\Providers;
 use App\Contracts\Transactions\TransactionDateGuard;
 use App\Contracts\Transactions\TransactionDependencyChecker;
 use App\Services\Tenant\TenantContext;
-use App\Services\Transactions\NoopTransactionDateGuard;
-use App\Services\Transactions\NoopTransactionDependencyChecker;
+use App\Services\Transactions\TransactionDependencyService;
+use App\Services\Transactions\TransactionDateGuardService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,8 +21,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Phase 4D placeholders (replaced by real implementations in Phase 4E/4F)
-        $this->app->bind(TransactionDependencyChecker::class, NoopTransactionDependencyChecker::class);
-        $this->app->bind(TransactionDateGuard::class, NoopTransactionDateGuard::class);
+        $this->app->bind(TransactionDependencyChecker::class, TransactionDependencyService::class);
+        $this->app->bind(TransactionDateGuard::class, TransactionDateGuardService::class);
     }
 
     /**
@@ -30,6 +30,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->loadMigrationsFrom(database_path('migrations/central'));
     }
 }

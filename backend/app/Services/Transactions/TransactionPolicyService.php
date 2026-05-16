@@ -128,7 +128,11 @@ class TransactionPolicyService
 
             if ($this->dependencyChecker->hasBlockingDependencies($transaction, $action, $module)) {
                 $reasons = $this->dependencyChecker->blockingReasons($transaction, $action, $module);
-                return TransactionPolicyResult::deny('TRANSACTION_HAS_DEPENDENCY', 'Transaction has blocking dependencies.', $reasons);
+                return TransactionPolicyResult::deny(
+                    'TRANSACTION_HAS_DEPENDENCY',
+                    'Transaction has related records and cannot be modified.',
+                    $reasons
+                );
             }
 
             $transactionDate ??= $this->getTransactionDate($transaction);
