@@ -27,6 +27,8 @@ class CompanySettingService
                 'approval_enabled' => false,
                 'tax_enabled' => false,
                 'user_permission_mode' => 'role_template',
+                'block_outside_current_fiscal_year' => true,
+                'date_warning_enabled' => true,
                 'allow_backdated_transactions' => true,
                 'max_backdate_days' => null,
                 'allow_future_transactions' => false,

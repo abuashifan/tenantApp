@@ -20,6 +20,14 @@ Tambahan field (Phase 4B readiness):
   - allowed: `role_template`, `manual_per_user`
   - `manual_per_user` akan diimplementasikan penuh di Phase 14 (permission override per user)
 
+Tambahan field policy (Phase 4C readiness):
+- `company_accounting_settings.block_outside_current_fiscal_year`:
+  - default `true`
+  - digunakan oleh Phase 4F/8A (date guard + annual closing gate), bukan oleh Phase 4A
+- `company_accounting_settings.date_warning_enabled`:
+  - default `true`
+  - digunakan untuk UI warning saat tanggal transaksi mendekati batas (Phase 4F/8A), bukan oleh Phase 4A
+
 ## API Endpoints
 
 Semua endpoint wajib middleware:

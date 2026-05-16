@@ -29,6 +29,8 @@ class UpdateCompanyAccountingSettingRequest extends FormRequest
             'approval_enabled' => ['nullable', 'boolean'],
             'tax_enabled' => ['nullable', 'boolean'],
             'user_permission_mode' => ['nullable', 'in:role_template,manual_per_user'],
+            'block_outside_current_fiscal_year' => ['nullable', 'boolean'],
+            'date_warning_enabled' => ['nullable', 'boolean'],
             'allow_backdated_transactions' => ['nullable', 'boolean'],
             'max_backdate_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
             'allow_future_transactions' => ['nullable', 'boolean'],

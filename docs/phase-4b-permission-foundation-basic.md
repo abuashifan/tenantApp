@@ -6,6 +6,7 @@ Catatan penting:
 - Permission di Phase 4B masih **static template** berbasis config.
 - Phase 14 nanti akan menambahkan **dynamic/manual permission per user tenant** lewat UI.
 - Middleware cukup bertanya `PermissionService::can($permission)` agar sumber permission mudah diganti di Phase 14.
+- Naming permission dibuat granular sejak awal (contoh: `sales.create`, `journal.post`, `reports.export`), bukan permission kasar seperti `manage_sales`.
 
 ## Tujuan
 
@@ -107,4 +108,3 @@ Commands:
 
 Commit message:
 `add extensible permission foundation`
-
