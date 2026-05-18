@@ -6,6 +6,8 @@ use App\Services\Audit\AuditLogService;
 use App\Services\Permissions\PermissionService;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditEvent;
+use App\Support\Api\ApiErrorCode;
+use App\Support\Api\ApiResponseBuilder;
 use Closure;
 use Illuminate\Http\Request;
 use Throwable;
@@ -37,11 +39,13 @@ class EnsurePermission
                 // fail-safe: never block main request on audit logging
             }
 
-            return response()->json([
-                'success' => false,
-                'code' => 'PERMISSION_DENIED',
-                'message' => 'You do not have permission to perform this action.',
-            ], 403);
+            return ApiResponseBuilder::error(
+                ApiErrorCode::PERMISSION_DENIED,
+                null,
+                [],
+                403,
+                ['permission' => $permission]
+            );
         }
 
         return $next($request);
