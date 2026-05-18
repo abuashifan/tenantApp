@@ -97,4 +97,14 @@ class Company extends Model
     {
         return $this->hasMany(AccountingPeriod::class);
     }
+
+    public function documentNumberingSettings(): HasMany
+    {
+        return $this->hasMany(DocumentNumberingSetting::class);
+    }
+
+    public function documentNumberSequences(): HasMany
+    {
+        return $this->hasMany(DocumentNumberSequence::class);
+    }
 }

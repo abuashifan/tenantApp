@@ -55,6 +55,14 @@ Saat ini semua checker masih return clear() karena tabel transaksi nyata belum a
 - message: `"Transaction has related records and cannot be modified."`
 - reasons diambil dari `TransactionDependencyService`
 
+## Hubungan Dengan Source Link (Phase 4H)
+
+Saat modul transaksi nyata dibuat, dependency checker dapat memakai standar source link untuk menemukan efek/record turunan berdasarkan:
+- `source_type` + `source_id`
+- `source_number`
+
+Phase 4E belum melakukan query ke tabel transaksi/efek karena tabel tersebut belum ada.
+
 ## Testing
 
 Jalankan:
@@ -66,4 +74,3 @@ Jalankan:
 - Tidak membuat tabel transaksi nyata (invoice/payment/return/stock movement)
 - Tidak melakukan query dependency ke tabel yang belum ada
 - Tidak membuat endpoint transaksi
-
