@@ -38,6 +38,10 @@ return [
         'ACCOUNT_MAPPING_MISSING' => 'Required account mapping is missing.',
         'OPENING_BALANCE_UNBALANCED' => 'Opening balance must be balanced.',
 
+        'SYSTEM_GENERATED_READ_ONLY' => 'System-generated record cannot be modified directly.',
+        'EDIT_REASON_REQUIRED' => 'Edit reason is required.',
+        'JOURNAL_REQUIRES_APPROVAL' => 'Journal must be approved before posting.',
+
         'UNKNOWN_ERROR' => 'Unknown error.',
     ],
 

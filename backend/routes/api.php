@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\MasterData\ProductCategoryController;
 use App\Http\Controllers\Api\MasterData\ProductController;
 use App\Http\Controllers\Api\MasterData\UnitController;
 use App\Http\Controllers\Api\MasterData\WarehouseController;
+use App\Http\Controllers\Api\Journal\JournalEntryController;
 
 Route::get('/health', [HealthController::class, 'index']);
 
@@ -104,4 +105,15 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('master-data')->gr
     // Account Mappings
     Route::get('/account-mappings', [AccountMappingController::class, 'index'])->middleware('permission:settings.company.view');
     Route::patch('/account-mappings/{mappingKey}', [AccountMappingController::class, 'update'])->middleware('permission:settings.company.edit');
+});
+
+Route::middleware(['auth:sanctum', 'company.access'])->group(function () {
+    // Phase 6: Journal Entry Engine (manual journals only). No DELETE routes.
+    Route::get('/journals', [JournalEntryController::class, 'index'])->middleware('permission:journal.view');
+    Route::post('/journals', [JournalEntryController::class, 'store'])->middleware('permission:journal.create');
+    Route::get('/journals/{id}', [JournalEntryController::class, 'show'])->middleware('permission:journal.view');
+    Route::patch('/journals/{id}', [JournalEntryController::class, 'update'])->middleware('permission:journal.edit');
+    Route::post('/journals/{id}/approve', [JournalEntryController::class, 'approve'])->middleware('permission:journal.approve');
+    Route::post('/journals/{id}/post', [JournalEntryController::class, 'post'])->middleware('permission:journal.post');
+    Route::post('/journals/{id}/void', [JournalEntryController::class, 'void'])->middleware('permission:journal.void');
 });
