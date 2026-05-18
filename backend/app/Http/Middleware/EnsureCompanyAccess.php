@@ -6,12 +6,20 @@ use App\Models\Company;
 use App\Models\CompanyUser;
 use App\Models\TenantDatabase;
 use App\Services\Tenant\TenantContext;
+use App\Services\Tenant\TenantConnectionManager;
+use App\Support\Api\ApiErrorCode;
+use App\Support\Api\ApiResponseBuilder;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 class EnsureCompanyAccess
 {
+    public function __construct(private readonly TenantConnectionManager $connectionManager)
+    {
+    }
+
     /**
      * Handle an incoming request.
      *
@@ -22,28 +30,19 @@ class EnsureCompanyAccess
         $user = $request->user();
 
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthenticated.',
-            ], 401);
+            return ApiResponseBuilder::error(ApiErrorCode::UNAUTHENTICATED, null, [], 401);
         }
 
         $companyId = $request->header('X-Company-ID');
 
         if (!$companyId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'X-Company-ID wajib dikirim.',
-            ], 422);
+            return ApiResponseBuilder::error(ApiErrorCode::X_COMPANY_ID_REQUIRED, null, [], 422);
         }
 
         $company = Company::find($companyId);
 
         if (!$company) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Company tidak ditemukan.',
-            ], 404);
+            return ApiResponseBuilder::error(ApiErrorCode::COMPANY_NOT_FOUND, null, [], 404);
         }
 
         $companyUser = CompanyUser::query()
@@ -53,10 +52,7 @@ class EnsureCompanyAccess
             ->first();
 
         if (!$companyUser) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda tidak punya akses ke company ini.',
-            ], 403);
+            return ApiResponseBuilder::error(ApiErrorCode::COMPANY_ACCESS_DENIED, null, [], 403);
         }
 
         $tenantDatabase = TenantDatabase::query()
@@ -65,10 +61,7 @@ class EnsureCompanyAccess
             ->first();
 
         if (!$tenantDatabase) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tenant database belum aktif.',
-            ], 422);
+            return ApiResponseBuilder::error(ApiErrorCode::TENANT_DATABASE_NOT_ACTIVE, null, [], 422);
         }
 
         app(TenantContext::class)->set($company, $companyUser, $tenantDatabase);
@@ -77,7 +70,12 @@ class EnsureCompanyAccess
         $request->attributes->set('active_company_user', $companyUser);
         $request->attributes->set('active_tenant_database', $tenantDatabase);
 
+        try {
+            $this->connectionManager->connect((string) $tenantDatabase->database_path);
+        } catch (Throwable $e) {
+            return ApiResponseBuilder::error(ApiErrorCode::TENANT_DATABASE_NOT_ACTIVE, $e->getMessage(), [], 422);
+        }
+
         return $next($request);
     }
 }
-

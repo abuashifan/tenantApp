@@ -8,6 +8,13 @@ use App\Http\Controllers\Api\Accounting\FiscalYearStatusController;
 use App\Http\Controllers\Api\Companies\CompanyController;
 use App\Http\Controllers\Api\Settings\CompanySettingController;
 use App\Http\Controllers\Api\Tenant\TenantContextTestController;
+use App\Http\Controllers\Api\MasterData\AccountMappingController;
+use App\Http\Controllers\Api\MasterData\ChartOfAccountController;
+use App\Http\Controllers\Api\MasterData\ContactController;
+use App\Http\Controllers\Api\MasterData\ProductCategoryController;
+use App\Http\Controllers\Api\MasterData\ProductController;
+use App\Http\Controllers\Api\MasterData\UnitController;
+use App\Http\Controllers\Api\MasterData\WarehouseController;
 
 Route::get('/health', [HealthController::class, 'index']);
 
@@ -44,3 +51,57 @@ Route::middleware(['auth:sanctum', 'company.access', 'permission:dashboard.view'
 });
 
 // NOTE: Phase 1B demo endpoint `/api/my-companies-demo` has been disabled in Phase 2A.
+
+Route::middleware(['auth:sanctum', 'company.access'])->prefix('master-data')->group(function () {
+    // Chart of Accounts
+    Route::get('/chart-of-accounts', [ChartOfAccountController::class, 'index'])->middleware('permission:coa.view');
+    Route::post('/chart-of-accounts', [ChartOfAccountController::class, 'store'])->middleware('permission:coa.create');
+    Route::get('/chart-of-accounts/{id}', [ChartOfAccountController::class, 'show'])->middleware('permission:coa.view');
+    Route::patch('/chart-of-accounts/{id}', [ChartOfAccountController::class, 'update'])->middleware('permission:coa.edit');
+    Route::patch('/chart-of-accounts/{id}/deactivate', [ChartOfAccountController::class, 'deactivate'])->middleware('permission:coa.deactivate');
+    Route::patch('/chart-of-accounts/{id}/activate', [ChartOfAccountController::class, 'activate'])->middleware('permission:coa.edit');
+
+    // Contacts
+    Route::get('/contacts', [ContactController::class, 'index'])->middleware('permission:contacts.view');
+    Route::post('/contacts', [ContactController::class, 'store'])->middleware('permission:contacts.create');
+    Route::get('/contacts/{id}', [ContactController::class, 'show'])->middleware('permission:contacts.view');
+    Route::patch('/contacts/{id}', [ContactController::class, 'update'])->middleware('permission:contacts.edit');
+    Route::patch('/contacts/{id}/deactivate', [ContactController::class, 'deactivate'])->middleware('permission:contacts.deactivate');
+    Route::patch('/contacts/{id}/activate', [ContactController::class, 'activate'])->middleware('permission:contacts.edit');
+
+    // Units
+    Route::get('/units', [UnitController::class, 'index'])->middleware('permission:units.view');
+    Route::post('/units', [UnitController::class, 'store'])->middleware('permission:units.create');
+    Route::get('/units/{id}', [UnitController::class, 'show'])->middleware('permission:units.view');
+    Route::patch('/units/{id}', [UnitController::class, 'update'])->middleware('permission:units.edit');
+    Route::patch('/units/{id}/deactivate', [UnitController::class, 'deactivate'])->middleware('permission:units.deactivate');
+    Route::patch('/units/{id}/activate', [UnitController::class, 'activate'])->middleware('permission:units.edit');
+
+    // Product Categories
+    Route::get('/product-categories', [ProductCategoryController::class, 'index'])->middleware('permission:products.view');
+    Route::post('/product-categories', [ProductCategoryController::class, 'store'])->middleware('permission:products.create');
+    Route::get('/product-categories/{id}', [ProductCategoryController::class, 'show'])->middleware('permission:products.view');
+    Route::patch('/product-categories/{id}', [ProductCategoryController::class, 'update'])->middleware('permission:products.edit');
+    Route::patch('/product-categories/{id}/deactivate', [ProductCategoryController::class, 'deactivate'])->middleware('permission:products.deactivate');
+    Route::patch('/product-categories/{id}/activate', [ProductCategoryController::class, 'activate'])->middleware('permission:products.edit');
+
+    // Products
+    Route::get('/products', [ProductController::class, 'index'])->middleware('permission:products.view');
+    Route::post('/products', [ProductController::class, 'store'])->middleware('permission:products.create');
+    Route::get('/products/{id}', [ProductController::class, 'show'])->middleware('permission:products.view');
+    Route::patch('/products/{id}', [ProductController::class, 'update'])->middleware('permission:products.edit');
+    Route::patch('/products/{id}/deactivate', [ProductController::class, 'deactivate'])->middleware('permission:products.deactivate');
+    Route::patch('/products/{id}/activate', [ProductController::class, 'activate'])->middleware('permission:products.edit');
+
+    // Warehouses
+    Route::get('/warehouses', [WarehouseController::class, 'index'])->middleware('permission:warehouses.view');
+    Route::post('/warehouses', [WarehouseController::class, 'store'])->middleware('permission:warehouses.create');
+    Route::get('/warehouses/{id}', [WarehouseController::class, 'show'])->middleware('permission:warehouses.view');
+    Route::patch('/warehouses/{id}', [WarehouseController::class, 'update'])->middleware('permission:warehouses.edit');
+    Route::patch('/warehouses/{id}/deactivate', [WarehouseController::class, 'deactivate'])->middleware('permission:warehouses.deactivate');
+    Route::patch('/warehouses/{id}/activate', [WarehouseController::class, 'activate'])->middleware('permission:warehouses.edit');
+
+    // Account Mappings
+    Route::get('/account-mappings', [AccountMappingController::class, 'index'])->middleware('permission:settings.company.view');
+    Route::patch('/account-mappings/{mappingKey}', [AccountMappingController::class, 'update'])->middleware('permission:settings.company.edit');
+});

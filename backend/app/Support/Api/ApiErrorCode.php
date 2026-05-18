@@ -9,6 +9,7 @@ class ApiErrorCode
     public const FORBIDDEN = 'FORBIDDEN';
     public const PERMISSION_DENIED = 'PERMISSION_DENIED';
     public const COMPANY_ACCESS_DENIED = 'COMPANY_ACCESS_DENIED';
+    public const COMPANY_NOT_FOUND = 'COMPANY_NOT_FOUND';
     public const X_COMPANY_ID_REQUIRED = 'X_COMPANY_ID_REQUIRED';
     public const TENANT_DATABASE_NOT_ACTIVE = 'TENANT_DATABASE_NOT_ACTIVE';
 
@@ -69,4 +70,3 @@ class ApiErrorCode
         return array_key_exists($code, (array) config('api_errors.warnings', []));
     }
 }
-

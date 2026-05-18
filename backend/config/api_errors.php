@@ -7,6 +7,7 @@ return [
         'FORBIDDEN' => 'Forbidden.',
         'PERMISSION_DENIED' => 'You do not have permission to perform this action.',
         'COMPANY_ACCESS_DENIED' => 'You do not have access to this company.',
+        'COMPANY_NOT_FOUND' => 'Company tidak ditemukan.',
         'X_COMPANY_ID_REQUIRED' => 'X-Company-ID wajib dikirim.',
         'TENANT_DATABASE_NOT_ACTIVE' => 'Tenant database is not active.',
 
@@ -46,4 +47,3 @@ return [
         'BACKDATED_TRANSACTION_WARNING' => 'Transaction date is backdated.',
     ],
 ];
-
