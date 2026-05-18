@@ -78,7 +78,7 @@ Tabel yang nanti wajib mengikuti standar ini:
 - Phase 4C (lifecycle): source link tidak menggantikan lifecycle.
 - Phase 4E (dependency): dependency checker bisa memakai source link untuk mencari “transaksi turunan”.
 - Phase 4G (document numbering): nomor dokumen akan dipakai sebagai `source_number`.
-- Phase 4I (revision tracking): `source_revision` akan diselaraskan dengan revision tracking yang lebih lengkap.
+- Phase 4I (revision tracking): `source_revision` mengikuti `revision_no` transaksi sumber agar effect lama bisa ditandai obsolete saat revision naik.
 
 ## Batasan Scope
 
@@ -98,4 +98,3 @@ Jalankan:
 
 Commit message:
 `add source link foundation`
-
