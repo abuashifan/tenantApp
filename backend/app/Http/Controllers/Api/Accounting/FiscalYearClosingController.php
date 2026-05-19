@@ -30,6 +30,13 @@ class FiscalYearClosingController extends Controller
         return $this->successResponse($result, 'Closing preview retrieved successfully');
     }
 
+    public function checklist(int|string $id): JsonResponse
+    {
+        $result = $this->service->generateClosingChecklist((int) $id);
+
+        return $this->successResponse($result, 'Closing checklist retrieved successfully');
+    }
+
     public function close(CloseFiscalYearRequest $request, int|string $id): JsonResponse
     {
         $result = $this->service->executeClosing((int) $id, $request->validated());
@@ -54,4 +61,3 @@ class FiscalYearClosingController extends Controller
         return $this->successResponse($result, 'Fiscal year reopened successfully');
     }
 }
-

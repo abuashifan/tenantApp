@@ -53,8 +53,17 @@ class TransactionDateGuardService implements TransactionDateGuard
         $settings = $this->companySettingService->getOrCreateAccountingSetting($company);
 
         // read-only checks first
-        if ($this->periodLockService->isFiscalYearClosed($company, $date)) {
-            return TransactionPolicyResult::deny('FISCAL_YEAR_CLOSED', 'Fiscal year is closed. Transaction is read-only.');
+        if ($this->periodLockService->isDateReadOnly($company, $date)) {
+            $reason = $this->periodLockService->blockingReasonForDate($company, $date);
+            if ($reason === 'FISCAL_YEAR_CLOSED') {
+                return TransactionPolicyResult::deny('FISCAL_YEAR_CLOSED', 'Fiscal year is closed. Transaction is read-only.', [
+                    'transaction_date' => ['Transactions for this fiscal period are locked.'],
+                ]);
+            }
+
+            return TransactionPolicyResult::deny('TRANSACTION_PERIOD_LOCKED', 'Transactions for this fiscal period are locked.', [
+                'transaction_date' => ['Transactions for this fiscal period are locked.'],
+            ]);
         }
 
         $activeFiscalYear = $this->fiscalYearService->getOrCreateActiveFiscalYear($company);

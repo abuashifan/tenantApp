@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type AppShellProps = {
@@ -20,19 +20,18 @@ type StoredActiveCompany = {
 
 export function AppShell({ children }: AppShellProps) {
   const router = useRouter();
-  const [activeCompany, setActiveCompany] = useState<StoredActiveCompany | null>(
-    null,
+  const [activeCompany] = useState<StoredActiveCompany | null>(
+    () => {
+      if (typeof window === 'undefined') return null;
+      const raw = localStorage.getItem('active_company');
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw) as StoredActiveCompany;
+      } catch {
+        return null;
+      }
+    },
   );
-
-  useEffect(() => {
-    const raw = localStorage.getItem('active_company');
-    if (!raw) return;
-    try {
-      setActiveCompany(JSON.parse(raw) as StoredActiveCompany);
-    } catch {
-      setActiveCompany(null);
-    }
-  }, []);
 
   function logout() {
     localStorage.removeItem('auth_token');

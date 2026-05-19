@@ -95,6 +95,98 @@ class FiscalYearClosingService
         ];
     }
 
+    public function generateClosingChecklist(int $fiscalYearId): array
+    {
+        $company = $this->requireCompany();
+
+        $checks = [];
+        $errors = [];
+        $warnings = [];
+
+        $fy = FiscalYear::query()->whereKey($fiscalYearId)->where('company_id', $company->id)->first();
+        if (! $fy) {
+            $errors['fiscal_year_id'][] = 'Fiscal year not found.';
+            return [
+                'can_close' => false,
+                'errors' => $errors,
+                'warnings' => $warnings,
+                'checks' => [],
+            ];
+        }
+
+        $checks[] = [
+            'key' => 'fiscal_year_exists',
+            'status' => 'passed',
+            'message' => 'Fiscal year exists.',
+        ];
+
+        if ($fy->status !== 'open') {
+            $errors['fiscal_year'][] = 'Fiscal year must be open to close.';
+            $checks[] = [
+                'key' => 'fiscal_year_open',
+                'status' => 'failed',
+                'message' => 'Fiscal year is not open.',
+            ];
+        } else {
+            $checks[] = [
+                'key' => 'fiscal_year_open',
+                'status' => 'passed',
+                'message' => 'Fiscal year is open.',
+            ];
+        }
+
+        $mapping = $this->retainedEarningsMapping();
+        if (! $mapping || ! $mapping->account_id) {
+            $errors['retained_earnings'][] = 'Retained earnings account mapping is not configured.';
+            $checks[] = [
+                'key' => 'retained_earnings_configured',
+                'status' => 'failed',
+                'message' => 'Retained earnings account mapping is not configured.',
+            ];
+        } else {
+            $checks[] = [
+                'key' => 'retained_earnings_configured',
+                'status' => 'passed',
+                'message' => 'Retained earnings account mapping is configured.',
+            ];
+        }
+
+        $tb = $this->trialBalanceService->getTrialBalance(new TrialBalanceFilter(
+            startDate: $fy->start_date->toDateString(),
+            endDate: $fy->end_date->toDateString(),
+            departmentId: null,
+            projectId: null,
+            includeZeroBalance: false,
+            includeInactiveAccounts: true,
+            accountType: null,
+            sortBy: 'account_code',
+            sortDirection: 'asc',
+        ));
+
+        $tbBalanced = (bool) (($tb['totals']['is_balanced'] ?? false) && ($tb['valid'] ?? false));
+        if (! $tbBalanced) {
+            $errors['trial_balance'][] = 'Trial balance is not balanced.';
+            $checks[] = [
+                'key' => 'trial_balance_balanced',
+                'status' => 'failed',
+                'message' => 'Trial balance is not balanced.',
+            ];
+        } else {
+            $checks[] = [
+                'key' => 'trial_balance_balanced',
+                'status' => 'passed',
+                'message' => 'Trial balance is balanced.',
+            ];
+        }
+
+        return [
+            'can_close' => empty($errors),
+            'errors' => $errors,
+            'warnings' => $warnings,
+            'checks' => $checks,
+        ];
+    }
+
     /**
      * @return array{valid:bool,errors:array,warnings:array}
      */
@@ -160,6 +252,11 @@ class FiscalYearClosingService
     public function executeClosing(int $fiscalYearId, array $options = []): array
     {
         $company = $this->requireCompany();
+
+        $this->audit('fiscal_year.close_attempted', [
+            'fiscal_year_id' => $fiscalYearId,
+            'company_id' => $company->id,
+        ]);
 
         $fyForPreviewCheck = FiscalYear::query()->whereKey($fiscalYearId)->where('company_id', $company->id)->first();
         $lastPreview = is_array($fyForPreviewCheck?->metadata ?? null) ? ($fyForPreviewCheck->metadata['last_closing_preview_at'] ?? null) : null;

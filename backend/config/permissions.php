@@ -96,6 +96,8 @@ return [
         'fiscal_year.close',
         'fiscal_year.reopen',
         'fiscal_year.lock_override',
+        'fiscal_year.lock_manage',
+        'fiscal_year.closing_wizard',
 
         // Audit
         'audit.view',
@@ -134,6 +136,7 @@ return [
             'audit.view',
             'fiscal_year.view',
             'fiscal_year.close',
+            'fiscal_year.closing_wizard',
         ],
         'accountant' => [
             'dashboard.view',

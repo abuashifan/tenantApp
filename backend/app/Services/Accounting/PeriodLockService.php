@@ -15,7 +15,25 @@ class PeriodLockService
     public function isFiscalYearClosed(Company $company, string $date): bool
     {
         $fy = $this->fiscalYearService->fiscalYearForDate($company, $date);
-        return $fy instanceof FiscalYear && $fy->status === 'closed';
+        return $fy instanceof FiscalYear && ($fy->status === 'closed' || (bool) ($fy->is_closed ?? false));
+    }
+
+    public function isLockedUntil(Company $company, string $date): bool
+    {
+        $fy = $this->fiscalYearService->fiscalYearForDate($company, $date);
+        if (! ($fy instanceof FiscalYear)) {
+            return false;
+        }
+
+        $lockedUntil = $fy->locked_until ?? null;
+        if (! $lockedUntil) {
+            return false;
+        }
+
+        $d = Carbon::parse($date)->toDateString();
+        $u = Carbon::parse($lockedUntil)->toDateString();
+
+        return $d <= $u;
     }
 
     public function isPeriodClosed(Company $company, string $date): bool
@@ -32,15 +50,19 @@ class PeriodLockService
 
     public function isDateReadOnly(Company $company, string $date): bool
     {
-        // Phase 4F business rule: no monthly transaction blocking.
-        // Period lock exists for reporting/structure and future expansion, but only fiscal year closing makes transactions read-only.
-        return $this->isFiscalYearClosed($company, $date);
+        // Phase 8E/8F: fiscal year closed or locked_until override makes transactions read-only.
+        // Monthly accounting period status is still not used for blocking in this MVP.
+        return $this->isFiscalYearClosed($company, $date) || $this->isLockedUntil($company, $date);
     }
 
     public function blockingReasonForDate(Company $company, string $date): ?string
     {
         if ($this->isFiscalYearClosed($company, $date)) {
             return 'FISCAL_YEAR_CLOSED';
+        }
+
+        if ($this->isLockedUntil($company, $date)) {
+            return 'PERIOD_LOCKED';
         }
 
         return null;
