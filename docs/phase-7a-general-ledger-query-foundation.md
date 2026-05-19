@@ -2,6 +2,9 @@
 
 Phase 7A menambahkan fondasi **query General Ledger / Buku Besar** berbasis jurnal yang sudah ada, khususnya **journal posted** di **tenant database**.
 
+Catatan (Phase 7D):
+- Shared report filters/utilities distandardisasi di Phase 7D agar report berikutnya bisa reuse pola filter/query/response yang konsisten.
+
 Scope Phase 7A:
 - Read/report query only (tidak mengubah transaksi).
 - Tidak membuat Trial Balance final.
@@ -98,4 +101,3 @@ php artisan test --filter=GeneralLedgerQueryServiceTest
 php artisan test --filter=GeneralLedgerApiTest
 php artisan route:list
 ```
-

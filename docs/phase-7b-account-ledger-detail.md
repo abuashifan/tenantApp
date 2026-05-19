@@ -2,6 +2,9 @@
 
 Phase 7B menambahkan **Account Ledger Detail**: detail mutasi untuk **satu akun** dalam periode tertentu. Endpoint ini disiapkan agar UI detail akun (future) bisa memakai struktur response yang sudah rapi dan “export-ready”, tanpa membuat export PDF/Excel di phase ini.
 
+Catatan (Phase 7D):
+- Shared report filters/utilities distandardisasi di Phase 7D agar date range & dimension filters konsisten antar report.
+
 ## Beda Phase 7A vs 7B
 - Phase 7A: fondasi query general ledger (summary per akun atau ledger basic).
 - Phase 7B: fokus **detail ledger satu akun**, termasuk running balance per line, source info, dan dimension info.
@@ -92,4 +95,3 @@ php artisan test --filter=AccountLedgerDetailServiceTest
 php artisan test --filter=AccountLedgerDetailApiTest
 php artisan route:list
 ```
-

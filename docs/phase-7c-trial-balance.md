@@ -2,6 +2,9 @@
 
 Phase 7C menambahkan **Trial Balance / Neraca Saldo** berbasis jurnal yang sudah **posted** dan **tidak obsolete** di tenant database.
 
+Catatan (Phase 7D):
+- Shared report filters/utilities distandardisasi di Phase 7D agar response meta & filter handling lebih konsisten untuk report berikutnya.
+
 Scope Phase 7C:
 - Read/report query only (tidak mengubah transaksi).
 - Tidak membuat Financial Statements (P&L / Balance Sheet / Cash Flow).
@@ -90,4 +93,3 @@ php artisan test --filter=TrialBalanceServiceTest
 php artisan test --filter=TrialBalanceApiTest
 php artisan route:list
 ```
-

@@ -2,10 +2,15 @@
 
 namespace App\Http\Requests\Reports;
 
+use App\Http\Requests\Concerns\HasReportDateFilters;
+use App\Http\Requests\Concerns\HasReportDimensionFilters;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AccountLedgerDetailRequest extends FormRequest
 {
+    use HasReportDateFilters;
+    use HasReportDimensionFilters;
+
     public function authorize(): bool
     {
         return true;
@@ -14,10 +19,8 @@ class AccountLedgerDetailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-            'department_id' => ['nullable', 'integer'],
-            'project_id' => ['nullable', 'integer'],
+            ...$this->dateFilterRules(),
+            ...$this->dimensionFilterRules(),
             'include_opening_balance' => ['nullable', 'boolean'],
             'include_zero_balance' => ['nullable', 'boolean'],
             'include_source_info' => ['nullable', 'boolean'],
@@ -26,4 +29,3 @@ class AccountLedgerDetailRequest extends FormRequest
         ];
     }
 }
-
