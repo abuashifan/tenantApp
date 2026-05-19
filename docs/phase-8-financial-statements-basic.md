@@ -16,8 +16,9 @@ Dokumen ini adalah ringkasan roadmap minimal:
 - Endpoint: `GET /api/reports/cash-flow`
 - Simple cash flow basis (MVP) berbasis akun `is_cash_bank`, tanpa modul transaksi khusus.
 
-## Phase 8D — Integration & tests (planned)
-- Konsistensi response meta/filter + regression tests cross-report.
+## Phase 8D — Integration & consistency tests
+- Endpoint opsional: `GET /api/reports/financial-summary`
+- Integration tests lintas report untuk memastikan konsistensi PL/BS/CF dan rule reportable journal.
 
 Catatan:
 - Export PDF/Excel belum termasuk.
