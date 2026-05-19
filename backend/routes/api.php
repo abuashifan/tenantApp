@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\MasterData\DepartmentController;
 use App\Http\Controllers\Api\MasterData\ProjectController;
 use App\Http\Controllers\Api\Journal\JournalEntryController;
 use App\Http\Controllers\Api\Reports\GeneralLedgerController;
+use App\Http\Controllers\Api\Reports\AccountLedgerDetailController;
 
 Route::get('/health', [HealthController::class, 'index']);
 
@@ -128,6 +129,7 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('master-data')->gr
 
 Route::middleware(['auth:sanctum', 'company.access'])->prefix('reports')->group(function () {
     Route::get('/general-ledger', [GeneralLedgerController::class, 'index'])->middleware('permission:reports.view');
+    Route::get('/account-ledger/{account}', [AccountLedgerDetailController::class, 'show'])->middleware('permission:reports.view');
 });
 
 Route::middleware(['auth:sanctum', 'company.access'])->group(function () {
