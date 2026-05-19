@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\PermissionController;
 use App\Http\Controllers\Api\Accounting\FiscalYearStatusController;
+use App\Http\Controllers\Api\Accounting\FiscalYearClosingController;
 use App\Http\Controllers\Api\Companies\CompanyController;
 use App\Http\Controllers\Api\Settings\CompanySettingController;
 use App\Http\Controllers\Api\Tenant\TenantContextTestController;
@@ -58,6 +59,15 @@ Route::middleware(['auth:sanctum', 'company.access'])->group(function () {
 
 Route::middleware(['auth:sanctum', 'company.access', 'permission:dashboard.view'])->group(function () {
     Route::get('/accounting/fiscal-year/status', FiscalYearStatusController::class);
+});
+
+Route::middleware(['auth:sanctum', 'company.access'])->prefix('accounting')->group(function () {
+    Route::get('/fiscal-years/{id}/closing-preview', [FiscalYearClosingController::class, 'preview'])
+        ->middleware('permission:fiscal_year.view');
+    Route::post('/fiscal-years/{id}/close', [FiscalYearClosingController::class, 'close'])
+        ->middleware('permission:fiscal_year.close');
+    Route::post('/fiscal-years/{id}/reopen', [FiscalYearClosingController::class, 'reopen'])
+        ->middleware('permission:fiscal_year.reopen');
 });
 
 // NOTE: Phase 1B demo endpoint `/api/my-companies-demo` has been disabled in Phase 2A.

@@ -91,6 +91,12 @@ return [
         'reports.view',
         'reports.export',
 
+        // Fiscal year closing / locking
+        'fiscal_year.view',
+        'fiscal_year.close',
+        'fiscal_year.reopen',
+        'fiscal_year.lock_override',
+
         // Audit
         'audit.view',
     ],
@@ -126,6 +132,8 @@ return [
             'reports.view',
             'reports.export',
             'audit.view',
+            'fiscal_year.view',
+            'fiscal_year.close',
         ],
         'accountant' => [
             'dashboard.view',
@@ -151,6 +159,7 @@ return [
             'reports.view',
             'reports.export',
             'audit.view',
+            'fiscal_year.view',
         ],
         'sales' => [
             'dashboard.view',
@@ -199,6 +208,7 @@ return [
         'viewer' => [
             'dashboard.view',
             'reports.view',
+            'fiscal_year.view',
         ],
     ],
 ];
