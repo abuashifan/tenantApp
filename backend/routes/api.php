@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\MasterData\WarehouseController;
 use App\Http\Controllers\Api\MasterData\DepartmentController;
 use App\Http\Controllers\Api\MasterData\ProjectController;
 use App\Http\Controllers\Api\Journal\JournalEntryController;
+use App\Http\Controllers\Api\Reports\GeneralLedgerController;
 
 Route::get('/health', [HealthController::class, 'index']);
 
@@ -123,6 +124,10 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('master-data')->gr
     // Account Mappings
     Route::get('/account-mappings', [AccountMappingController::class, 'index'])->middleware('permission:settings.company.view');
     Route::patch('/account-mappings/{mappingKey}', [AccountMappingController::class, 'update'])->middleware('permission:settings.company.edit');
+});
+
+Route::middleware(['auth:sanctum', 'company.access'])->prefix('reports')->group(function () {
+    Route::get('/general-ledger', [GeneralLedgerController::class, 'index'])->middleware('permission:reports.view');
 });
 
 Route::middleware(['auth:sanctum', 'company.access'])->group(function () {
