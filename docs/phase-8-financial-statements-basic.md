@@ -9,10 +9,12 @@ Dokumen ini adalah ringkasan roadmap minimal:
 - Fokus: total revenue, total expense, net profit/loss (MVP).
 
 ## Phase 8B — Balance Sheet (planned)
-- Asset / Liability / Equity snapshot pada periode tertentu.
+- Endpoint: `GET /api/reports/balance-sheet`
+- Asset / Liability / Equity snapshot pada `as_of_date`, termasuk Current Year Profit/Loss di equity (MVP).
 
 ## Phase 8C — Cash Flow (planned)
-- Simple cash flow basis (MVP), tanpa modul transaksi khusus.
+- Endpoint: `GET /api/reports/cash-flow`
+- Simple cash flow basis (MVP) berbasis akun `is_cash_bank`, tanpa modul transaksi khusus.
 
 ## Phase 8D — Integration & tests (planned)
 - Konsistensi response meta/filter + regression tests cross-report.
@@ -21,4 +23,3 @@ Catatan:
 - Export PDF/Excel belum termasuk.
 - Frontend UI belum termasuk.
 - Closing wizard tidak termasuk dalam Phase 8 basic ini.
-

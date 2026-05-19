@@ -22,6 +22,8 @@ use App\Http\Controllers\Api\Reports\GeneralLedgerController;
 use App\Http\Controllers\Api\Reports\AccountLedgerDetailController;
 use App\Http\Controllers\Api\Reports\TrialBalanceController;
 use App\Http\Controllers\Api\Reports\ProfitLossController;
+use App\Http\Controllers\Api\Reports\BalanceSheetController;
+use App\Http\Controllers\Api\Reports\CashFlowController;
 
 Route::get('/health', [HealthController::class, 'index']);
 
@@ -134,6 +136,8 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('reports')->group(
     Route::get('/account-ledger/{account}', [AccountLedgerDetailController::class, 'show'])->middleware('permission:reports.view');
     Route::get('/trial-balance', [TrialBalanceController::class, 'index'])->middleware('permission:reports.view');
     Route::get('/profit-loss', [ProfitLossController::class, 'index'])->middleware('permission:reports.view');
+    Route::get('/balance-sheet', [BalanceSheetController::class, 'index'])->middleware('permission:reports.view');
+    Route::get('/cash-flow', [CashFlowController::class, 'index'])->middleware('permission:reports.view');
 });
 
 Route::middleware(['auth:sanctum', 'company.access'])->group(function () {
