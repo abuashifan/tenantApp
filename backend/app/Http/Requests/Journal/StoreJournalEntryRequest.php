@@ -20,6 +20,8 @@ class StoreJournalEntryRequest extends FormRequest
             'metadata' => ['nullable', 'array'],
             'lines' => ['required', 'array', 'min:2'],
             'lines.*.account_id' => ['required', 'integer'],
+            'lines.*.department_id' => ['nullable', 'integer'],
+            'lines.*.project_id' => ['nullable', 'integer'],
             'lines.*.description' => ['nullable', 'string'],
             'lines.*.debit' => ['nullable', 'numeric', 'min:0'],
             'lines.*.credit' => ['nullable', 'numeric', 'min:0'],
@@ -58,4 +60,3 @@ class StoreJournalEntryRequest extends FormRequest
         });
     }
 }
-

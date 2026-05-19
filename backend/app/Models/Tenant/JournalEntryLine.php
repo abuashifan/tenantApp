@@ -17,6 +17,8 @@ class JournalEntryLine extends Model
     protected $fillable = [
         'journal_entry_id',
         'account_id',
+        'department_id',
+        'project_id',
         'description',
         'debit',
         'credit',
@@ -41,6 +43,26 @@ class JournalEntryLine extends Model
         return $this->belongsTo(ChartOfAccount::class, 'account_id');
     }
 
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class, 'project_id');
+    }
+
+    public function hasDepartment(): bool
+    {
+        return (bool) $this->department_id;
+    }
+
+    public function hasProject(): bool
+    {
+        return (bool) $this->project_id;
+    }
+
     public function isDebit(): bool
     {
         return (float) $this->debit > 0;
@@ -61,4 +83,3 @@ class JournalEntryLine extends Model
         return (float) $this->debit > 0 && (float) $this->credit > 0;
     }
 }
-

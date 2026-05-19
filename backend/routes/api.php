@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\MasterData\ProductCategoryController;
 use App\Http\Controllers\Api\MasterData\ProductController;
 use App\Http\Controllers\Api\MasterData\UnitController;
 use App\Http\Controllers\Api\MasterData\WarehouseController;
+use App\Http\Controllers\Api\MasterData\DepartmentController;
+use App\Http\Controllers\Api\MasterData\ProjectController;
 use App\Http\Controllers\Api\Journal\JournalEntryController;
 
 Route::get('/health', [HealthController::class, 'index']);
@@ -101,6 +103,22 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('master-data')->gr
     Route::patch('/warehouses/{id}', [WarehouseController::class, 'update'])->middleware('permission:warehouses.edit');
     Route::patch('/warehouses/{id}/deactivate', [WarehouseController::class, 'deactivate'])->middleware('permission:warehouses.deactivate');
     Route::patch('/warehouses/{id}/activate', [WarehouseController::class, 'activate'])->middleware('permission:warehouses.edit');
+
+    // Departments (Analytical Dimensions)
+    Route::get('/departments', [DepartmentController::class, 'index'])->middleware('permission:departments.view');
+    Route::post('/departments', [DepartmentController::class, 'store'])->middleware('permission:departments.create');
+    Route::get('/departments/{id}', [DepartmentController::class, 'show'])->middleware('permission:departments.view');
+    Route::patch('/departments/{id}', [DepartmentController::class, 'update'])->middleware('permission:departments.edit');
+    Route::patch('/departments/{id}/deactivate', [DepartmentController::class, 'deactivate'])->middleware('permission:departments.deactivate');
+    Route::patch('/departments/{id}/activate', [DepartmentController::class, 'activate'])->middleware('permission:departments.edit');
+
+    // Projects (Analytical Dimensions)
+    Route::get('/projects', [ProjectController::class, 'index'])->middleware('permission:projects.view');
+    Route::post('/projects', [ProjectController::class, 'store'])->middleware('permission:projects.create');
+    Route::get('/projects/{id}', [ProjectController::class, 'show'])->middleware('permission:projects.view');
+    Route::patch('/projects/{id}', [ProjectController::class, 'update'])->middleware('permission:projects.edit');
+    Route::patch('/projects/{id}/deactivate', [ProjectController::class, 'deactivate'])->middleware('permission:projects.deactivate');
+    Route::patch('/projects/{id}/activate', [ProjectController::class, 'activate'])->middleware('permission:projects.edit');
 
     // Account Mappings
     Route::get('/account-mappings', [AccountMappingController::class, 'index'])->middleware('permission:settings.company.view');

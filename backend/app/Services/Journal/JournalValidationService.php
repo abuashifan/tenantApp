@@ -3,7 +3,9 @@
 namespace App\Services\Journal;
 
 use App\Models\Tenant\ChartOfAccount;
+use App\Models\Tenant\Department;
 use App\Models\Tenant\JournalEntry;
+use App\Models\Tenant\Project;
 
 class JournalValidationService
 {
@@ -59,12 +61,82 @@ class JournalValidationService
             $errors = array_merge($errors, $accountValidation['errors']);
         }
 
+        $dimensionValidation = $this->validateDimensions($lines);
+        if (! $dimensionValidation['valid']) {
+            $errors = array_merge($errors, $dimensionValidation['errors']);
+        }
+
         $balance = $this->validateBalanced($lines);
         if (! $balance['valid']) {
             $errors = array_merge($errors, $balance['errors']);
         }
 
         return $this->result(empty($errors), $errors, $warnings, $lines);
+    }
+
+    /**
+     * @param array<int,array<string,mixed>> $lines
+     * @return array{valid:bool,errors:array,warnings:array}
+     */
+    public function validateDimensions(array $lines): array
+    {
+        $errors = [];
+        $warnings = [];
+
+        $departmentIds = [];
+        $projectIds = [];
+
+        foreach ($lines as $i => $line) {
+            if (isset($line['department_id']) && $line['department_id']) {
+                $departmentIds[] = (int) $line['department_id'];
+            }
+            if (isset($line['project_id']) && $line['project_id']) {
+                $projectIds[] = (int) $line['project_id'];
+            }
+        }
+
+        $departmentIds = array_values(array_unique($departmentIds));
+        $projectIds = array_values(array_unique($projectIds));
+
+        $departments = $departmentIds === []
+            ? collect()
+            : Department::query()->whereIn('id', $departmentIds)->get(['id', 'is_active'])->keyBy('id');
+
+        $projects = $projectIds === []
+            ? collect()
+            : Project::query()->whereIn('id', $projectIds)->get(['id', 'is_active', 'status'])->keyBy('id');
+
+        foreach ($lines as $i => $line) {
+            $idx = $i + 1;
+
+            $departmentId = $line['department_id'] ?? null;
+            if ($departmentId) {
+                $dept = $departments->get((int) $departmentId);
+                if (! $dept) {
+                    $errors["lines.$i.department_id"][] = "Line #$idx: department not found.";
+                } elseif (! (bool) $dept->is_active) {
+                    $errors["lines.$i.department_id"][] = "Line #$idx: department is inactive.";
+                }
+            }
+
+            $projectId = $line['project_id'] ?? null;
+            if ($projectId) {
+                $project = $projects->get((int) $projectId);
+                if (! $project) {
+                    $errors["lines.$i.project_id"][] = "Line #$idx: project not found.";
+                } elseif (! (bool) $project->is_active) {
+                    $errors["lines.$i.project_id"][] = "Line #$idx: project is inactive.";
+                } elseif ((string) $project->status !== 'active') {
+                    $errors["lines.$i.project_id"][] = "Line #$idx: project is not usable for new journal lines.";
+                }
+            }
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'warnings' => $warnings,
+        ];
     }
 
     /**
@@ -216,4 +288,3 @@ class JournalValidationService
         return number_format(((float) $a) - ((float) $b), 2, '.', '');
     }
 }
-

@@ -375,6 +375,8 @@ class JournalEntryService
             'lines' => $journal->lines->map(function ($line) {
                 return [
                     'account_id' => $line->account_id,
+                    'department_id' => $line->department_id,
+                    'project_id' => $line->project_id,
                     'description' => $line->description,
                     'debit' => (string) $line->debit,
                     'credit' => (string) $line->credit,
@@ -393,6 +395,8 @@ class JournalEntryService
         return array_map(function ($line) {
             return [
                 'account_id' => $line['account_id'] ?? null,
+                'department_id' => $line['department_id'] ?? null,
+                'project_id' => $line['project_id'] ?? null,
                 'debit' => $line['debit'] ?? 0,
                 'credit' => $line['credit'] ?? 0,
                 'description' => $line['description'] ?? null,

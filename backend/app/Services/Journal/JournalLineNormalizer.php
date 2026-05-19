@@ -35,6 +35,8 @@ class JournalLineNormalizer
 
         return [
             'account_id' => isset($line['account_id']) ? (int) $line['account_id'] : null,
+            'department_id' => isset($line['department_id']) && $line['department_id'] !== '' ? (int) $line['department_id'] : null,
+            'project_id' => isset($line['project_id']) && $line['project_id'] !== '' ? (int) $line['project_id'] : null,
             'description' => isset($line['description']) && $line['description'] !== '' ? (string) $line['description'] : null,
             'debit' => $this->normalizeNumber($debit),
             'credit' => $this->normalizeNumber($credit),
@@ -65,4 +67,3 @@ class JournalLineNormalizer
         return '0';
     }
 }
-

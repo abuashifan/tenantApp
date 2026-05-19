@@ -7,6 +7,7 @@ Catatan scope:
 - Phase 6 **belum** membuat modul Sales/Purchase/Cash Bank/Inventory/Stock Movement.
 - Phase 6 hanya menyiapkan struktur & API untuk **journal_entries** dan **journal_entry_lines**.
 - System-generated journal **didukung secara struktur**, tetapi **belum diproduksi** oleh modul lain (akan datang di phase berikutnya).
+- Analytical Dimensions (Department/Project) ditangani di **Phase 6A**.
 
 ## Tenant Tables
 
@@ -32,6 +33,7 @@ Rule report visibility:
 Kolom penting:
 - `journal_entry_id` (FK ke `journal_entries`, cascade delete)
 - `account_id` (FK ke `chart_of_accounts`)
+- (Phase 6A) optional: `department_id`, `project_id` (nullable)
 - `debit`, `credit` (decimal 18,2)
 - `line_order`
 - `metadata` (json)
