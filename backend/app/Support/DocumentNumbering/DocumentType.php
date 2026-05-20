@@ -14,7 +14,14 @@ class DocumentType
     public const SALES_RECEIPT = 'sales_receipt';
     public const SALES_RETURN = 'sales_return';
     public const CUSTOMER_DEPOSIT = 'customer_deposit';
+    public const PURCHASE_REQUEST = 'purchase_request';
+    public const PURCHASE_ORDER = 'purchase_order';
+    public const GOODS_RECEIPT = 'goods_receipt';
+    public const VENDOR_BILL = 'vendor_bill';
     public const PURCHASE_INVOICE = 'purchase_invoice';
+    public const VENDOR_PAYMENT = 'vendor_payment';
+    public const VENDOR_DEPOSIT = 'vendor_deposit';
+    public const PURCHASE_RETURN = 'purchase_return';
     public const CASH_RECEIPT = 'cash_receipt';
     public const CASH_PAYMENT = 'cash_payment';
     public const BANK_TRANSFER = 'bank_transfer';

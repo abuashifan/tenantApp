@@ -58,6 +58,17 @@ Phase 10 tidak membuat Stock Movement Engine, inventory valuation, stock card, w
 Goods Receipt Phase 10 hanya dokumen penerimaan barang; Vendor Bill langsung belum membuat stock movement.
 Vendor Deposit diinput dari Purchase Order tetapi disimpan sebagai vendor_deposits; Vendor Bill hanya apply posted vendor deposit.
 Buku besar pembantu hutang masuk Phase 10H dan wajib reconcile dengan GL Accounts Payable.
+Phase 10A selesai: purchase workflow foundation, calculation/source-chain/status/account-mapping services, permissions granular, document numbering purchase modules, account mapping aliases, docs, dan unit test calculation. Phase 10A tidak membuat CRUD purchase, frontend, stock movement, atau inventory valuation.
+Phase 10B selesai: Purchase Request backend tenant-aware, migration/model/service/request/controller/routes/tests/docs; no journal, no AP, no stock movement.
+Phase 10C selesai: Purchase Order backend + minimal Vendor Deposit entry dari Purchase Order; Purchase Order bisa langsung atau dari Purchase Request; no AP journal, no stock movement, no inventory valuation.
+Phase 10D selesai: Goods Receipt backend sebagai dokumen penerimaan; direct/from Purchase Order, partial/multiple receipt, update received_quantity PO, no journal, no stock movement.
+Phase 10E selesai: Vendor Bill backend; direct/from Purchase Order/from Goods Receipt, AP/expense/input tax journal, optional vendor deposit allocation, no stock movement/inventory valuation.
+Phase 10F selesai: Vendor Deposit dan Vendor Payment backend; deposit post/refund/allocation journal, bill payment journal, 1 payment to 1 bill MVP, overpayment blocked.
+Phase 10G selesai: Purchase Return backend; return dari Vendor Bill/Goods Receipt/direct, AP/purchase return/input tax journal, update returned amount/quantity, no stock movement.
+Phase 10H selesai: AP subsidiary ledger, open bills, AP aging buckets, dan GL Accounts Payable reconciliation.
+Phase 10I selesai: Purchase workflow integration tests dan final documentation completed.
+Phase 10 — Purchase Workflow & Accounts Payable Backend: completed.
+Next phase: Phase 11 — Cash Bank Backend.
 ```
 
 Arsitektur:
@@ -869,7 +880,7 @@ docs phase 9
 Status:
 
 ```text
-[~] Persiapan global rules selesai; belum mulai coding subphase
+[✓] Phase 10A-10I selesai; backend Purchase Workflow & Accounts Payable completed
 ```
 
 Subphase:
@@ -916,6 +927,24 @@ Supplier payment:
 ```text
 Dr Accounts Payable
     Cr Cash/Bank
+```
+
+Purchase return:
+
+```text
+Dr Accounts Payable
+    Cr Purchase Return / Expense Reduction
+    Cr Input Tax jika tax aktif
+```
+
+Final Phase 10 notes:
+
+```text
+Purchase Return tidak membuat stock movement atau inventory return journal.
+AP subsidiary ledger membaca posted vendor bills, vendor payments, vendor deposit allocations, dan purchase returns.
+AP ledger balance wajib reconcile dengan GL Accounts Payable.
+Known limitations tetap: no frontend purchase, no stock movement, no inventory valuation, no stock card, no advanced payment allocation, no overpayment, no advanced tax, no landed cost, no FIFO/moving average.
+Next phase: Phase 11 — Cash Bank Backend.
 ```
 
 ## Phase 11 — Cash Bank Backend

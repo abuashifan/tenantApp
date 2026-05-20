@@ -16,7 +16,13 @@ class AccountMappingKey
     // Purchase
     public const PURCHASE_ACCOUNTS_PAYABLE = 'purchase.accounts_payable';
     public const PURCHASE_DEFAULT_PURCHASE = 'purchase.default_purchase';
+    public const PURCHASE_EXPENSE = 'purchase.expense';
+    public const PURCHASE_INVENTORY_INTERIM = 'purchase.inventory_interim';
     public const PURCHASE_TAX_INPUT = 'purchase.tax_input';
+    public const PURCHASE_DISCOUNT = 'purchase.discount';
+    public const PURCHASE_RETURN = 'purchase.return';
+    public const PURCHASE_VENDOR_DEPOSIT = 'purchase.vendor_deposit';
+    public const PURCHASE_DEFAULT_CASH_BANK = 'purchase.default_cash_bank';
 
     // Inventory
     public const INVENTORY_ASSET = 'inventory.asset';
