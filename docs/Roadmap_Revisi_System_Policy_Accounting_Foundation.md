@@ -75,7 +75,15 @@ Phase 11 — Cash Bank Backend adalah backend-first.
 Phase 11 bukan frontend; frontend cash bank masuk Phase 16.
 Phase 11 fokus cash movement dan bank transaction management.
 Phase 11 belum membuat auto bank feed integration, AI/import statement parser, multi currency penuh, dan advanced cash flow report (target Phase 19/22).
-```
+
+Phase 12 project memory:
+Phase 12 — Inventory Backend adalah backend-first.
+Phase 12 bukan frontend; frontend inventory masuk Phase 17.
+Phase 12 mengaktifkan stock movement engine.
+Delivery Order (Phase 9) dan Goods Receipt (Phase 10) akan dihubungkan ke stock movement pada Phase 12E.
+Valuation method MVP: moving average (average cost).
+Phase 12 belum membuat FIFO/LIFO, batch/serial tracking, landed cost advanced, export PDF/Excel, atau UI inventory.
+
 
 Arsitektur:
 

@@ -29,6 +29,8 @@ class DocumentType
     public const STOCK_ADJUSTMENT = 'stock_adjustment';
     public const STOCK_MOVEMENT = 'stock_movement';
     public const STOCK_OPNAME = 'stock_opname';
+    public const STOCK_TRANSFER = 'stock_transfer';
+    public const OPENING_STOCK = 'opening_stock';
     public const OPENING_BALANCE = 'opening_balance';
     public const CLOSING_ENTRY = 'closing_entry';
 

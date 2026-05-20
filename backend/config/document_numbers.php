@@ -114,6 +114,14 @@ return [
             'prefix' => 'SO',
             'name' => 'Stock Opname',
         ],
+        'stock_transfer' => [
+            'prefix' => 'ST',
+            'name' => 'Stock Transfer',
+        ],
+        'opening_stock' => [
+            'prefix' => 'OS',
+            'name' => 'Opening Stock',
+        ],
         'opening_balance' => [
             'prefix' => 'OB',
             'name' => 'Opening Balance',

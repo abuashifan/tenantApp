@@ -155,6 +155,20 @@ return [
             'account_types' => ['expense'],
             'description' => 'Default loss account for negative stock adjustment.',
         ],
+        'inventory.write_off' => [
+            'module' => 'inventory',
+            'label' => 'Inventory Write-off',
+            'required' => false,
+            'account_types' => ['expense'],
+            'description' => 'Optional write-off account for inventory losses/adjustments.',
+        ],
+        'inventory.opening_stock_equity' => [
+            'module' => 'inventory',
+            'label' => 'Opening Stock Equity (Optional)',
+            'required' => false,
+            'account_types' => ['equity'],
+            'description' => 'Optional equity account for opening stock balancing if needed.',
+        ],
 
         'cash_bank.default_cash' => [
             'module' => 'cash_bank',

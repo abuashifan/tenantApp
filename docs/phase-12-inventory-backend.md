@@ -1,0 +1,89 @@
+# Phase 12 — Inventory Backend
+
+## Tujuan
+
+Phase 12 membangun backend inventory dan mengaktifkan **stock movement engine** yang sebelumnya ditunda pada Phase 9 (sales) dan Phase 10 (purchase).
+
+## Global Rules (ringkas)
+
+- Backend-first. Tidak membuat frontend inventory di Phase 12 (frontend inventory target Phase 17).
+- Tidak membuat FIFO/LIFO, batch/serial tracking, landed cost advanced, manufacturing/BOM.
+- SQLite hanya untuk MVP/development; tidak membuat logic yang hanya cocok SQLite.
+
+## Movement Types & Direction
+
+IN menambah quantity:
+- `purchase_in`
+- `sales_return_in`
+- `adjustment_in`
+- `opname_in`
+- `transfer_in`
+- `opening_stock`
+
+OUT mengurangi quantity:
+- `sales_out`
+- `purchase_return_out`
+- `adjustment_out`
+- `opname_out`
+- `transfer_out`
+
+## Valuation Method (MVP)
+
+- Moving Average / Average Cost.
+
+## Integration Plan
+
+- Phase 9 Delivery Order sebelumnya hanya dokumen pengiriman (belum stock movement).
+- Phase 10 Goods Receipt sebelumnya hanya dokumen penerimaan (belum stock movement).
+- Phase 12E akan menghubungkan Delivery Order → `sales_out` dan Goods Receipt → `purchase_in`.
+
+## Account Mapping
+
+Key utama yang dipakai inventory (lihat `backend/config/account_mappings.php`):
+- `inventory.asset` (required)
+- `inventory.cogs` (required)
+- `inventory.adjustment_gain` (optional)
+- `inventory.adjustment_loss` (optional)
+- `purchase.inventory_interim` (optional)
+- `purchase.return` (optional)
+- `sales.return` (optional)
+- `inventory.write_off` (optional)
+- `inventory.opening_stock_equity` (optional)
+
+## Permissions (Phase 12A)
+
+Phase 12A menambahkan permission granular inventory (tanpa menghapus permission legacy):
+- `inventory.stock.view`
+- `inventory.movements.*`
+- `inventory.adjustments.*`
+- `inventory.opname.*`
+- `inventory.valuation.view`
+- `inventory.reports.view`
+- `inventory.integration.run`
+
+## Subphase Plan
+
+- 12A Inventory Foundation
+- 12B Stock Movement Engine
+- 12C Stock Balance
+- 12D Average Cost / Valuation Foundation
+- 12E Sales & Purchase Stock Integration
+- 12F Stock Adjustment
+- 12G Stock Opname Basic
+- 12H Inventory Reports Backend
+- 12I Integration Tests & Documentation
+
+## Phase 12A — Inventory Foundation (Implemented)
+
+Added:
+- `backend/config/inventory.php`
+- Inventory support constants (`backend/app/Support/Inventory/*`)
+- Inventory shared services (`backend/app/Services/Inventory/*`)
+- Document numbering types: `stock_transfer`, `opening_stock`
+
+## Limitations (Phase 12A)
+
+- Belum membuat tabel/engine `stock_movements` (mulai Phase 12B).
+- Belum membuat stock balance dan valuation engine penuh.
+- Belum menghubungkan sales/purchase ke stock movement (Phase 12E).
+
