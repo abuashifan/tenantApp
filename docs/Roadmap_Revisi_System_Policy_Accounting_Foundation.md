@@ -69,6 +69,12 @@ Phase 10H selesai: AP subsidiary ledger, open bills, AP aging buckets, dan GL Ac
 Phase 10I selesai: Purchase workflow integration tests dan final documentation completed.
 Phase 10 — Purchase Workflow & Accounts Payable Backend: completed.
 Next phase: Phase 11 — Cash Bank Backend.
+
+Phase 11 project memory:
+Phase 11 — Cash Bank Backend adalah backend-first.
+Phase 11 bukan frontend; frontend cash bank masuk Phase 16.
+Phase 11 fokus cash movement dan bank transaction management.
+Phase 11 belum membuat auto bank feed integration, AI/import statement parser, multi currency penuh, dan advanced cash flow report (target Phase 19/22).
 ```
 
 Arsitektur:

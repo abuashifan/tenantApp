@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\Reports\ProfitLossController;
 use App\Http\Controllers\Api\Reports\BalanceSheetController;
 use App\Http\Controllers\Api\Reports\CashFlowController;
 use App\Http\Controllers\Api\Reports\FinancialSummaryController;
+use App\Http\Controllers\Api\CashBank\CashBankAccountController;
 use App\Http\Controllers\Api\Sales\DeliveryOrderController;
 use App\Http\Controllers\Api\Sales\AccountsReceivableController;
 use App\Http\Controllers\Api\Sales\BillingInvoiceController;
@@ -94,6 +95,11 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('accounting')->gro
         ->middleware('permission:fiscal_year.view');
     Route::patch('/period-locks', [PeriodLockController::class, 'update'])
         ->middleware('permission:fiscal_year.lock_manage');
+});
+
+Route::middleware(['auth:sanctum', 'company.access'])->prefix('cash-bank')->group(function () {
+    Route::get('/accounts', [CashBankAccountController::class, 'index'])
+        ->middleware('permission:cash_bank.view');
 });
 
 // NOTE: Phase 1B demo endpoint `/api/my-companies-demo` has been disabled in Phase 2A.
