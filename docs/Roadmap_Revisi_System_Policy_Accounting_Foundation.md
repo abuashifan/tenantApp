@@ -52,6 +52,12 @@ Phase 9J selesai: AR subsidiary ledger, open invoices, aging buckets, and GL AR 
 Phase 9K selesai: Sales workflow integration tests dan final documentation completed.
 Phase 9 — Sales Workflow & Accounts Receivable Backend: completed.
 Next phase: Phase 10 — Purchase & Accounts Payable Backend.
+Phase 10 project memory prepared: backend-first Purchase Workflow & Accounts Payable, mengikuti pola Phase 9 Sales & AR.
+Phase 10 bukan frontend; frontend purchase masuk Phase 15.
+Phase 10 tidak membuat Stock Movement Engine, inventory valuation, stock card, warehouse stock update, landed cost, FIFO, atau moving average.
+Goods Receipt Phase 10 hanya dokumen penerimaan barang; Vendor Bill langsung belum membuat stock movement.
+Vendor Deposit diinput dari Purchase Order tetapi disimpan sebagai vendor_deposits; Vendor Bill hanya apply posted vendor deposit.
+Buku besar pembantu hutang masuk Phase 10H dan wajib reconcile dengan GL Accounts Payable.
 ```
 
 Arsitektur:
@@ -863,18 +869,38 @@ docs phase 9
 Status:
 
 ```text
-[ ] Belum mulai
+[~] Persiapan global rules selesai; belum mulai coding subphase
 ```
 
 Subphase:
 
 ```text
-10A Purchase Invoice Schema
-10B Purchase Invoice API
-10C Purchase Auto Journal Posting
-10D Supplier Payment Foundation
-10E Accounts Payable Aging Basic
-10F Purchase Backend Tests & Docs
+10A Purchase Workflow Foundation
+10B Purchase Request
+10C Purchase Order + Vendor Deposit Entry
+10D Goods Receipt
+10E Vendor Bill / Purchase Invoice
+10F Vendor Payment & Vendor Deposit
+10G Purchase Return
+10H AP Subsidiary Ledger & Aging
+10I Integration Tests & Documentation
+```
+
+Global rules:
+
+```text
+Phase 10 backend-first dan bukan frontend.
+Frontend purchase masuk Phase 15.
+Semua tabel purchase masuk tenant database.
+Semua endpoint purchase wajib auth:sanctum + company.access + permission granular.
+Semua dokumen purchase tenant-aware, source-chain-aware, audit-aware, period-lock-aware, dan tidak hard delete.
+Purchase Order tidak membuat journal/AP/stock movement.
+Goods Receipt hanya dokumen penerimaan barang dan tidak membuat stock movement.
+Vendor Bill langsung belum membuat stock movement atau inventory valuation.
+Vendor Deposit adalah asset/advance payment: Dr Vendor Deposit, Cr Cash/Bank.
+Apply Vendor Deposit ke Vendor Bill: Dr Accounts Payable, Cr Vendor Deposit.
+AP subsidiary ledger Phase 10H wajib reconcile dengan GL Accounts Payable.
+Stock movement, inventory valuation, stock card, warehouse stock balance, landed cost, FIFO, dan moving average ditunda ke Phase 12.
 ```
 
 Posting pembelian kredit:
