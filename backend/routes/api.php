@@ -29,6 +29,8 @@ use App\Http\Controllers\Api\Reports\CashFlowController;
 use App\Http\Controllers\Api\Reports\FinancialSummaryController;
 use App\Http\Controllers\Api\CashBank\CashBankAccountController;
 use App\Http\Controllers\Api\CashBank\CashReceiptController;
+use App\Http\Controllers\Api\CashBank\CashPaymentController;
+use App\Http\Controllers\Api\CashBank\BankTransferController;
 use App\Http\Controllers\Api\Sales\DeliveryOrderController;
 use App\Http\Controllers\Api\Sales\AccountsReceivableController;
 use App\Http\Controllers\Api\Sales\BillingInvoiceController;
@@ -111,6 +113,28 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('cash-bank')->grou
     Route::patch('/cash-receipts/{id}/post', [CashReceiptController::class, 'post'])
         ->middleware('permission:cash_bank.post');
     Route::patch('/cash-receipts/{id}/void', [CashReceiptController::class, 'void'])
+        ->middleware('permission:cash_bank.void');
+
+    Route::get('/cash-payments', [CashPaymentController::class, 'index'])
+        ->middleware('permission:cash_bank.view');
+    Route::post('/cash-payments', [CashPaymentController::class, 'store'])
+        ->middleware('permission:cash_bank.create');
+    Route::get('/cash-payments/{id}', [CashPaymentController::class, 'show'])
+        ->middleware('permission:cash_bank.view');
+    Route::patch('/cash-payments/{id}/post', [CashPaymentController::class, 'post'])
+        ->middleware('permission:cash_bank.post');
+    Route::patch('/cash-payments/{id}/void', [CashPaymentController::class, 'void'])
+        ->middleware('permission:cash_bank.void');
+
+    Route::get('/bank-transfers', [BankTransferController::class, 'index'])
+        ->middleware('permission:cash_bank.view');
+    Route::post('/bank-transfers', [BankTransferController::class, 'store'])
+        ->middleware('permission:cash_bank.transfer');
+    Route::get('/bank-transfers/{id}', [BankTransferController::class, 'show'])
+        ->middleware('permission:cash_bank.view');
+    Route::patch('/bank-transfers/{id}/post', [BankTransferController::class, 'post'])
+        ->middleware('permission:cash_bank.post');
+    Route::patch('/bank-transfers/{id}/void', [BankTransferController::class, 'void'])
         ->middleware('permission:cash_bank.void');
 });
 

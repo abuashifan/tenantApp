@@ -36,3 +36,13 @@ Tujuan Phase 11A: menyiapkan fondasi bersama untuk transaksi cash bank (Phase 11
 
 - `cash_receipts` + `cash_receipt_lines` (tenant)
 - Endpoint: `GET/POST /api/cash-bank/cash-receipts` + `post/void`
+
+## Phase 11C — Cash Out
+
+- `cash_payments` + `cash_payment_lines` (tenant)
+- Endpoint: `GET/POST /api/cash-bank/cash-payments` + `post/void`
+
+## Phase 11D — Bank Transfer
+
+- `bank_transfers` (tenant)
+- Endpoint: `GET/POST /api/cash-bank/bank-transfers` + `post/void`
