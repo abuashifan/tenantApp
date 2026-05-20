@@ -48,6 +48,10 @@ Phase 9F selesai: Sales Invoice backend dengan AR/revenue/tax journal dan DP all
 Phase 9G selesai: Billing Invoice optional foundation implemented; linked billing does not create double AR/revenue.
 Phase 9H selesai: Customer Deposit, deposit allocation, refund, and Sales Receipt backend; no full Cash Bank module.
 Phase 9I selesai: Sales Return backend dengan contra revenue/AR journal; no stock movement/inventory journal.
+Phase 9J selesai: AR subsidiary ledger, open invoices, aging buckets, and GL AR reconciliation implemented.
+Phase 9K selesai: Sales workflow integration tests dan final documentation completed.
+Phase 9 — Sales Workflow & Accounts Receivable Backend: completed.
+Next phase: Phase 10 — Purchase & Accounts Payable Backend.
 ```
 
 Arsitektur:

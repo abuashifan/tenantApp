@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\Reports\BalanceSheetController;
 use App\Http\Controllers\Api\Reports\CashFlowController;
 use App\Http\Controllers\Api\Reports\FinancialSummaryController;
 use App\Http\Controllers\Api\Sales\DeliveryOrderController;
+use App\Http\Controllers\Api\Sales\AccountsReceivableController;
 use App\Http\Controllers\Api\Sales\BillingInvoiceController;
 use App\Http\Controllers\Api\Sales\CustomerDepositController;
 use App\Http\Controllers\Api\Sales\ProformaInvoiceController;
@@ -170,6 +171,13 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('reports')->group(
 });
 
 Route::middleware(['auth:sanctum', 'company.access'])->prefix('sales')->group(function () {
+    Route::get('/ar/customer-summary', [AccountsReceivableController::class, 'customerSummary'])->middleware('permission:sales.ar.view');
+    Route::get('/ar/customers/{customerId}/ledger', [AccountsReceivableController::class, 'customerLedger'])->middleware('permission:sales.ar.view');
+    Route::get('/ar/invoices/{invoiceId}/ledger', [AccountsReceivableController::class, 'invoiceLedger'])->middleware('permission:sales.ar.view');
+    Route::get('/ar/open-invoices', [AccountsReceivableController::class, 'openInvoices'])->middleware('permission:sales.ar.view');
+    Route::get('/ar/aging', [AccountsReceivableController::class, 'aging'])->middleware('permission:sales.ar.view');
+    Route::get('/ar/reconciliation', [AccountsReceivableController::class, 'reconciliation'])->middleware('permission:sales.ar.reconcile');
+
     Route::get('/quotations', [SalesQuotationController::class, 'index'])->middleware('permission:sales.quotations.view');
     Route::post('/quotations', [SalesQuotationController::class, 'store'])->middleware('permission:sales.quotations.create');
     Route::get('/quotations/{id}', [SalesQuotationController::class, 'show'])->middleware('permission:sales.quotations.view');

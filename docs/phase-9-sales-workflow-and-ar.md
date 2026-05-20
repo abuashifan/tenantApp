@@ -291,6 +291,137 @@ Endpoint Phase 9I:
 
 Posting Sales Return membuat journal: Dr Sales Return/Contra Revenue, Dr Output Tax Payable jika ada tax, Cr Accounts Receivable. Sales Return mengupdate `returned_amount`, `balance_due`, dan returned quantity invoice line. Phase 9I tidak membuat stock movement, tidak mengubah stock balance, dan tidak membuat inventory return journal; integrasi stock return tetap Phase 12.
 
+## Phase 9J — Accounts Receivable Subsidiary Ledger & Aging
+
+Phase 9J menambahkan Buku Besar Pembantu Piutang dan Aging Piutang. GL Accounts Receivable tetap menjadi saldo kontrol utama, sedangkan AR subsidiary ledger menyimpan rincian piutang per customer dan per invoice dari dokumen sales posted.
+
+Sumber movement AR:
+
+- Debit: posted `sales_invoices`.
+- Kredit: posted `sales_receipts`.
+- Kredit: posted `customer_deposit_allocations`.
+- Kredit: posted `sales_returns`.
+
+Endpoint Phase 9J:
+
+- `GET /api/sales/ar/customer-summary`
+- `GET /api/sales/ar/customers/{customerId}/ledger`
+- `GET /api/sales/ar/invoices/{invoiceId}/ledger`
+- `GET /api/sales/ar/open-invoices`
+- `GET /api/sales/ar/aging`
+- `GET /api/sales/ar/reconciliation`
+
+Aging memakai `due_date` invoice dengan bucket `current`, `1_30`, `31_60`, `61_90`, dan `over_90`. Paid invoice dikeluarkan dari aging; partially paid invoice di-aging berdasarkan `balance_due`.
+
+Rekonsiliasi AR membandingkan total subsidiary ledger dengan saldo GL dari account mapping `sales.accounts_receivable`. Selisih harus nol agar `is_reconciled = true`. Void/obsolete document tidak dihitung pada normal view.
+
+## Phase 9K — Integration Tests & Final Documentation
+
+Phase 9K mengunci backend Sales Workflow & Accounts Receivable sebelum Phase 10 Purchase. Tidak ada fitur frontend, stock movement, inventory, purchase, atau Cash Bank penuh yang ditambahkan pada phase ini.
+
+### Overview Phase 9
+
+Phase 9 membangun backend-first Sales Workflow dan Accounts Receivable: quotation, sales order, customer deposit/down payment, delivery order sebagai dokumen pengiriman, proforma invoice, sales invoice accounting, billing invoice optional, sales receipt, sales return, AR subsidiary ledger, AR aging, dan integration tests.
+
+### Global Rules
+
+- Semua data sales berada di tenant database.
+- Semua endpoint sales memakai `auth:sanctum`, `company.access`, dan permission guard.
+- Mutating/posting action yang berdampak accounting memakai period lock guard.
+- Phase 9 tidak membuat frontend sales.
+- Phase 9 tidak membuat stock movement engine, COGS journal, inventory valuation, atau stock card.
+
+### Document Chain
+
+Rantai dokumen utama: Sales Quotation → Sales Order → Delivery Order → Proforma Invoice → Sales Invoice → Sales Receipt/Customer Deposit Allocation → Sales Return. Setiap dokumen menyimpan source link yang relevan (`source_type`, `source_id`, `source_number`, `source_revision`) untuk audit chain.
+
+### Source Chain Rules
+
+Sales Order dari quotation menjaga referensi quotation. Delivery Order menjaga referensi Sales Order dan mengupdate delivered quantity. Proforma bisa dibuat dari quotation/Sales Order. Sales Invoice bisa dibuat langsung, dari Sales Order, Delivery Order, atau Proforma. Billing Invoice optional bisa dibuat dari Sales Invoice tanpa membuat AR/revenue ulang.
+
+### Down Payment Rules
+
+Down Payment diinput dari Sales Order tetapi disimpan sebagai `customer_deposits`. Posting deposit membuat Dr Cash/Bank Cr Customer Deposit. Sales Invoice tidak menerima DP baru; Sales Invoice dari Sales Order hanya bisa apply posted Customer Deposit melalui allocation journal Dr Customer Deposit Cr Accounts Receivable.
+
+### Discount Rules
+
+Discount tersedia di Sales Order dan Sales Invoice dengan tipe `percent` atau `fixed_amount`. Discount Sales Order disalin ke Sales Invoice, tetapi discount Sales Invoice adalah final accounting discount dan boleh disesuaikan sebelum invoice diposting.
+
+### Stock Movement Deferred Rule
+
+Delivery Order, Sales Invoice langsung, Sales Return, dan dokumen sales lain di Phase 9 tidak membuat `stock_movements`, tidak mengubah stock balance, tidak membuat stock card, dan tidak membuat COGS journal. Stock movement dan COGS ditunda ke Phase 12 Inventory.
+
+### Journal Posting Rules
+
+- Sales Invoice: Dr Accounts Receivable, Cr Sales Revenue, Cr Output Tax jika ada tax.
+- Customer Deposit: Dr Cash/Bank, Cr Customer Deposit.
+- Customer Deposit Allocation: Dr Customer Deposit, Cr Accounts Receivable.
+- Sales Receipt: Dr Cash/Bank, Cr Accounts Receivable.
+- Customer Deposit Refund: Dr Customer Deposit, Cr Cash/Bank.
+- Sales Return: Dr Sales Return/Contra Revenue, Dr Output Tax jika ada tax, Cr Accounts Receivable.
+- Sales Quotation, Sales Order, Delivery Order, Proforma Invoice, dan linked Billing Invoice tidak membuat AR/revenue journal.
+
+### AR Subsidiary Ledger Rules
+
+AR subsidiary ledger memakai posted Sales Invoice sebagai debit dan posted Sales Receipt, Customer Deposit Allocation, serta Sales Return sebagai kredit. Ledger dapat dilihat per customer dan per invoice, open invoices memakai `balance_due`, aging memakai `due_date`, dan reconciliation membandingkan subsidiary balance dengan GL AR account mapping `sales.accounts_receivable`.
+
+### Endpoint List
+
+- Sales Quotation: `GET|POST /api/sales/quotations`, `GET|PATCH /api/sales/quotations/{id}`, `PATCH /send|approve|accept|reject|cancel`.
+- Sales Order: `GET|POST /api/sales/orders`, `GET|PATCH /api/sales/orders/{id}`, `POST /from-quotation/{quotationId}`, `PATCH /approve|confirm|cancel|close`.
+- Delivery Order: `GET|POST /api/sales/delivery-orders`, `GET|PATCH /api/sales/delivery-orders/{id}`, `POST /from-sales-order/{salesOrderId}`, `PATCH /ready|ship|deliver|cancel|void`.
+- Proforma Invoice: `GET|POST /api/sales/proformas`, `GET|PATCH /api/sales/proformas/{id}`, `POST /from-quotation|from-sales-order`, `PATCH /issue|accept|cancel`.
+- Sales Invoice: `GET|POST /api/sales/invoices`, `GET|PATCH /api/sales/invoices/{id}`, `POST /from-sales-order|from-delivery-order|from-proforma`, `PATCH /approve|post|void`.
+- Billing Invoice: `GET|POST /api/sales/billings`, `GET /api/sales/billings/{id}`, `POST /from-sales-invoice/{salesInvoiceId}`, `PATCH /issue|cancel`.
+- Customer Deposit: `GET|POST /api/sales/customer-deposits`, `GET /api/sales/customer-deposits/{id}`, `PATCH /post|void|refund`, `POST /allocate-to-invoice/{invoiceId}`.
+- Sales Receipt: `GET|POST /api/sales/receipts`, `GET /api/sales/receipts/{id}`, `PATCH /post|void`.
+- Sales Return: `GET|POST /api/sales/returns`, `GET|PATCH /api/sales/returns/{id}`, `POST /from-invoice|from-delivery-order`, `PATCH /approve|post|void`.
+- Accounts Receivable: `GET /api/sales/ar/customer-summary`, `/customers/{customerId}/ledger`, `/invoices/{invoiceId}/ledger`, `/open-invoices`, `/aging`, `/reconciliation`.
+
+### Migration/Table List
+
+- `sales_quotations`, `sales_quotation_lines`
+- `sales_orders`, `sales_order_lines`
+- `customer_deposits`, `customer_deposit_allocations`
+- `delivery_orders`, `delivery_order_lines`
+- `proforma_invoices`, `proforma_invoice_lines`
+- `sales_invoices`, `sales_invoice_lines`
+- `billing_invoices`, `billing_invoice_lines`
+- `sales_receipts`, `sales_receipt_lines`
+- `sales_returns`, `sales_return_lines`
+
+### Service List
+
+- `SalesCalculationService`, `SalesSourceChainService`, `SalesStatusService`, `SalesAccountMappingService`
+- `SalesQuotationService`, `SalesOrderService`, `DeliveryOrderService`, `ProformaInvoiceService`
+- `SalesInvoiceService`, `BillingInvoiceService`, `CustomerDepositService`, `SalesReceiptService`, `SalesReturnService`
+- `ARSubsidiaryLedgerService`, `ARAgingService`, `ARReconciliationService`
+
+### Test List
+
+- `SalesCalculationServiceTest`
+- `SalesQuotationTest`, `SalesOrderTest`, `DeliveryOrderTest`, `ProformaInvoiceTest`
+- `SalesInvoiceTest`, `BillingInvoiceTest`, `CustomerDepositTest`, `SalesReceiptTest`, `SalesReturnTest`
+- `AccountsReceivableLedgerTest`, `AccountsReceivableAgingTest`, `SalesWorkflowIntegrationTest`
+
+### Known Limitations
+
+- No frontend sales in Phase 9.
+- No stock movement engine in Phase 9.
+- No COGS journal in Phase 9.
+- No inventory valuation.
+- No stock card.
+- No advanced payment allocation.
+- No overpayment support.
+- No promo/tiered discount.
+- No PDF/email invoice.
+- No advanced tax.
+- No multi-currency full implementation.
+
+### Next Phase
+
+Phase berikutnya adalah Phase 10 — Purchase & Accounts Payable Backend. Purchase/AP harus mengikuti pola backend-first, tenant-aware, permission-guarded, dan period-lock-aware yang sudah distabilkan di Phase 9.
+
 ## Subphase
 
 - 9A — Sales Workflow Foundation
