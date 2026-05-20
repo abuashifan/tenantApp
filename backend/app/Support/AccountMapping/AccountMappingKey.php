@@ -10,6 +10,8 @@ class AccountMappingKey
     public const SALES_DISCOUNT = 'sales.discount';
     public const SALES_RETURN = 'sales.return';
     public const SALES_TAX_OUTPUT = 'sales.tax_output';
+    public const SALES_CUSTOMER_DEPOSIT = 'sales.customer_deposit';
+    public const SALES_DEFAULT_CASH_BANK = 'sales.default_cash_bank';
 
     // Purchase
     public const PURCHASE_ACCOUNTS_PAYABLE = 'purchase.accounts_payable';

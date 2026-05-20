@@ -48,6 +48,20 @@ return [
             'account_types' => ['liability'],
             'description' => 'Default output tax account.',
         ],
+        'sales.customer_deposit' => [
+            'module' => 'sales',
+            'label' => 'Customer Deposit',
+            'required' => false,
+            'account_types' => ['liability'],
+            'description' => 'Default liability account for customer deposits/down payments.',
+        ],
+        'sales.default_cash_bank' => [
+            'module' => 'sales',
+            'label' => 'Default Sales Cash/Bank',
+            'required' => false,
+            'account_types' => ['asset'],
+            'description' => 'Optional default cash/bank account for sales receipts and deposits.',
+        ],
 
         'purchase.accounts_payable' => [
             'module' => 'purchase',
@@ -161,4 +175,3 @@ return [
         ],
     ],
 ];
-

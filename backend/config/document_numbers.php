@@ -18,9 +18,41 @@ return [
             'prefix' => 'JV',
             'name' => 'Journal Entry',
         ],
+        'sales_quotation' => [
+            'prefix' => 'SQ',
+            'name' => 'Sales Quotation',
+        ],
+        'sales_order' => [
+            'prefix' => 'SO',
+            'name' => 'Sales Order',
+        ],
+        'delivery_order' => [
+            'prefix' => 'DO',
+            'name' => 'Delivery Order',
+        ],
+        'proforma_invoice' => [
+            'prefix' => 'PF',
+            'name' => 'Proforma Invoice',
+        ],
         'sales_invoice' => [
             'prefix' => 'SI',
             'name' => 'Sales Invoice',
+        ],
+        'billing_invoice' => [
+            'prefix' => 'BI',
+            'name' => 'Billing Invoice',
+        ],
+        'sales_receipt' => [
+            'prefix' => 'SR',
+            'name' => 'Sales Receipt',
+        ],
+        'sales_return' => [
+            'prefix' => 'SRT',
+            'name' => 'Sales Return',
+        ],
+        'customer_deposit' => [
+            'prefix' => 'CD',
+            'name' => 'Customer Deposit',
         ],
         'purchase_invoice' => [
             'prefix' => 'PI',
@@ -60,4 +92,3 @@ return [
         ],
     ],
 ];
-

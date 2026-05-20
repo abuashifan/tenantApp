@@ -10,6 +10,27 @@ Stack:
 - 1 user bisa punya banyak perusahaan
 - User pilih perusahaan setelah login
 
+Phase 9 project memory:
+```text
+Phase 9 — Sales Workflow & Accounts Receivable adalah backend-first.
+Phase 9 bukan frontend; frontend sales masuk Phase 14.
+Phase 9 tidak membuat Stock Movement Engine.
+Stock Movement Engine tetap Phase 12B/12E.
+Delivery Order Phase 9 hanya dokumen pengiriman.
+Sales Invoice langsung Phase 9 belum membuat stock movement.
+COGS journal ditunda ke Phase 12.
+Buku besar pembantu piutang masuk Phase 9J.
+Phase 9A selesai: sales workflow foundation, calculation/source-chain services, permissions, numbering, docs.
+Phase 9B selesai: Sales Quotation backend tenant-aware; no journal, no AR, no stock movement.
+Phase 9C selesai: Sales Order backend + minimal Customer Deposit entry dari Sales Order; no AR journal, no stock movement.
+Phase 9D selesai: Delivery Order backend sebagai dokumen pengiriman; updates delivered quantity; no stock movement/COGS.
+Phase 9E selesai: Proforma Invoice backend sebagai dokumen non-accounting; no AR/revenue journal, no stock movement.
+Phase 9F selesai: Sales Invoice backend dengan AR/revenue/tax journal dan DP allocation journal; no stock movement/COGS.
+Phase 9G selesai: Billing Invoice optional foundation implemented; linked billing does not create double AR/revenue.
+Phase 9H selesai: Customer Deposit, deposit allocation, refund, and Sales Receipt backend; no full Cash Bank module.
+Phase 9I selesai: Sales Return backend dengan contra revenue/AR journal; no stock movement/inventory journal.
+```
+
 Arsitektur:
 - central.sqlite = database pusat
 - tenant_xxx.sqlite = database perusahaan

@@ -7,9 +7,16 @@ return [
         'manual_journal',
         'opening_balance',
         'closing_entry',
+        'sales_quotation',
+        'sales_order',
+        'delivery_order',
+        'proforma_invoice',
         'sales_invoice',
+        'billing_invoice',
+        'sales_receipt',
         'sales_payment',
         'sales_return',
+        'customer_deposit',
         'purchase_invoice',
         'purchase_payment',
         'purchase_return',
@@ -43,4 +50,3 @@ return [
         'audit_log',
     ],
 ];
-

@@ -7,9 +7,16 @@ class SourceType
     public const MANUAL_JOURNAL = 'manual_journal';
     public const OPENING_BALANCE = 'opening_balance';
     public const CLOSING_ENTRY = 'closing_entry';
+    public const SALES_QUOTATION = 'sales_quotation';
+    public const SALES_ORDER = 'sales_order';
+    public const DELIVERY_ORDER = 'delivery_order';
+    public const PROFORMA_INVOICE = 'proforma_invoice';
     public const SALES_INVOICE = 'sales_invoice';
+    public const BILLING_INVOICE = 'billing_invoice';
+    public const SALES_RECEIPT = 'sales_receipt';
     public const SALES_PAYMENT = 'sales_payment';
     public const SALES_RETURN = 'sales_return';
+    public const CUSTOMER_DEPOSIT = 'customer_deposit';
     public const PURCHASE_INVOICE = 'purchase_invoice';
     public const PURCHASE_PAYMENT = 'purchase_payment';
     public const PURCHASE_RETURN = 'purchase_return';
@@ -33,4 +40,3 @@ class SourceType
         return in_array($sourceType, self::all(), true);
     }
 }
-

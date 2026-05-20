@@ -5,7 +5,15 @@ namespace App\Support\DocumentNumbering;
 class DocumentType
 {
     public const JOURNAL_ENTRY = 'journal_entry';
+    public const SALES_QUOTATION = 'sales_quotation';
+    public const SALES_ORDER = 'sales_order';
+    public const DELIVERY_ORDER = 'delivery_order';
+    public const PROFORMA_INVOICE = 'proforma_invoice';
     public const SALES_INVOICE = 'sales_invoice';
+    public const BILLING_INVOICE = 'billing_invoice';
+    public const SALES_RECEIPT = 'sales_receipt';
+    public const SALES_RETURN = 'sales_return';
+    public const CUSTOMER_DEPOSIT = 'customer_deposit';
     public const PURCHASE_INVOICE = 'purchase_invoice';
     public const CASH_RECEIPT = 'cash_receipt';
     public const CASH_PAYMENT = 'cash_payment';
@@ -32,4 +40,3 @@ class DocumentType
         return $types[$documentType]['prefix'] ?? null;
     }
 }
-
