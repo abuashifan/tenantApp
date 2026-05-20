@@ -55,3 +55,7 @@ Tujuan Phase 11A: menyiapkan fondasi bersama untuk transaksi cash bank (Phase 11
 ## Phase 11F — Cash Bank Reports
 
 - Endpoint: `GET /api/cash-bank/reports/account-statement`
+
+## Phase 11G — Integration Tests
+
+- `backend/tests/Feature/CashBank/CashBankIntegrationTest.php`

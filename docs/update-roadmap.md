@@ -29,7 +29,7 @@ Dokumen ini tidak berisi prompt teknis, script, potongan kode, atau instruksi de
 [✓] Phase 8  — Financial Statements & Closing
 [✓] Phase 9  — Sales Workflow & Accounts Receivable Backend
 [✓] Phase 10 — Purchase Workflow & Accounts Payable Backend
-[>] Phase 11 — Cash Bank Backend
+[✓] Phase 11 — Cash Bank Backend
 [ ] Phase 12 — Inventory Backend
 [ ] Phase 13 — Accounting Frontend MVP
 [ ] Phase 14 — Sales Frontend MVP
