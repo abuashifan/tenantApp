@@ -25,6 +25,7 @@ class DocumentType
     public const CASH_RECEIPT = 'cash_receipt';
     public const CASH_PAYMENT = 'cash_payment';
     public const BANK_TRANSFER = 'bank_transfer';
+    public const BANK_RECONCILIATION = 'bank_reconciliation';
     public const STOCK_ADJUSTMENT = 'stock_adjustment';
     public const STOCK_MOVEMENT = 'stock_movement';
     public const STOCK_OPNAME = 'stock_opname';

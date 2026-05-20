@@ -31,6 +31,8 @@ use App\Http\Controllers\Api\CashBank\CashBankAccountController;
 use App\Http\Controllers\Api\CashBank\CashReceiptController;
 use App\Http\Controllers\Api\CashBank\CashPaymentController;
 use App\Http\Controllers\Api\CashBank\BankTransferController;
+use App\Http\Controllers\Api\CashBank\BankReconciliationController;
+use App\Http\Controllers\Api\CashBank\CashBankReportController;
 use App\Http\Controllers\Api\Sales\DeliveryOrderController;
 use App\Http\Controllers\Api\Sales\AccountsReceivableController;
 use App\Http\Controllers\Api\Sales\BillingInvoiceController;
@@ -136,6 +138,22 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('cash-bank')->grou
         ->middleware('permission:cash_bank.post');
     Route::patch('/bank-transfers/{id}/void', [BankTransferController::class, 'void'])
         ->middleware('permission:cash_bank.void');
+
+    Route::get('/bank-reconciliations', [BankReconciliationController::class, 'index'])
+        ->middleware('permission:cash_bank.view');
+    Route::post('/bank-reconciliations', [BankReconciliationController::class, 'store'])
+        ->middleware('permission:cash_bank.create');
+    Route::get('/bank-reconciliations/{id}', [BankReconciliationController::class, 'show'])
+        ->middleware('permission:cash_bank.view');
+    Route::patch('/bank-reconciliations/{id}', [BankReconciliationController::class, 'update'])
+        ->middleware('permission:cash_bank.edit');
+    Route::post('/bank-reconciliations/{id}/refresh-lines', [BankReconciliationController::class, 'refreshLines'])
+        ->middleware('permission:cash_bank.edit');
+    Route::post('/bank-reconciliations/{id}/mark-lines', [BankReconciliationController::class, 'markLines'])
+        ->middleware('permission:cash_bank.edit');
+
+    Route::get('/reports/account-statement', [CashBankReportController::class, 'accountStatement'])
+        ->middleware('permission:cash_bank.view');
 });
 
 // NOTE: Phase 1B demo endpoint `/api/my-companies-demo` has been disabled in Phase 2A.

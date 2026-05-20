@@ -98,6 +98,10 @@ return [
             'prefix' => 'BT',
             'name' => 'Bank Transfer',
         ],
+        'bank_reconciliation' => [
+            'prefix' => 'BR',
+            'name' => 'Bank Reconciliation',
+        ],
         'stock_adjustment' => [
             'prefix' => 'SA',
             'name' => 'Stock Adjustment',

@@ -46,3 +46,12 @@ Tujuan Phase 11A: menyiapkan fondasi bersama untuk transaksi cash bank (Phase 11
 
 - `bank_transfers` (tenant)
 - Endpoint: `GET/POST /api/cash-bank/bank-transfers` + `post/void`
+
+## Phase 11E — Bank Reconciliation
+
+- `bank_reconciliations` + `bank_reconciliation_lines` (tenant)
+- Endpoint: `GET/POST /api/cash-bank/bank-reconciliations` + refresh/mark lines
+
+## Phase 11F — Cash Bank Reports
+
+- Endpoint: `GET /api/cash-bank/reports/account-statement`
