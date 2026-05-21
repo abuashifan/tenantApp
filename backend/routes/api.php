@@ -36,6 +36,8 @@ use App\Http\Controllers\Api\CashBank\CashBankReportController;
 use App\Http\Controllers\Api\Inventory\StockMovementController;
 use App\Http\Controllers\Api\Inventory\StockBalanceController;
 use App\Http\Controllers\Api\Inventory\InventoryValuationController;
+use App\Http\Controllers\Api\Inventory\StockAdjustmentController;
+use App\Http\Controllers\Api\Inventory\StockOpnameController;
 use App\Http\Controllers\Api\Sales\DeliveryOrderController;
 use App\Http\Controllers\Api\Sales\AccountsReceivableController;
 use App\Http\Controllers\Api\Sales\BillingInvoiceController;
@@ -177,6 +179,38 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('inventory')->grou
         ->middleware('permission:inventory.movements.post');
     Route::patch('/stock-movements/{id}/void', [StockMovementController::class, 'void'])
         ->middleware('permission:inventory.movements.void');
+
+    Route::get('/stock-adjustments', [StockAdjustmentController::class, 'index'])
+        ->middleware('permission:inventory.adjustments.view');
+    Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])
+        ->middleware('permission:inventory.adjustments.create');
+    Route::get('/stock-adjustments/{id}', [StockAdjustmentController::class, 'show'])
+        ->middleware('permission:inventory.adjustments.view');
+    Route::patch('/stock-adjustments/{id}', [StockAdjustmentController::class, 'update'])
+        ->middleware('permission:inventory.adjustments.edit');
+    Route::patch('/stock-adjustments/{id}/approve', [StockAdjustmentController::class, 'approve'])
+        ->middleware('permission:inventory.adjustments.approve');
+    Route::patch('/stock-adjustments/{id}/post', [StockAdjustmentController::class, 'post'])
+        ->middleware('permission:inventory.adjustments.post');
+    Route::patch('/stock-adjustments/{id}/void', [StockAdjustmentController::class, 'void'])
+        ->middleware('permission:inventory.adjustments.void');
+
+    Route::get('/stock-opnames', [StockOpnameController::class, 'index'])
+        ->middleware('permission:inventory.opname.view');
+    Route::post('/stock-opnames', [StockOpnameController::class, 'store'])
+        ->middleware('permission:inventory.opname.create');
+    Route::get('/stock-opnames/{id}', [StockOpnameController::class, 'show'])
+        ->middleware('permission:inventory.opname.view');
+    Route::post('/stock-opnames/{id}/generate-lines', [StockOpnameController::class, 'generateLines'])
+        ->middleware('permission:inventory.opname.edit');
+    Route::patch('/stock-opnames/{id}/lines/{lineId}', [StockOpnameController::class, 'updateLine'])
+        ->middleware('permission:inventory.opname.edit');
+    Route::patch('/stock-opnames/{id}/counted', [StockOpnameController::class, 'markCounted'])
+        ->middleware('permission:inventory.opname.edit');
+    Route::patch('/stock-opnames/{id}/finalize', [StockOpnameController::class, 'finalize'])
+        ->middleware('permission:inventory.opname.finalize');
+    Route::patch('/stock-opnames/{id}/void', [StockOpnameController::class, 'void'])
+        ->middleware('permission:inventory.opname.finalize');
 
     Route::get('/valuation', [InventoryValuationController::class, 'current'])
         ->middleware('permission:inventory.valuation.view');

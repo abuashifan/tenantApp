@@ -229,3 +229,51 @@ Phase 12E menghubungkan dokumen operasional Sales/Purchase ke `stock_movements` 
 Integrasi memastikan tidak terjadi stock movement ganda untuk dokumen sumber yang sama dengan cara:
 - menggunakan `source_type + source_id` pada `stock_movements`
 - jika movement sudah ada (draft/posted), integrasi akan reuse movement tersebut (tidak membuat baru).
+
+## Phase 12F — Stock Adjustment (Implemented)
+
+Stock adjustment adalah koreksi stok manual yang terkontrol dan audit-able.
+
+### Flow
+
+- Create draft: `POST /api/inventory/stock-adjustments`
+- Update draft: `PATCH /api/inventory/stock-adjustments/{id}`
+- Approve: `PATCH /api/inventory/stock-adjustments/{id}/approve`
+- Post: `PATCH /api/inventory/stock-adjustments/{id}/post`
+  - menghasilkan `stock_movements`:
+    - `adjustment_in` untuk line `increase`
+    - `adjustment_out` untuk line `decrease`
+  - journal impact mengikuti movement (Inventory vs adjustment gain/loss).
+- Void posted: `PATCH /api/inventory/stock-adjustments/{id}/void`
+  - void dilakukan via `StockMovementService::void()` (policy reversal untuk movement posted)
+
+### Status
+- `draft` -> `approved` -> `posted` -> `void`
+
+### Rules
+- Tidak pernah edit `stock_balances` langsung.
+- Decrease akan reject jika stok tidak cukup (kecuali negative stock diizinkan).
+- Post adjustment akan check period lock.
+
+## Phase 12G — Stock Opname Basic (Implemented)
+
+Stock opname adalah sesi pencocokan stok fisik vs stok sistem (per warehouse).
+
+### Flow
+- Create session: `POST /api/inventory/stock-opnames`
+- Generate lines dari stock balance: `POST /api/inventory/stock-opnames/{id}/generate-lines`
+- Input physical qty per line: `PATCH /api/inventory/stock-opnames/{id}/lines/{lineId}`
+- Mark counted: `PATCH /api/inventory/stock-opnames/{id}/counted`
+- Finalize: `PATCH /api/inventory/stock-opnames/{id}/finalize`
+  - difference = physical - system
+  - positif -> `opname_in`
+  - negatif -> `opname_out`
+  - nol -> tidak dibuat movement line
+- Void finalized: `PATCH /api/inventory/stock-opnames/{id}/void` (via reversal movement policy)
+
+### Status
+- `draft` -> `counted` -> `finalized` -> `void`
+
+### Rules / Limitations
+- Check period lock saat finalize.
+- Basic only: belum ada barcode/import Excel/mobile scanner/cycle count advanced.

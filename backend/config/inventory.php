@@ -19,6 +19,14 @@ return [
     'cost_precision' => 6,
     'amount_precision' => 2,
 
+    // Stock adjustment incoming cost policy (MVP)
+    // - require_unit_cost: reject adjustment_in lines missing unit_cost
+    // - fallback_average_cost: if unit_cost missing, use current average_cost
+    'adjustment_in_unit_cost_policy' => 'fallback_average_cost',
+
+    // Stock opname policy (MVP)
+    'opname_allow_partial_count' => false,
+
     'default_movement_statuses' => [
         'draft',
         'posted',
@@ -39,4 +47,3 @@ return [
         'opening_stock',
     ],
 ];
-
