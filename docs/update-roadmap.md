@@ -457,39 +457,39 @@ Batasan:
 Status:
 
 ```text
-[>] Fase aktif berikutnya
+[✓] Selesai
 ```
 
 Subphase:
 
 ```text
-[ ] Phase 10A — Purchase Workflow Foundation
-[ ] Phase 10B — Purchase Request
-[ ] Phase 10C — Purchase Order + Vendor Deposit Entry
-[ ] Phase 10D — Goods Receipt
-[ ] Phase 10E — Vendor Bill / Purchase Invoice
-[ ] Phase 10F — Vendor Payment & Vendor Deposit
-[ ] Phase 10G — Purchase Return
-[ ] Phase 10H — AP Subsidiary Ledger & Aging
-[ ] Phase 10I — Integration Tests & Documentation
+[✓] Phase 10A — Purchase Workflow Foundation
+[✓] Phase 10B — Purchase Request
+[✓] Phase 10C — Purchase Order + Vendor Deposit Entry
+[✓] Phase 10D — Goods Receipt
+[✓] Phase 10E — Vendor Bill / Purchase Invoice
+[✓] Phase 10F — Vendor Payment & Vendor Deposit
+[✓] Phase 10G — Purchase Return
+[✓] Phase 10H — AP Subsidiary Ledger & Aging
+[✓] Phase 10I — Integration Tests & Documentation
 ```
 
 Scope:
 
 ```text
-[ ] Purchase workflow foundation
-[ ] Purchase request
-[ ] Purchase order
-[ ] Vendor deposit
-[ ] Goods receipt
-[ ] Vendor bill / purchase invoice
-[ ] Vendor payment
-[ ] Purchase return
-[ ] AP subsidiary ledger
-[ ] AP aging
-[ ] AP reconciliation
-[ ] Purchase integration tests
-[ ] Purchase documentation
+[✓] Purchase workflow foundation
+[✓] Purchase request
+[✓] Purchase order
+[✓] Vendor deposit
+[✓] Goods receipt
+[✓] Vendor bill / purchase invoice
+[✓] Vendor payment
+[✓] Purchase return
+[✓] AP subsidiary ledger
+[✓] AP aging
+[✓] AP reconciliation
+[✓] Purchase integration tests
+[✓] Purchase documentation
 ```
 
 Batasan:
@@ -511,32 +511,32 @@ Batasan:
 Status:
 
 ```text
-[ ] Belum dimulai
+[✓] Selesai
 ```
 
 Subphase:
 
 ```text
-[ ] Phase 11A — Cash Bank Foundation
-[ ] Phase 11B — Cash In Transaction
-[ ] Phase 11C — Cash Out Transaction
-[ ] Phase 11D — Bank Transfer
-[ ] Phase 11E — Bank Reconciliation Foundation
-[ ] Phase 11F — Cash Bank Reports
-[ ] Phase 11G — Integration Tests & Documentation
+[✓] Phase 11A — Cash Bank Foundation
+[✓] Phase 11B — Cash In Transaction
+[✓] Phase 11C — Cash Out Transaction
+[✓] Phase 11D — Bank Transfer
+[✓] Phase 11E — Bank Reconciliation Foundation
+[✓] Phase 11F — Cash Bank Reports
+[✓] Phase 11G — Integration Tests & Documentation
 ```
 
 Scope:
 
 ```text
-[ ] Cash bank foundation
-[ ] Cash in
-[ ] Cash out
-[ ] Bank transfer
-[ ] Bank reconciliation basic
-[ ] Cash bank reports
-[ ] Cash bank integration tests
-[ ] Cash bank documentation
+[✓] Cash bank foundation
+[✓] Cash in
+[✓] Cash out
+[✓] Bank transfer
+[✓] Bank reconciliation basic
+[✓] Cash bank reports
+[✓] Cash bank integration tests
+[✓] Cash bank documentation
 ```
 
 ---
@@ -1065,27 +1065,25 @@ Scope:
 # Next Active Phase
 
 ```text
-Phase 10A — Purchase Workflow Foundation
+Phase 14A — Sales Frontend Foundation
 ```
 
-Scope Phase 10A:
+Scope Phase 14A:
 
 ```text
-[ ] Purchase workflow foundation
-[ ] Purchase permissions
-[ ] Purchase document numbering
-[ ] Purchase calculation helper
-[ ] Purchase source chain helper
-[ ] Purchase documentation foundation
+[ ] Sales frontend navigation and layout
+[ ] Sales API client helpers
+[ ] Shared sales UI primitives
+[ ] Permission-aware sales pages
+[ ] Sales frontend documentation foundation
 ```
 
-Batasan Phase 10A:
+Batasan Phase 14A:
 
 ```text
-[ ] No frontend
-[ ] No stock movement
-[ ] No inventory valuation
-[ ] No full purchase document CRUD yet
-[ ] No vendor bill posting yet
-[ ] No AP ledger yet
+[ ] No backend sales business logic change
+[ ] No purchase frontend
+[ ] No cash bank frontend
+[ ] No inventory frontend
+[ ] No export PDF/Excel
 ```
