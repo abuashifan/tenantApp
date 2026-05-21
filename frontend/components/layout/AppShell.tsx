@@ -1,10 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { getStoredCompanyId, getStoredToken } from '@/lib/api';
+import {
+  ACCOUNTING_NAV_ITEMS,
+  fetchAndStorePermissions,
+  getStoredPermissions,
+  hasPermission,
+} from '@/lib/permissions';
 
 type AppShellProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 type StoredActiveCompany = {
@@ -20,6 +29,8 @@ type StoredActiveCompany = {
 
 export function AppShell({ children }: AppShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [permissions, setPermissions] = useState<string[]>(() => getStoredPermissions());
   const [activeCompany] = useState<StoredActiveCompany | null>(
     () => {
       if (typeof window === 'undefined') return null;
@@ -33,11 +44,30 @@ export function AppShell({ children }: AppShellProps) {
     },
   );
 
+  useEffect(() => {
+    const token = getStoredToken();
+    const companyId = getStoredCompanyId();
+    if (!token || !companyId) return;
+
+    fetchAndStorePermissions()
+      .then((nextPermissions) => setPermissions(nextPermissions))
+      .catch(() => {
+        setPermissions(getStoredPermissions());
+      });
+  }, []);
+
+  const visibleAccountingItems = useMemo(() => {
+    return ACCOUNTING_NAV_ITEMS.filter((item) =>
+      hasPermission(permissions, item.permission),
+    );
+  }, [permissions]);
+
   function logout() {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
     localStorage.removeItem('active_company_id');
     localStorage.removeItem('active_company');
+    localStorage.removeItem('auth_permissions');
     router.push('/login');
   }
 
@@ -76,6 +106,50 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </div>
       </header>
+
+      <nav className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-6 py-2">
+          <Link
+            href="/dashboard"
+            className={`rounded-lg px-3 py-2 text-sm font-medium ${
+              pathname === '/dashboard'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            Dashboard
+          </Link>
+
+          {visibleAccountingItems.length > 0 ? (
+            <Link
+              href="/accounting"
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                pathname?.startsWith('/accounting')
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              Accounting
+            </Link>
+          ) : null}
+
+          {pathname?.startsWith('/accounting')
+            ? visibleAccountingItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                    pathname === item.href || pathname?.startsWith(`${item.href}/`)
+                      ? 'bg-slate-100 text-slate-950'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))
+            : null}
+        </div>
+      </nav>
 
       <div className="mx-auto max-w-7xl px-6 py-6">{children}</div>
     </div>

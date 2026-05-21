@@ -84,6 +84,16 @@ Delivery Order (Phase 9) dan Goods Receipt (Phase 10) akan dihubungkan ke stock 
 Valuation method MVP: moving average (average cost).
 Phase 12 belum membuat FIFO/LIFO, batch/serial tracking, landed cost advanced, export PDF/Excel, atau UI inventory.
 
+Phase 13 project memory:
+Phase 12 Inventory Backend sudah selesai.
+Phase 13 dimulai sebagai Accounting Frontend MVP.
+Phase 13A-13H sudah mengimplementasikan accounting navigation, COA, master data, journal entry, ledger/trial balance, financial statements UI, fiscal closing refinement, dan dokumentasi/test checklist.
+Phase 13 tidak membuat Sales/Purchase/Cash Bank/Inventory UI.
+Sales Frontend masuk Phase 14.
+Purchase Frontend masuk Phase 15.
+Cash Bank Frontend masuk Phase 16.
+Inventory Frontend masuk Phase 17.
+
 
 Arsitektur:
 
@@ -966,7 +976,7 @@ Next phase: Phase 11 — Cash Bank Backend.
 Status:
 
 ```text
-[ ] Belum mulai
+[✓] Completed
 ```
 
 Subphase:

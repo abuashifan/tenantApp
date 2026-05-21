@@ -1,9 +1,12 @@
 'use client';
 
+import { formatCurrency } from '@/lib/formatters';
+
 type ClosingPreviewPanelProps = {
   preview?: {
     net_profit_loss?: number;
     retained_earnings_account?: {
+      mapping_key?: string;
       account_id?: number | null;
     };
     journal_count?: number;
@@ -21,14 +24,17 @@ export function ClosingPreviewPanel({ preview }: ClosingPreviewPanelProps) {
           <div className="text-xs text-slate-500">Net Profit/Loss</div>
           <div className="mt-1 text-lg font-semibold text-slate-900">
             {typeof preview?.net_profit_loss === 'number'
-              ? preview.net_profit_loss.toLocaleString()
+              ? formatCurrency(preview.net_profit_loss)
               : '-'}
           </div>
         </div>
         <div className="rounded-xl border border-slate-200 p-4">
           <div className="text-xs text-slate-500">Retained Earnings Account</div>
           <div className="mt-1 text-lg font-semibold text-slate-900">
-            {preview?.retained_earnings_account?.account_id ?? '-'}
+            {preview?.retained_earnings_account?.account_id ?? 'Unmapped'}
+          </div>
+          <div className="mt-1 text-xs text-slate-500">
+            {preview?.retained_earnings_account?.mapping_key ?? 'closing.retained_earnings'}
           </div>
         </div>
         <div className="rounded-xl border border-slate-200 p-4">
@@ -39,9 +45,8 @@ export function ClosingPreviewPanel({ preview }: ClosingPreviewPanelProps) {
         </div>
       </div>
       <p className="mt-4 text-xs text-slate-500">
-        Preview harus dilakukan sebelum execute closing.
+        Preview is required before fiscal closing. Warnings remain visible but blocking errors disable closing.
       </p>
     </div>
   );
 }
-

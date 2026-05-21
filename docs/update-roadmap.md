@@ -31,8 +31,8 @@ Dokumen ini tidak berisi prompt teknis, script, potongan kode, atau instruksi de
 [✓] Phase 10 — Purchase Workflow & Accounts Payable Backend
 [✓] Phase 11 — Cash Bank Backend
 [✓] Phase 12 — Inventory Backend
-[ ] Phase 13 — Accounting Frontend MVP
-[ ] Phase 14 — Sales Frontend MVP
+[✓] Phase 13 — Accounting Frontend MVP
+[>] Phase 14 — Sales Frontend MVP
 [ ] Phase 15 — Purchase Frontend MVP
 [ ] Phase 16 — Cash Bank Frontend MVP
 [ ] Phase 17 — Inventory Frontend MVP
@@ -588,35 +588,35 @@ Scope:
 Status:
 
 ```text
-[ ] Belum dimulai
+[✓] Completed
 ```
 
 Subphase:
 
 ```text
-[ ] Phase 13A — Accounting Frontend Foundation
-[ ] Phase 13B — Chart of Accounts UI
-[ ] Phase 13C — Master Data Accounting UI
-[ ] Phase 13D — Journal Entry UI
-[ ] Phase 13E — Ledger & Trial Balance UI
-[ ] Phase 13F — Financial Statements UI
-[ ] Phase 13G — Fiscal Closing UI Refinement
-[ ] Phase 13H — Accounting Frontend Tests & Documentation
+[✓] Phase 13A — Accounting Frontend Foundation
+[✓] Phase 13B — Chart of Accounts UI
+[✓] Phase 13C — Master Data Accounting UI
+[✓] Phase 13D — Journal Entry UI
+[✓] Phase 13E — Ledger & Trial Balance UI
+[✓] Phase 13F — Financial Statements UI
+[✓] Phase 13G — Fiscal Closing UI Refinement
+[✓] Phase 13H — Accounting Frontend Tests & Documentation
 ```
 
 Scope:
 
 ```text
-[ ] Accounting frontend foundation
-[ ] COA UI
-[ ] Master data UI
-[ ] Journal UI
-[ ] Ledger UI
-[ ] Trial balance UI
-[ ] Financial statement UI
-[ ] Closing UI
-[ ] Accounting frontend tests
-[ ] Accounting frontend documentation
+[✓] Accounting frontend foundation
+[✓] COA UI
+[✓] Master data UI
+[✓] Journal UI
+[✓] Ledger UI
+[✓] Trial balance UI
+[✓] Financial statement UI
+[✓] Closing UI
+[✓] Accounting frontend tests
+[✓] Accounting frontend documentation
 ```
 
 ---
@@ -626,7 +626,7 @@ Scope:
 Status:
 
 ```text
-[ ] Belum dimulai
+[>] Fase aktif berikutnya
 ```
 
 Subphase:

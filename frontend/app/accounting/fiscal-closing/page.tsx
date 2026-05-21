@@ -1,15 +1,21 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { apiRequest, getStoredCompanyId, getStoredToken } from '@/lib/api';
+import type { ReactNode } from 'react';
+import { apiRequest, getApiErrorMessage, getStoredCompanyId, getStoredToken } from '@/lib/api';
 import { AppShell } from '@/components/layout/AppShell';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { PermissionGuard } from '@/components/ui/PermissionGuard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import type { ApiResponse } from '@/types/api';
 import { ClosingStatusCard } from '@/components/accounting/closing/ClosingStatusCard';
 import { ClosingChecklist } from '@/components/accounting/closing/ClosingChecklist';
 import { ClosingPreviewPanel } from '@/components/accounting/closing/ClosingPreviewPanel';
 import { ClosingActionPanel } from '@/components/accounting/closing/ClosingActionPanel';
 import { ReopenFiscalYearDialog } from '@/components/accounting/closing/ReopenFiscalYearDialog';
+import { AccountingPageGate } from '@/features/accounting/AccountingPageGate';
 
 type PeriodLockStatusPayload = {
   active_fiscal_year: {
@@ -55,8 +61,6 @@ type ClosingPreviewPayload = {
 };
 
 export default function FiscalClosingPage() {
-  const router = useRouter();
-
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,8 +81,8 @@ export default function FiscalClosingPage() {
   }, [checklist?.can_close]);
 
   const closingDisabled = useMemo(() => {
-    return !preview?.valid;
-  }, [preview?.valid]);
+    return !canClose || !preview?.valid || busy;
+  }, [busy, canClose, preview?.valid]);
 
   async function guarded<T>(fn: () => Promise<T>): Promise<T | null> {
     try {
@@ -86,7 +90,7 @@ export default function FiscalClosingPage() {
       setNotice(null);
       return await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed');
+      setError(getApiErrorMessage(e));
       return null;
     }
   }
@@ -94,14 +98,7 @@ export default function FiscalClosingPage() {
   async function refreshAll() {
     const token = getStoredToken();
     const companyId = getStoredCompanyId();
-    if (!token) {
-      router.replace('/login');
-      return;
-    }
-    if (!companyId) {
-      router.replace('/select-company');
-      return;
-    }
+    if (!token || !companyId) return;
 
     setLoading(true);
     const status = await guarded(() =>
@@ -243,141 +240,223 @@ export default function FiscalClosingPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refreshAll();
+    queueMicrotask(() => {
+      void refreshAll();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">Fiscal Closing</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Closing checklist, preview, and period locking.
-          </p>
-        </div>
+      <AccountingPageGate permission="fiscal_year.view">
+        <PageHeader
+          title="Fiscal Closing"
+          description="Operational closing workflow, checklist validation, period locking, and limited re-open flow."
+          actions={
+            <button
+              type="button"
+              onClick={() => refreshAll()}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Refresh
+            </button>
+          }
+        />
 
-        <button
-          type="button"
-          onClick={() => refreshAll()}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-        >
-          Refresh
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          Loading...
-        </div>
-      ) : error ? (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
-          {error}
-        </div>
-      ) : null}
-
-      {notice ? (
-        <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 shadow-sm">
-          {notice}
-        </div>
-      ) : null}
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <ClosingStatusCard fiscalYear={fiscalYear} />
-
-          <div className="mt-4">
-            <ClosingChecklist
-              canClose={checklist?.can_close}
-              checks={checklist?.checks ?? []}
-              errors={checklist?.errors ?? {}}
-              warnings={checklist?.warnings ?? []}
-            />
+        {loading ? (
+          <div className="mt-6">
+            <LoadingState title="Loading fiscal closing status" />
           </div>
-
-          <div className="mt-4">
-            <ClosingPreviewPanel preview={preview?.preview ?? null} />
+        ) : error ? (
+          <div className="mt-6">
+            <ErrorState message={error} />
           </div>
+        ) : null}
 
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">Period Lock</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Locking affects transaction mutations only; reports remain readable.
-            </p>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <label className="md:col-span-1">
-                <div className="text-xs text-slate-500">Lock Until</div>
-                <input
-                  type="date"
-                  value={lockUntil}
-                  onChange={(e) => setLockUntil(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
-                />
-              </label>
-
-              <label className="md:col-span-2">
-                <div className="text-xs text-slate-500">Override Reason (optional)</div>
-                <input
-                  type="text"
-                  value={overrideReason}
-                  onChange={(e) => setOverrideReason(e.target.value)}
-                  placeholder="e.g. Month-end locking policy update"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
-                />
-              </label>
-            </div>
-
-            <div className="mt-4 flex items-center gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => updatePeriodLock()}
-                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                Update Lock
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setLockUntil('');
-                  setOverrideReason('');
-                }}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
-                Reset
-              </button>
-            </div>
+        {notice ? (
+          <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-sm">
+            {notice}
           </div>
-        </div>
+        ) : null}
 
-        <div className="lg:col-span-1">
-          <ClosingActionPanel
-            canClose={canClose}
-            onPreview={refreshPreview}
-            onClose={closeFiscalYear}
-            closingDisabled={closingDisabled || busy}
+        <div className="mt-6 grid gap-4 md:grid-cols-4">
+          <SummaryTile
+            label="Fiscal Year"
+            value={String(fiscalYear?.year ?? '-')}
+            helper={`${fiscalYear?.start_date ?? '-'} → ${fiscalYear?.end_date ?? '-'}`}
           />
+          <SummaryTile
+            label="Closing Status"
+            value={
+              <StatusBadge
+                status={fiscalYear?.is_closed ? 'Closed' : 'Open'}
+                tone={fiscalYear?.is_closed ? 'danger' : 'success'}
+              />
+            }
+            helper={fiscalYear?.status ?? '-'}
+          />
+          <SummaryTile
+            label="Checklist"
+            value={
+              <StatusBadge
+                status={canClose ? 'Ready' : 'Not Ready'}
+                tone={canClose ? 'success' : 'warning'}
+              />
+            }
+            helper={`${checklist?.checks?.length ?? 0} checks`}
+          />
+          <SummaryTile
+            label="Locked Until"
+            value={fiscalYear?.locked_until ?? '-'}
+            helper="Reports remain readable"
+          />
+        </div>
 
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">Re-open</h2>
-              <ReopenFiscalYearDialog disabled={busy} onReopen={reopenFiscalYear} />
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ClosingStatusCard fiscalYear={fiscalYear} />
+
+            <div className="mt-4">
+              <ClosingChecklist
+                canClose={checklist?.can_close}
+                checks={checklist?.checks ?? []}
+                errors={checklist?.errors ?? {}}
+                warnings={checklist?.warnings ?? []}
+              />
             </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Re-open requires permission and a reason. Historical data remains readable.
-            </p>
+
+            <div className="mt-4">
+              <ClosingPreviewPanel preview={preview?.preview ?? null} />
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Period Lock</h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Locking affects journal mutations only; historical reads and reports remain open.
+                  </p>
+                </div>
+                <StatusBadge
+                  status={fiscalYear?.locked_until ? 'Locked' : 'Unlocked'}
+                  tone={fiscalYear?.locked_until ? 'warning' : 'success'}
+                />
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <label className="md:col-span-1">
+                  <div className="text-xs text-slate-500">Lock Until</div>
+                  <input
+                    type="date"
+                    value={lockUntil}
+                    onChange={(e) => setLockUntil(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+                  />
+                </label>
+
+                <label className="md:col-span-2">
+                  <div className="text-xs text-slate-500">Override Reason</div>
+                  <input
+                    type="text"
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    placeholder="Required by policy when overriding manual locks"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+                  />
+                </label>
+              </div>
+
+              <PermissionGuard
+                permission="fiscal_year.lock_manage"
+                fallback={
+                  <p className="mt-4 text-xs text-slate-500">
+                    Your role can view period locks but cannot update them.
+                  </p>
+                }
+              >
+                <div className="mt-4 flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => updatePeriodLock()}
+                    className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    Update Lock
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setLockUntil('');
+                      setOverrideReason('');
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </PermissionGuard>
+            </div>
           </div>
 
-          {preview && !preview.valid ? (
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
-              Preview indicates closing is not ready. Run checklist and resolve errors.
+          <div className="lg:col-span-1">
+            <PermissionGuard
+              permission="fiscal_year.close"
+              fallback={
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+                  Your role can view fiscal closing but cannot close fiscal years.
+                </div>
+              }
+            >
+              <ClosingActionPanel
+                canClose={canClose}
+                onPreview={refreshPreview}
+                onClose={closeFiscalYear}
+                closingDisabled={closingDisabled}
+              />
+            </PermissionGuard>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-900">Re-open Workflow</h2>
+                <PermissionGuard
+                  permission="fiscal_year.reopen"
+                  fallback={<span className="text-xs text-slate-400">View only</span>}
+                >
+                  <ReopenFiscalYearDialog disabled={busy || !fiscalYear?.is_closed} onReopen={reopenFiscalYear} />
+                </PermissionGuard>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Re-open requires permission and a reason. Closing history is never deleted.
+              </p>
             </div>
-          ) : null}
+
+            {preview && !preview.valid ? (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
+                Preview indicates closing is not ready. Resolve checklist errors before closing.
+              </div>
+            ) : null}
+          </div>
         </div>
-      </div>
+      </AccountingPageGate>
     </AppShell>
+  );
+}
+
+function SummaryTile({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: ReactNode;
+  helper?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className="mt-2 text-base font-semibold text-slate-950">{value}</div>
+      {helper ? <div className="mt-1 text-xs text-slate-500">{helper}</div> : null}
+    </div>
   );
 }

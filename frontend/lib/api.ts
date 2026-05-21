@@ -7,6 +7,20 @@ type ApiOptions = {
   body?: unknown;
 };
 
+export class ApiRequestError extends Error {
+  status: number;
+  errors?: unknown;
+  code?: string;
+
+  constructor(message: string, status: number, errors?: unknown, code?: string) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+    this.errors = errors;
+    this.code = code;
+  }
+}
+
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('auth_token');
@@ -53,8 +67,43 @@ export async function apiRequest<T>(
   if (!response.ok) {
     const message =
       typeof data?.message === 'string' ? data.message : 'API request failed';
-    throw new Error(message);
+    throw new ApiRequestError(message, response.status, data?.errors, data?.code);
   }
 
   return data as T;
+}
+
+export function getApiErrorMessage(error: unknown): string {
+  if (error instanceof ApiRequestError) {
+    const details = flattenApiErrors(error.errors);
+    return details.length > 0 ? `${error.message} ${details.join(' ')}` : error.message;
+  }
+
+  return error instanceof Error ? error.message : 'Unexpected error occurred';
+}
+
+function flattenApiErrors(errors: unknown): string[] {
+  if (!errors) return [];
+
+  if (Array.isArray(errors)) {
+    return errors.flatMap((item) =>
+      typeof item === 'string' ? [item] : flattenApiErrors(item),
+    );
+  }
+
+  if (typeof errors === 'object') {
+    return Object.entries(errors as Record<string, unknown>).flatMap(([key, value]) => {
+      if (Array.isArray(value)) {
+        return value.map((item) => `${key}: ${String(item)}`);
+      }
+
+      if (typeof value === 'string') {
+        return [`${key}: ${value}`];
+      }
+
+      return flattenApiErrors(value);
+    });
+  }
+
+  return [String(errors)];
 }
