@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class StockBalanceService
 {
+    public function __construct(private readonly AverageCostService $avgCostService) {}
+
     public function getOrCreateBalance(int $productId, int $warehouseId): StockBalance
     {
         return StockBalance::query()->firstOrCreate([
@@ -49,36 +51,21 @@ class StockBalanceService
             $this->assertSufficientStock((int) $line->product_id, (int) $line->warehouse_id, $qty);
         }
 
-        $stockPrecision = (int) config('inventory.stock_precision', 4);
-        $costPrecision = (int) config('inventory.cost_precision', 6);
-
-        $currentOnHand = (float) $balance->quantity_on_hand;
-        $newOnHand = $direction === 'in'
-            ? $currentOnHand + $qty
-            : $currentOnHand - $qty;
-
-        $unitCost = (float) ($line->unit_cost ?? 0);
-        $lineValue = round($qty * $unitCost, (int) config('inventory.amount_precision', 2));
-
-        $currentTotalValue = (float) $balance->total_value;
-        $newTotalValue = $direction === 'in'
-            ? $currentTotalValue + $lineValue
-            : $currentTotalValue - $lineValue;
-
-        $balance->quantity_on_hand = round($newOnHand, $stockPrecision);
-        $balance->total_value = round($newTotalValue, (int) config('inventory.amount_precision', 2));
-
-        $onHand = (float) $balance->quantity_on_hand;
-        $balance->average_cost = $onHand === 0.0
-            ? 0
-            : round(((float) $balance->total_value) / $onHand, $costPrecision);
-
-        $balance->recalculateAvailable();
+        // Apply average cost valuation + update line valuation metadata.
+        if ($direction === 'in') {
+            // If incoming cost isn't provided (e.g. operational receipt), keep it 0 for now.
+            // Integration services should supply unit_cost where available.
+            $this->avgCostService->applyIncoming($balance, $line);
+        } else {
+            $this->avgCostService->applyOutgoing($balance, $line);
+        }
 
         $movement = $line->relationLoaded('stockMovement') ? $line->stockMovement : null;
         $balance->last_movement_id = $movement?->id ?? $line->stock_movement_id;
         $balance->last_movement_at = $movement?->movement_date ?? $movement?->posted_at ?? now();
 
+        // Persist both line and balance changes.
+        $line->save();
         $balance->save();
 
         return $balance;
@@ -147,4 +134,3 @@ class StockBalanceService
         ];
     }
 }
-

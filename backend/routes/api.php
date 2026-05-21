@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\CashBank\BankReconciliationController;
 use App\Http\Controllers\Api\CashBank\CashBankReportController;
 use App\Http\Controllers\Api\Inventory\StockMovementController;
 use App\Http\Controllers\Api\Inventory\StockBalanceController;
+use App\Http\Controllers\Api\Inventory\InventoryValuationController;
 use App\Http\Controllers\Api\Sales\DeliveryOrderController;
 use App\Http\Controllers\Api\Sales\AccountsReceivableController;
 use App\Http\Controllers\Api\Sales\BillingInvoiceController;
@@ -176,6 +177,15 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('inventory')->grou
         ->middleware('permission:inventory.movements.post');
     Route::patch('/stock-movements/{id}/void', [StockMovementController::class, 'void'])
         ->middleware('permission:inventory.movements.void');
+
+    Route::get('/valuation', [InventoryValuationController::class, 'current'])
+        ->middleware('permission:inventory.valuation.view');
+    Route::get('/valuation/as-of', [InventoryValuationController::class, 'asOf'])
+        ->middleware('permission:inventory.valuation.view');
+    Route::get('/valuation/products/{productId}', [InventoryValuationController::class, 'byProduct'])
+        ->middleware('permission:inventory.valuation.view');
+    Route::get('/valuation/warehouses/{warehouseId}', [InventoryValuationController::class, 'byWarehouse'])
+        ->middleware('permission:inventory.valuation.view');
 });
 
 // NOTE: Phase 1B demo endpoint `/api/my-companies-demo` has been disabled in Phase 2A.

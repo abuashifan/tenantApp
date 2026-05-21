@@ -11,6 +11,7 @@ use App\Models\Tenant\PurchaseReturn;
 use App\Models\Tenant\VendorBill;
 use App\Models\Tenant\VendorBillLine;
 use App\Services\DocumentNumbering\DocumentNumberService;
+use App\Services\Inventory\InventoryPurchaseIntegrationService;
 use App\Services\Purchase\Concerns\HandlesPurchaseDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
@@ -22,7 +23,12 @@ class PurchaseReturnService
 {
     use HandlesPurchaseDocuments;
 
-    public function __construct(private readonly TenantContext $tenantContext, private readonly DocumentNumberService $documentNumberService, private readonly TransactionDateGuardService $dateGuardService) {}
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly DocumentNumberService $documentNumberService,
+        private readonly TransactionDateGuardService $dateGuardService,
+        private readonly InventoryPurchaseIntegrationService $inventoryIntegration,
+    ) {}
 
     public function list(array $filters = []): Collection { $q = PurchaseReturn::query()->with('vendor', 'vendorBill'); if (! empty($filters['status'])) $q->where('status', (string) $filters['status']); return $q->orderByDesc('return_date')->orderByDesc('id')->get(); }
     public function find(int $id): PurchaseReturn { return PurchaseReturn::query()->with('lines', 'vendor', 'vendorBill', 'goodsReceipt')->findOrFail($id); }
@@ -89,6 +95,7 @@ class PurchaseReturnService
         return DB::connection('tenant')->transaction(function () use ($return) {
             $return->load('lines'); $journal = $this->journal($return);
             $return->journal_entry_id = $journal->id; $return->status = 'posted'; $return->posted_by = auth()->id(); $return->posted_at = now(); $return->save();
+            $this->inventoryIntegration->createPurchaseReturnOut($return);
             $this->updateBill($return);
             return $return->refresh()->load('lines', 'vendor', 'vendorBill');
         });

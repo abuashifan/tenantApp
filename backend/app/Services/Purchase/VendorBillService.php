@@ -13,6 +13,7 @@ use App\Models\Tenant\VendorBill;
 use App\Models\Tenant\VendorDeposit;
 use App\Services\Audit\AuditLogService;
 use App\Services\DocumentNumbering\DocumentNumberService;
+use App\Services\Inventory\InventoryPurchaseIntegrationService;
 use App\Services\Purchase\Concerns\HandlesPurchaseDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
@@ -30,6 +31,7 @@ class VendorBillService
         private readonly PurchaseCalculationService $calculationService,
         private readonly TransactionDateGuardService $dateGuardService,
         private readonly VendorDepositService $depositService,
+        private readonly InventoryPurchaseIntegrationService $inventoryIntegration,
         private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
@@ -197,6 +199,8 @@ class VendorBillService
             $bill->posted_at = now();
             $bill->save();
             $this->updateSourceProgress($bill);
+
+            $this->inventoryIntegration->createPurchaseInFromVendorBill($bill);
 
             if ((float) $bill->applied_vendor_deposit_amount > 0) {
                 $this->applyAvailableVendorDeposit($bill);

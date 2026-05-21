@@ -10,6 +10,7 @@ use App\Models\Tenant\SalesInvoice;
 use App\Models\Tenant\SalesInvoiceLine;
 use App\Models\Tenant\SalesReturn;
 use App\Services\DocumentNumbering\DocumentNumberService;
+use App\Services\Inventory\InventorySalesIntegrationService;
 use App\Services\Sales\Concerns\HandlesSalesDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
@@ -21,7 +22,12 @@ class SalesReturnService
 {
     use HandlesSalesDocuments;
 
-    public function __construct(private readonly TenantContext $tenantContext, private readonly DocumentNumberService $documentNumberService, private readonly TransactionDateGuardService $dateGuardService) {}
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly DocumentNumberService $documentNumberService,
+        private readonly TransactionDateGuardService $dateGuardService,
+        private readonly InventorySalesIntegrationService $inventoryIntegration,
+    ) {}
     public function list(array $filters = []): Collection { $q = SalesReturn::query()->with('customer', 'salesInvoice'); if (! empty($filters['status'])) $q->where('status', (string) $filters['status']); return $q->orderByDesc('return_date')->orderByDesc('id')->get(); }
     public function find(int $id): SalesReturn { return SalesReturn::query()->with('lines', 'customer', 'salesInvoice', 'deliveryOrder')->findOrFail($id); }
 
@@ -64,7 +70,7 @@ class SalesReturnService
     {
         if (! in_array($return->status, ['draft', 'approved'], true)) throw ApiException::make('INVALID_SALES_RETURN_STATUS', 'Sales return cannot be posted.', 422);
         $this->guardDate((string) $return->return_date);
-        return DB::connection('tenant')->transaction(function () use ($return) { $return->load('lines'); $journal = $this->journal($return); $return->journal_entry_id = $journal->id; $return->status = 'posted'; $return->posted_by = auth()->id(); $return->posted_at = now(); $return->save(); $this->updateInvoice($return); return $return->refresh()->load('lines', 'customer', 'salesInvoice'); });
+        return DB::connection('tenant')->transaction(function () use ($return) { $return->load('lines'); $journal = $this->journal($return); $return->journal_entry_id = $journal->id; $return->status = 'posted'; $return->posted_by = auth()->id(); $return->posted_at = now(); $return->save(); $this->inventoryIntegration->createSalesReturnIn($return); $this->updateInvoice($return); return $return->refresh()->load('lines', 'customer', 'salesInvoice'); });
     }
     public function void(SalesReturn $return, ?string $reason = null): SalesReturn { $return->status = 'void'; $return->voided_by = auth()->id(); $return->voided_at = now(); $return->void_reason = $reason; $return->save(); return $return->refresh(); }
 

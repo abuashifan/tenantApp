@@ -8,6 +8,7 @@ use App\Models\Tenant\PurchaseOrder;
 use App\Models\Tenant\PurchaseOrderLine;
 use App\Services\Audit\AuditLogService;
 use App\Services\DocumentNumbering\DocumentNumberService;
+use App\Services\Inventory\InventoryPurchaseIntegrationService;
 use App\Services\Purchase\Concerns\HandlesPurchaseDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Support\DocumentNumbering\DocumentType;
@@ -22,6 +23,7 @@ class GoodsReceiptService
         private readonly TenantContext $tenantContext,
         private readonly DocumentNumberService $documentNumberService,
         private readonly PurchaseOrderService $purchaseOrderService,
+        private readonly InventoryPurchaseIntegrationService $inventoryIntegration,
         private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
@@ -133,6 +135,8 @@ class GoodsReceiptService
             $goodsReceipt->received_by = auth()->id();
             $goodsReceipt->received_at = now();
             $goodsReceipt->save();
+
+            $this->inventoryIntegration->createPurchaseInFromGoodsReceipt($goodsReceipt);
 
             if ($goodsReceipt->purchase_order_id) {
                 $this->purchaseOrderService->refreshReceiptStatus(PurchaseOrder::query()->findOrFail($goodsReceipt->purchase_order_id));

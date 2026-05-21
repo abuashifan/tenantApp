@@ -10,6 +10,7 @@ use App\Services\Audit\AuditLogService;
 use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Sales\Concerns\HandlesSalesDocuments;
 use App\Services\Tenant\TenantContext;
+use App\Services\Inventory\InventorySalesIntegrationService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,13 @@ class DeliveryOrderService
 {
     use HandlesSalesDocuments;
 
-    public function __construct(private readonly TenantContext $tenantContext, private readonly DocumentNumberService $documentNumberService, private readonly SalesOrderService $salesOrderService, private readonly ?AuditLogService $auditLogService = null) {}
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly DocumentNumberService $documentNumberService,
+        private readonly SalesOrderService $salesOrderService,
+        private readonly InventorySalesIntegrationService $inventoryIntegration,
+        private readonly ?AuditLogService $auditLogService = null,
+    ) {}
     public function list(array $filters = []): Collection { $q = DeliveryOrder::query()->with('customer', 'salesOrder'); if (! empty($filters['status'])) $q->where('status', (string) $filters['status']); return $q->orderByDesc('delivery_date')->orderByDesc('id')->get(); }
     public function find(int $id): DeliveryOrder { return DeliveryOrder::query()->with('lines.product', 'customer', 'salesOrder')->findOrFail($id); }
 
@@ -60,7 +67,7 @@ class DeliveryOrderService
 
     public function markReady(DeliveryOrder $deliveryOrder): DeliveryOrder { return $this->transition($deliveryOrder, 'ready', 'ready_by', 'ready_at', ['draft']); }
     public function ship(DeliveryOrder $deliveryOrder): DeliveryOrder { return $this->transition($deliveryOrder, 'shipped', 'shipped_by', 'shipped_at', ['draft', 'ready']); }
-    public function deliver(DeliveryOrder $deliveryOrder): DeliveryOrder { return DB::connection('tenant')->transaction(function () use ($deliveryOrder) { $this->validateRemainingQuantities($deliveryOrder->lines()->get()->toArray(), $deliveryOrder); $deliveryOrder->load('lines', 'salesOrder'); foreach ($deliveryOrder->lines as $line) { if ($line->sales_order_line_id) { $orderLine = SalesOrderLine::query()->findOrFail($line->sales_order_line_id); $orderLine->delivered_quantity = (float) $orderLine->delivered_quantity + (float) $line->quantity; $orderLine->save(); } } $deliveryOrder->status = 'delivered'; $deliveryOrder->delivered_by = auth()->id(); $deliveryOrder->delivered_at = now(); $deliveryOrder->save(); if ($deliveryOrder->salesOrder) $this->salesOrderService->refreshDeliveryStatus($deliveryOrder->salesOrder); return $deliveryOrder->refresh()->load('lines', 'customer', 'salesOrder'); }); }
+    public function deliver(DeliveryOrder $deliveryOrder): DeliveryOrder { return DB::connection('tenant')->transaction(function () use ($deliveryOrder) { $this->validateRemainingQuantities($deliveryOrder->lines()->get()->toArray(), $deliveryOrder); $deliveryOrder->load('lines', 'salesOrder'); foreach ($deliveryOrder->lines as $line) { if ($line->sales_order_line_id) { $orderLine = SalesOrderLine::query()->findOrFail($line->sales_order_line_id); $orderLine->delivered_quantity = (float) $orderLine->delivered_quantity + (float) $line->quantity; $orderLine->save(); } } $deliveryOrder->status = 'delivered'; $deliveryOrder->delivered_by = auth()->id(); $deliveryOrder->delivered_at = now(); $deliveryOrder->save(); $this->inventoryIntegration->createSalesOutFromDeliveryOrder($deliveryOrder); if ($deliveryOrder->salesOrder) $this->salesOrderService->refreshDeliveryStatus($deliveryOrder->salesOrder); return $deliveryOrder->refresh()->load('lines', 'customer', 'salesOrder'); }); }
     public function cancel(DeliveryOrder $deliveryOrder, ?string $reason = null): DeliveryOrder { $deliveryOrder->cancel_reason = $reason; return $this->transition($deliveryOrder, 'cancelled', 'cancelled_by', 'cancelled_at', ['draft', 'ready', 'shipped']); }
     public function void(DeliveryOrder $deliveryOrder, ?string $reason = null): DeliveryOrder { $deliveryOrder->void_reason = $reason; return $this->transition($deliveryOrder, 'void', 'voided_by', 'voided_at', ['draft', 'ready', 'shipped', 'delivered']); }
 

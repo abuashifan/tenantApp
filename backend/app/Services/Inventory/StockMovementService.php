@@ -123,6 +123,19 @@ class StockMovementService
             $movement->loadMissing('lines');
             $this->validation->validateLines($movement->lines->toArray());
 
+            $totalQty = 0.0;
+            $totalValue = 0.0;
+            foreach ($movement->lines as $ln) {
+                $ln->setRelation('stockMovement', $movement);
+                $this->stockBalanceService->applyMovementLine($ln);
+                $totalQty += (float) $ln->quantity;
+                $totalValue += (float) $ln->total_cost;
+            }
+
+            $movement->total_quantity = $totalQty;
+            $movement->total_value = round($totalValue, (int) config('inventory.amount_precision', 2));
+            $movement->save();
+
             $journal = $this->journalService->createInventoryJournalForMovement($movement);
             if ($journal) {
                 $movement->journal_entry_id = $journal->id;
@@ -132,10 +145,6 @@ class StockMovementService
             $movement->posted_by = auth()->id();
             $movement->posted_at = now();
             $movement->save();
-
-            foreach ($movement->lines as $ln) {
-                $this->stockBalanceService->applyMovementLine($ln);
-            }
 
             $this->auditLogService->logSuccess([
                 'event' => 'inventory.stock_movement_posted',

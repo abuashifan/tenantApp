@@ -15,6 +15,7 @@ use App\Models\Tenant\SalesOrder;
 use App\Models\Tenant\SalesOrderLine;
 use App\Services\Audit\AuditLogService;
 use App\Services\DocumentNumbering\DocumentNumberService;
+use App\Services\Inventory\InventorySalesIntegrationService;
 use App\Services\Sales\Concerns\HandlesSalesDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
@@ -31,6 +32,7 @@ class SalesInvoiceService
         private readonly DocumentNumberService $documentNumberService,
         private readonly SalesCalculationService $calculationService,
         private readonly TransactionDateGuardService $dateGuardService,
+        private readonly InventorySalesIntegrationService $inventoryIntegration,
         private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
@@ -271,6 +273,7 @@ class SalesInvoiceService
             $invoice->save();
 
             $this->updateSourceProgress($invoice);
+            $this->inventoryIntegration->createSalesOutFromSalesInvoice($invoice);
             $this->auditSales($this->auditLogService, 'sales_invoice.posted', 'sales', $invoice, 'invoice_number');
 
             return $invoice->refresh()->load('lines', 'customer');

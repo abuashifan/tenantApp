@@ -16,6 +16,12 @@ class StockMovementLine extends Model
     protected $casts = [
         'metadata' => 'array',
         'quantity' => 'decimal:4',
+        'quantity_before' => 'decimal:4',
+        'quantity_after' => 'decimal:4',
+        'average_cost_before' => 'decimal:6',
+        'average_cost_after' => 'decimal:6',
+        'value_before' => 'decimal:2',
+        'value_after' => 'decimal:2',
         'unit_cost' => 'decimal:6',
         'total_cost' => 'decimal:2',
     ];
@@ -27,4 +33,3 @@ class StockMovementLine extends Model
     public function department(): BelongsTo { return $this->belongsTo(Department::class, 'department_id'); }
     public function project(): BelongsTo { return $this->belongsTo(Project::class, 'project_id'); }
 }
-
