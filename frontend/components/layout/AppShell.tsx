@@ -11,6 +11,7 @@ import {
   getStoredPermissions,
   hasPermission,
 } from '@/lib/permissions';
+import { PURCHASE_NAV_ITEMS } from '@/features/purchase/navigation';
 import { SALES_NAV_ITEMS } from '@/features/sales/navigation';
 
 type AppShellProps = {
@@ -65,6 +66,10 @@ export function AppShell({ children }: AppShellProps) {
 
   const visibleSalesItems = useMemo(() => {
     return SALES_NAV_ITEMS.filter((item) => hasPermission(permissions, item.permission));
+  }, [permissions]);
+
+  const visiblePurchaseItems = useMemo(() => {
+    return PURCHASE_NAV_ITEMS.filter((item) => hasPermission(permissions, item.permission));
   }, [permissions]);
 
   function logout() {
@@ -151,6 +156,19 @@ export function AppShell({ children }: AppShellProps) {
             </Link>
           ) : null}
 
+          {visiblePurchaseItems.length > 0 ? (
+            <Link
+              href="/purchase"
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                pathname?.startsWith('/purchase')
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              Purchase
+            </Link>
+          ) : null}
+
           {pathname?.startsWith('/accounting')
             ? visibleAccountingItems.map((item) => (
                 <Link
@@ -169,6 +187,22 @@ export function AppShell({ children }: AppShellProps) {
 
           {pathname?.startsWith('/sales')
             ? visibleSalesItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                    pathname === item.href || pathname?.startsWith(`${item.href}/`)
+                      ? 'bg-slate-100 text-slate-950'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))
+            : null}
+
+          {pathname?.startsWith('/purchase')
+            ? visiblePurchaseItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}

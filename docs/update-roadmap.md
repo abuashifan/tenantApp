@@ -33,8 +33,8 @@ Dokumen ini tidak berisi prompt teknis, script, potongan kode, atau instruksi de
 [✓] Phase 12 — Inventory Backend
 [✓] Phase 13 — Accounting Frontend MVP
 [✓] Phase 14 — Sales Frontend MVP
-[>] Phase 15 — Purchase Frontend MVP
-[ ] Phase 16 — Cash Bank Frontend MVP
+[✓] Phase 15 — Purchase Frontend MVP
+[>] Phase 16 — Cash Bank Frontend MVP
 [ ] Phase 17 — Inventory Frontend MVP
 [ ] Phase 18 — Role, Permission & User Management Advanced
 [ ] Phase 19 — Reports Advanced, Export PDF/Excel, Print View
@@ -668,38 +668,38 @@ Scope:
 Status:
 
 ```text
-[ ] Belum dimulai
+[✓] Selesai
 ```
 
 Subphase:
 
 ```text
-[ ] Phase 15A — Purchase Frontend Foundation
-[ ] Phase 15B — Purchase Request UI
-[ ] Phase 15C — Purchase Order UI
-[ ] Phase 15D — Goods Receipt UI
-[ ] Phase 15E — Vendor Bill UI
-[ ] Phase 15F — Vendor Deposit & Vendor Payment UI
-[ ] Phase 15G — Purchase Return UI
-[ ] Phase 15H — AP Ledger & Aging UI
-[ ] Phase 15I — Purchase Frontend Tests & Documentation
+[✓] Phase 15A — Purchase Frontend Foundation
+[✓] Phase 15B — Purchase Request UI
+[✓] Phase 15C — Purchase Order UI
+[✓] Phase 15D — Goods Receipt UI
+[✓] Phase 15E — Vendor Bill UI
+[✓] Phase 15F — Vendor Deposit & Vendor Payment UI
+[✓] Phase 15G — Purchase Return UI
+[✓] Phase 15H — AP Ledger & Aging UI
+[✓] Phase 15I — Purchase Frontend Tests & Documentation
 ```
 
 Scope:
 
 ```text
-[ ] Purchase frontend foundation
-[ ] Purchase request UI
-[ ] Purchase order UI
-[ ] Goods receipt UI
-[ ] Vendor bill UI
-[ ] Vendor deposit UI
-[ ] Vendor payment UI
-[ ] Purchase return UI
-[ ] AP ledger UI
-[ ] AP aging UI
-[ ] Purchase frontend tests
-[ ] Purchase frontend documentation
+[✓] Purchase frontend foundation
+[✓] Purchase request UI
+[✓] Purchase order UI
+[✓] Goods receipt UI
+[✓] Vendor bill UI
+[✓] Vendor deposit UI
+[✓] Vendor payment UI
+[✓] Purchase return UI
+[✓] AP ledger UI
+[✓] AP aging UI
+[✓] Purchase frontend tests
+[✓] Purchase frontend documentation
 ```
 
 ---
@@ -1065,24 +1065,23 @@ Scope:
 # Next Active Phase
 
 ```text
-Phase 15A — Purchase Frontend Foundation
+Phase 16A — Cash Bank Frontend Foundation
 ```
 
-Scope Phase 15A:
+Scope Phase 16A:
 
 ```text
-[ ] Purchase frontend navigation and layout
-[ ] Purchase API client helpers
-[ ] Shared purchase UI primitives
-[ ] Permission-aware purchase pages
+[ ] Cash bank frontend navigation and layout
+[ ] Cash bank API client helpers
+[ ] Shared cash bank UI primitives
+[ ] Permission-aware cash bank pages
 ```
 
-Batasan Phase 15A:
+Batasan Phase 16A:
 
 ```text
-[ ] No backend purchase business logic change
-[ ] No sales frontend changes
-[ ] No cash bank frontend
+[ ] No backend cash bank business logic change
+[ ] No sales/purchase frontend changes
 [ ] No inventory frontend
 [ ] No export PDF/Excel
 ```

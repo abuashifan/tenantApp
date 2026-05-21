@@ -104,6 +104,17 @@ Purchase Frontend masuk Phase 15.
 Cash Bank Frontend masuk Phase 16.
 Inventory Frontend masuk Phase 17.
 
+Phase 15 project memory:
+Phase 14 Sales Frontend MVP sudah selesai.
+Phase 15 dimulai sebagai Purchase Frontend MVP.
+Phase 15 memakai backend Purchase & AP dari Phase 10.
+Phase 15 tidak membuat backend purchase business logic baru.
+Phase 15 tidak membuat Sales/Cash Bank/Inventory UI.
+Phase 15 mencakup Purchase Request, Purchase Order, Goods Receipt, Vendor Bill, Vendor Deposit, Vendor Payment, Purchase Return, AP Ledger, AP Aging, Open Bills, dan AP Reconciliation UI.
+Goods Receipt UI tetap document-only; stock movement UI masuk Phase 17.
+Cash Bank Frontend masuk Phase 16.
+Inventory Frontend masuk Phase 17.
+
 
 Arsitektur:
 
