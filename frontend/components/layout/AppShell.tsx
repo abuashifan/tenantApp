@@ -11,6 +11,7 @@ import {
   getStoredPermissions,
   hasPermission,
 } from '@/lib/permissions';
+import { SALES_NAV_ITEMS } from '@/features/sales/navigation';
 
 type AppShellProps = {
   children: ReactNode;
@@ -60,6 +61,10 @@ export function AppShell({ children }: AppShellProps) {
     return ACCOUNTING_NAV_ITEMS.filter((item) =>
       hasPermission(permissions, item.permission),
     );
+  }, [permissions]);
+
+  const visibleSalesItems = useMemo(() => {
+    return SALES_NAV_ITEMS.filter((item) => hasPermission(permissions, item.permission));
   }, [permissions]);
 
   function logout() {
@@ -133,8 +138,37 @@ export function AppShell({ children }: AppShellProps) {
             </Link>
           ) : null}
 
+          {visibleSalesItems.length > 0 ? (
+            <Link
+              href="/sales"
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                pathname?.startsWith('/sales')
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              Sales
+            </Link>
+          ) : null}
+
           {pathname?.startsWith('/accounting')
             ? visibleAccountingItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                    pathname === item.href || pathname?.startsWith(`${item.href}/`)
+                      ? 'bg-slate-100 text-slate-950'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))
+            : null}
+
+          {pathname?.startsWith('/sales')
+            ? visibleSalesItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}

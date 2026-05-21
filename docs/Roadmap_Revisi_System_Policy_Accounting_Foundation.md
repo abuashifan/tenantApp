@@ -94,6 +94,16 @@ Purchase Frontend masuk Phase 15.
 Cash Bank Frontend masuk Phase 16.
 Inventory Frontend masuk Phase 17.
 
+Phase 14 project memory:
+Phase 13 Accounting Frontend MVP sudah selesai.
+Phase 14 dimulai sebagai Sales Frontend MVP.
+Phase 14 memakai backend Sales & AR dari Phase 9.
+Phase 14 tidak membuat backend sales baru.
+Phase 14 tidak membuat Purchase/Cash Bank/Inventory UI.
+Purchase Frontend masuk Phase 15.
+Cash Bank Frontend masuk Phase 16.
+Inventory Frontend masuk Phase 17.
+
 
 Arsitektur:
 

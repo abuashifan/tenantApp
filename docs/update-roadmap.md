@@ -632,7 +632,7 @@ Status:
 Subphase:
 
 ```text
-[ ] Phase 14A — Sales Frontend Foundation
+[✓] Phase 14A — Sales Frontend Foundation
 [ ] Phase 14B — Sales Quotation UI
 [ ] Phase 14C — Sales Order UI
 [ ] Phase 14D — Delivery Order UI
@@ -646,7 +646,7 @@ Subphase:
 Scope:
 
 ```text
-[ ] Sales frontend foundation
+[✓] Sales frontend foundation
 [ ] Quotation UI
 [ ] Sales order UI
 [ ] Delivery order UI
