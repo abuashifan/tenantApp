@@ -1,21 +1,30 @@
 import type { SalesDocument, SalesLineItem, SalesOrder, SalesQuotation } from '@/features/sales/types';
 
 export function salesDocumentNumber(document: SalesDocument): string {
-  return (
+  return String(
     document.quotation_number ??
-    document.order_number ??
+      document.order_number ??
+      document.delivery_number ??
     document.delivery_order_number ??
     document.proforma_number ??
     document.invoice_number ??
     document.receipt_number ??
-    document.return_number ??
-    document.document_number ??
-    `#${document.id}`
+      document.return_number ??
+      document.document_number ??
+      `#${document.id}`,
   );
 }
 
 export function salesDocumentDate(document: SalesDocument): string {
-  return String(document.quotation_date ?? document.order_date ?? document.document_date ?? '-').slice(0, 10);
+  return String(
+    document.quotation_date ??
+      document.order_date ??
+      document.delivery_date ??
+      document.proforma_date ??
+      document.invoice_date ??
+      document.document_date ??
+      '-',
+  ).slice(0, 10);
 }
 
 export function customerName(document: SalesQuotation | SalesOrder | SalesDocument): string {
@@ -39,4 +48,12 @@ export function isQuotationEditable(status?: string | null): boolean {
 
 export function isOrderEditable(status?: string | null): boolean {
   return ['draft', 'approved'].includes(String(status ?? ''));
+}
+
+export function isDeliveryOrderEditable(status?: string | null): boolean {
+  return ['draft', 'ready'].includes(String(status ?? ''));
+}
+
+export function isDraftEditable(status?: string | null): boolean {
+  return String(status ?? 'draft') === 'draft';
 }

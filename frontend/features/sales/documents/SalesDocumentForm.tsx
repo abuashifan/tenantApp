@@ -12,11 +12,11 @@ import { formatCurrency } from '@/lib/formatters';
 import type { ChartOfAccount, Department, MasterDataRecord, Project } from '@/types/accounting';
 import { calculateSalesLine, calculateSalesTotals } from './calculations';
 import { normalizeSalesLines } from './documentHelpers';
-import type { SalesLineItem, SalesOrder, SalesQuotation } from '@/features/sales/types';
+import type { SalesDocument, SalesLineItem, SalesOrder, SalesQuotation } from '@/features/sales/types';
 
 type SalesDocumentFormProps = {
-  type: 'quotation' | 'order';
-  initial?: SalesQuotation | SalesOrder | null;
+  type: 'quotation' | 'order' | 'proforma' | 'invoice';
+  initial?: SalesDocument | null;
   sourceQuotation?: SalesQuotation | null;
   submitLabel: string;
   onSubmit: (payload: Record<string, unknown>) => Promise<{ id: number }>;
@@ -36,6 +36,9 @@ type DraftLine = {
   department_id: string;
   project_id: string;
   quotation_line_id?: number | null;
+  sales_order_line_id?: number | null;
+  delivery_order_line_id?: number | null;
+  proforma_invoice_line_id?: number | null;
 };
 
 export function SalesDocumentForm({
@@ -57,6 +60,7 @@ export function SalesDocumentForm({
   const [customerId, setCustomerId] = useState(String(initial?.customer_id ?? sourceQuotation?.customer_id ?? ''));
   const [documentDate, setDocumentDate] = useState(initialDate(initial, sourceQuotation, type, today));
   const [validUntil, setValidUntil] = useState(String((initial as SalesQuotation | undefined)?.valid_until ?? ''));
+  const [dueDate, setDueDate] = useState(String(initial?.due_date ?? ''));
   const [customerAddress, setCustomerAddress] = useState(String(initial?.customer_address ?? sourceQuotation?.customer_address ?? ''));
   const [notes, setNotes] = useState(String(initial?.notes ?? sourceQuotation?.notes ?? ''));
   const [headerDiscountType, setHeaderDiscountType] = useState(String(initial?.header_discount_type ?? sourceQuotation?.header_discount_type ?? ''));
@@ -68,6 +72,7 @@ export function SalesDocumentForm({
   const [downPaymentDate, setDownPaymentDate] = useState(today);
   const [downPaymentAccountId, setDownPaymentAccountId] = useState('');
   const [downPaymentNotes, setDownPaymentNotes] = useState('');
+  const [appliedDownPaymentAmount, setAppliedDownPaymentAmount] = useState(String(initial?.applied_down_payment_amount ?? ''));
   const [lines, setLines] = useState<DraftLine[]>(() => initialLines(initial, sourceQuotation));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -135,6 +140,9 @@ export function SalesDocumentForm({
         notes: notes || null,
         lines: lines.map((line, index) => ({
           quotation_line_id: line.quotation_line_id ?? null,
+          sales_order_line_id: line.sales_order_line_id ?? null,
+          delivery_order_line_id: line.delivery_order_line_id ?? null,
+          proforma_invoice_line_id: line.proforma_invoice_line_id ?? null,
           product_id: line.product_id ? Number(line.product_id) : null,
           product_code: line.product_code || null,
           description: line.description,
@@ -154,7 +162,7 @@ export function SalesDocumentForm({
       if (type === 'quotation') {
         payload.quotation_date = documentDate;
         payload.valid_until = validUntil || null;
-      } else {
+      } else if (type === 'order') {
         payload.order_date = documentDate;
         payload.quotation_id = sourceQuotation?.id ?? (initial as SalesOrder | undefined)?.quotation_id ?? null;
         payload.has_down_payment = hasDownPayment;
@@ -166,10 +174,23 @@ export function SalesDocumentForm({
             notes: downPaymentNotes || null,
           };
         }
+      } else if (type === 'proforma') {
+        payload.proforma_date = documentDate;
+        payload.valid_until = validUntil || null;
+      } else {
+        payload.invoice_date = documentDate;
+        payload.due_date = dueDate || null;
+        payload.applied_down_payment_amount = Number(appliedDownPaymentAmount || 0);
       }
 
       const result = await onSubmit(payload);
-      router.push(type === 'quotation' ? `/sales/quotations/${result.id}` : `/sales/orders/${result.id}`);
+      const routes = {
+        quotation: '/sales/quotations',
+        order: '/sales/orders',
+        proforma: '/sales/proformas',
+        invoice: '/sales/invoices',
+      };
+      router.push(`${routes[type]}/${result.id}`);
     } catch (eventError) {
       setError(getApiErrorMessage(eventError));
     } finally {
@@ -200,13 +221,19 @@ export function SalesDocumentForm({
           </select>
         </label>
         <label>
-          <span className="text-xs font-medium text-slate-500">{type === 'quotation' ? 'Quotation Date' : 'Order Date'} *</span>
+          <span className="text-xs font-medium text-slate-500">{documentDateLabel(type)} *</span>
           <input type="date" value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
         </label>
-        {type === 'quotation' ? (
+        {type === 'quotation' || type === 'proforma' ? (
           <label>
             <span className="text-xs font-medium text-slate-500">Valid Until</span>
             <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+          </label>
+        ) : null}
+        {type === 'invoice' ? (
+          <label>
+            <span className="text-xs font-medium text-slate-500">Due Date</span>
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
           </label>
         ) : null}
         <label className="md:col-span-3">
@@ -257,6 +284,17 @@ export function SalesDocumentForm({
               <input placeholder="Notes" value={downPaymentNotes} onChange={(e) => setDownPaymentNotes(e.target.value)} className="rounded-lg border border-amber-200 px-3 py-2 text-sm" />
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {type === 'invoice' ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-blue-950">Customer Deposit Application</h2>
+          <p className="mt-1 text-xs text-blue-800">Apply available Customer Deposit only. This invoice UI does not create a new down payment.</p>
+          <label className="mt-3 block max-w-xs">
+            <span className="text-xs font-medium text-blue-700">Applied Deposit Amount</span>
+            <input type="number" min="0" step="0.01" value={appliedDownPaymentAmount} onChange={(e) => setAppliedDownPaymentAmount(e.target.value)} className="mt-1 w-full rounded-lg border border-blue-200 px-3 py-2 text-sm" />
+          </label>
         </div>
       ) : null}
 
@@ -331,14 +369,20 @@ export function SalesDocumentForm({
   );
 }
 
-function initialDate(initial: SalesQuotation | SalesOrder | undefined | null, source: SalesQuotation | undefined | null, type: 'quotation' | 'order', fallback: string): string {
+function initialDate(initial: SalesDocument | undefined | null, source: SalesQuotation | undefined | null, type: SalesDocumentFormProps['type'], fallback: string): string {
   if (type === 'quotation') return String((initial as SalesQuotation | undefined)?.quotation_date ?? fallback).slice(0, 10);
-  return String((initial as SalesOrder | undefined)?.order_date ?? source?.quotation_date ?? fallback).slice(0, 10);
+  if (type === 'order') return String((initial as SalesOrder | undefined)?.order_date ?? source?.quotation_date ?? fallback).slice(0, 10);
+  if (type === 'proforma') return String(initial?.proforma_date ?? fallback).slice(0, 10);
+  return String(initial?.invoice_date ?? fallback).slice(0, 10);
 }
 
-function initialLines(initial?: SalesQuotation | SalesOrder | null, source?: SalesQuotation | null): DraftLine[] {
-  const lines = normalizeSalesLines(initial?.lines ?? source?.lines ?? []);
+function initialLines(initial?: SalesDocument | null, source?: SalesQuotation | null): DraftLine[] {
+  const lines = normalizeSalesLines(readLines(initial) ?? source?.lines ?? []);
   return lines.length ? lines.map(lineToDraft) : [blankLine()];
+}
+
+function readLines(document?: SalesDocument | null): SalesLineItem[] {
+  return Array.isArray(document?.lines) ? (document.lines as SalesLineItem[]) : [];
 }
 
 function blankLine(): DraftLine {
@@ -360,6 +404,9 @@ function lineToDraft(line: SalesLineItem): DraftLine {
     department_id: line.department_id ? String(line.department_id) : '',
     project_id: line.project_id ? String(line.project_id) : '',
     quotation_line_id: line.id ?? line.quotation_line_id ?? null,
+    sales_order_line_id: line.sales_order_line_id ?? null,
+    delivery_order_line_id: line.delivery_order_line_id ?? null,
+    proforma_invoice_line_id: line.proforma_invoice_line_id ?? null,
   };
 }
 
@@ -377,6 +424,9 @@ function draftToLine(line: DraftLine): SalesLineItem {
     warehouse_id: line.warehouse_id ? Number(line.warehouse_id) : null,
     department_id: line.department_id ? Number(line.department_id) : null,
     project_id: line.project_id ? Number(line.project_id) : null,
+    sales_order_line_id: line.sales_order_line_id ?? null,
+    delivery_order_line_id: line.delivery_order_line_id ?? null,
+    proforma_invoice_line_id: line.proforma_invoice_line_id ?? null,
   };
 }
 
@@ -392,11 +442,18 @@ function validateForm(customerId: string, lines: DraftLine[], type: string, hasD
   return null;
 }
 
-function TotalRow({ label, value, strong }: { label: string; value?: number; strong?: boolean }) {
+function TotalRow({ label, value, strong }: { label: string; value?: number | string; strong?: boolean }) {
   return (
     <div className="mt-2 flex items-center justify-between gap-4 text-sm">
       <span className="text-slate-500">{label}</span>
       <span className={strong ? 'font-semibold text-slate-950' : 'text-slate-700'}>{formatCurrency(Number(value ?? 0))}</span>
     </div>
   );
+}
+
+function documentDateLabel(type: SalesDocumentFormProps['type']): string {
+  if (type === 'quotation') return 'Quotation Date';
+  if (type === 'order') return 'Order Date';
+  if (type === 'proforma') return 'Proforma Date';
+  return 'Invoice Date';
 }

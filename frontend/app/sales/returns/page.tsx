@@ -1,12 +1,5 @@
-import { SalesModulePlaceholder } from '@/features/sales/components/SalesModulePlaceholder';
+import { SalesReturnList } from '@/features/sales/returns/SalesReturnList';
 
 export default function SalesReturnsPage() {
-  return (
-    <SalesModulePlaceholder
-      title="Sales Returns"
-      description="Sales return UI arrives in Phase 14G without stock movement UI."
-      permission="sales.returns.view"
-      nextPhase="Phase 14G"
-    />
-  );
+  return <SalesReturnList />;
 }

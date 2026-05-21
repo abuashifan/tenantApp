@@ -9,13 +9,15 @@ import { SalesPageGate } from '@/features/sales/SalesPageGate';
 import { SALES_NAV_ITEMS } from '@/features/sales/navigation';
 import { getStoredPermissions, hasPermission } from '@/lib/permissions';
 
+const salesViewPermissions = SALES_NAV_ITEMS.map((item) => item.permission);
+
 export default function SalesLandingPage() {
   const permissions = getStoredPermissions();
   const visibleItems = SALES_NAV_ITEMS.filter((item) => hasPermission(permissions, item.permission));
 
   return (
     <AppShell>
-      <SalesPageGate permission={SALES_NAV_ITEMS.map((item) => item.permission)}>
+      <SalesPageGate permission={salesViewPermissions}>
         <PageHeader
           title="Sales"
           description="Sales Frontend MVP workspace for quotations, orders, deliveries, invoices, receipts, returns, and AR reports."

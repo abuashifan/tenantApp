@@ -38,3 +38,11 @@ export function cancelSalesOrder(id: string | number, reason: string) {
 export function closeSalesOrder(id: string | number) {
   return salesPatch<SalesOrder>(`/orders/${id}/close`);
 }
+
+export function createDeliveryOrderFromSalesOrder(id: string | number) {
+  return salesPost<Record<string, unknown>>(`/delivery-orders/from-sales-order/${id}`);
+}
+
+export function createSalesInvoiceFromSalesOrder(id: string | number) {
+  return salesPost<Record<string, unknown>>(`/invoices/from-sales-order/${id}`);
+}

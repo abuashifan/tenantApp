@@ -1,12 +1,5 @@
-import { SalesModulePlaceholder } from '@/features/sales/components/SalesModulePlaceholder';
+import { DeliveryOrderList } from '@/features/sales/delivery-orders/DeliveryOrderList';
 
 export default function DeliveryOrdersPage() {
-  return (
-    <SalesModulePlaceholder
-      title="Delivery Orders"
-      description="Delivery document UI arrives in Phase 14D without stock movement UI."
-      permission="sales.delivery_orders.view"
-      nextPhase="Phase 14D"
-    />
-  );
+  return <DeliveryOrderList />;
 }

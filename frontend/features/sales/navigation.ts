@@ -61,4 +61,16 @@ export const SALES_NAV_ITEMS: SalesModuleNavItem[] = [
     permission: 'sales.ar.view',
     description: 'Read open receivables by aging bucket.',
   },
+  {
+    label: 'Open Invoices',
+    href: '/sales/open-invoices',
+    permission: 'sales.ar.view',
+    description: 'Review unpaid sales invoices ready for collection.',
+  },
+  {
+    label: 'AR Reconciliation',
+    href: '/sales/ar-reconciliation',
+    permission: 'sales.ar.reconcile',
+    description: 'Compare AR subsidiary ledger to general ledger balance.',
+  },
 ];

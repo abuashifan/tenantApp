@@ -32,8 +32,8 @@ Dokumen ini tidak berisi prompt teknis, script, potongan kode, atau instruksi de
 [✓] Phase 11 — Cash Bank Backend
 [✓] Phase 12 — Inventory Backend
 [✓] Phase 13 — Accounting Frontend MVP
-[>] Phase 14 — Sales Frontend MVP
-[ ] Phase 15 — Purchase Frontend MVP
+[✓] Phase 14 — Sales Frontend MVP
+[>] Phase 15 — Purchase Frontend MVP
 [ ] Phase 16 — Cash Bank Frontend MVP
 [ ] Phase 17 — Inventory Frontend MVP
 [ ] Phase 18 — Role, Permission & User Management Advanced
@@ -633,32 +633,32 @@ Subphase:
 
 ```text
 [✓] Phase 14A — Sales Frontend Foundation
-[ ] Phase 14B — Sales Quotation UI
-[ ] Phase 14C — Sales Order UI
-[ ] Phase 14D — Delivery Order UI
-[ ] Phase 14E — Proforma & Sales Invoice UI
-[ ] Phase 14F — Customer Deposit & Sales Receipt UI
-[ ] Phase 14G — Sales Return UI
-[ ] Phase 14H — AR Ledger & Aging UI
-[ ] Phase 14I — Sales Frontend Tests & Documentation
+[✓] Phase 14B — Sales Quotation UI
+[✓] Phase 14C — Sales Order UI
+[✓] Phase 14D — Delivery Order UI
+[✓] Phase 14E — Proforma & Sales Invoice UI
+[✓] Phase 14F — Customer Deposit & Sales Receipt UI
+[✓] Phase 14G — Sales Return UI
+[✓] Phase 14H — AR Ledger & Aging UI
+[✓] Phase 14I — Sales Frontend Tests & Documentation
 ```
 
 Scope:
 
 ```text
 [✓] Sales frontend foundation
-[ ] Quotation UI
-[ ] Sales order UI
-[ ] Delivery order UI
-[ ] Proforma UI
-[ ] Sales invoice UI
-[ ] Customer deposit UI
-[ ] Sales receipt UI
-[ ] Sales return UI
-[ ] AR ledger UI
-[ ] AR aging UI
-[ ] Sales frontend tests
-[ ] Sales frontend documentation
+[✓] Quotation UI
+[✓] Sales order UI
+[✓] Delivery order UI
+[✓] Proforma UI
+[✓] Sales invoice UI
+[✓] Customer deposit UI
+[✓] Sales receipt UI
+[✓] Sales return UI
+[✓] AR ledger UI
+[✓] AR aging UI
+[✓] Sales frontend tests
+[✓] Sales frontend documentation
 ```
 
 ---
@@ -1065,24 +1065,23 @@ Scope:
 # Next Active Phase
 
 ```text
-Phase 14A — Sales Frontend Foundation
+Phase 15A — Purchase Frontend Foundation
 ```
 
-Scope Phase 14A:
+Scope Phase 15A:
 
 ```text
-[ ] Sales frontend navigation and layout
-[ ] Sales API client helpers
-[ ] Shared sales UI primitives
-[ ] Permission-aware sales pages
-[ ] Sales frontend documentation foundation
+[ ] Purchase frontend navigation and layout
+[ ] Purchase API client helpers
+[ ] Shared purchase UI primitives
+[ ] Permission-aware purchase pages
 ```
 
-Batasan Phase 14A:
+Batasan Phase 15A:
 
 ```text
-[ ] No backend sales business logic change
-[ ] No purchase frontend
+[ ] No backend purchase business logic change
+[ ] No sales frontend changes
 [ ] No cash bank frontend
 [ ] No inventory frontend
 [ ] No export PDF/Excel

@@ -1,12 +1,5 @@
-import { SalesModulePlaceholder } from '@/features/sales/components/SalesModulePlaceholder';
+import { ARAgingPage } from '@/features/sales/ar/ARPages';
 
-export default function ARAgingPage() {
-  return (
-    <SalesModulePlaceholder
-      title="AR Aging"
-      description="Accounts receivable aging UI arrives in Phase 14H."
-      permission="sales.ar.view"
-      nextPhase="Phase 14H"
-    />
-  );
+export default function ARAgingRoutePage() {
+  return <ARAgingPage />;
 }
