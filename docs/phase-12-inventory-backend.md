@@ -87,3 +87,36 @@ Added:
 - Belum membuat stock balance dan valuation engine penuh.
 - Belum menghubungkan sales/purchase ke stock movement (Phase 12E).
 
+## Phase 12B — Stock Movement Engine (Implemented)
+
+Stock movement engine adalah pusat semua perubahan stok.
+
+### Tables (tenant)
+
+- `stock_movements`
+- `stock_movement_lines`
+
+### Status
+
+- `draft`
+- `posted`
+- `void` (void posted movement membuat reversal movement)
+
+### Direction
+
+- `in` untuk movement types yang menambah stok
+- `out` untuk movement types yang mengurangi stok
+
+### No double movement
+
+Jika `source_type` + `source_id` diisi, sistem menolak pembuatan stock movement baru untuk source yang sama (status draft/posted).
+
+### Journal behavior (initial)
+
+Di Phase 12B, jurnal inventory dibuat untuk:
+- `sales_out` (Dr COGS, Cr Inventory)
+- `sales_return_in` (Dr Inventory, Cr COGS)
+- `adjustment_in/out` (Inventory vs adjustment gain/loss)
+- `opening_stock` (Dr Inventory, Cr Opening Stock Equity)
+
+Stock balance update belum dibuat penuh sampai Phase 12C.

@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\CashBank\CashPaymentController;
 use App\Http\Controllers\Api\CashBank\BankTransferController;
 use App\Http\Controllers\Api\CashBank\BankReconciliationController;
 use App\Http\Controllers\Api\CashBank\CashBankReportController;
+use App\Http\Controllers\Api\Inventory\StockMovementController;
 use App\Http\Controllers\Api\Sales\DeliveryOrderController;
 use App\Http\Controllers\Api\Sales\AccountsReceivableController;
 use App\Http\Controllers\Api\Sales\BillingInvoiceController;
@@ -154,6 +155,19 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('cash-bank')->grou
 
     Route::get('/reports/account-statement', [CashBankReportController::class, 'accountStatement'])
         ->middleware('permission:cash_bank.view');
+});
+
+Route::middleware(['auth:sanctum', 'company.access'])->prefix('inventory')->group(function () {
+    Route::get('/stock-movements', [StockMovementController::class, 'index'])
+        ->middleware('permission:inventory.movements.view');
+    Route::post('/stock-movements', [StockMovementController::class, 'store'])
+        ->middleware('permission:inventory.movements.create');
+    Route::get('/stock-movements/{id}', [StockMovementController::class, 'show'])
+        ->middleware('permission:inventory.movements.view');
+    Route::patch('/stock-movements/{id}/post', [StockMovementController::class, 'post'])
+        ->middleware('permission:inventory.movements.post');
+    Route::patch('/stock-movements/{id}/void', [StockMovementController::class, 'void'])
+        ->middleware('permission:inventory.movements.void');
 });
 
 // NOTE: Phase 1B demo endpoint `/api/my-companies-demo` has been disabled in Phase 2A.
