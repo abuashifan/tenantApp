@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Sales;
 
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -95,7 +96,7 @@ class ProformaInvoiceTest extends SalesTestCase
         $this->postJson('/api/sales/proformas', $this->proformaPayload(), $ctx['headers'])->assertStatus(201);
 
         $this->assertSame(0, DB::connection('tenant')->table('journal_entries')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_permission_denied_for_viewer(): void

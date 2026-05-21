@@ -5,6 +5,7 @@ namespace Tests\Feature\Purchase;
 use App\Models\Tenant\PurchaseOrder;
 use App\Models\Tenant\PurchaseRequest;
 use App\Models\Tenant\VendorDeposit;
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -104,7 +105,7 @@ class PurchaseOrderTest extends PurchaseTestCase
         $this->postJson('/api/purchase/orders', $this->purchaseOrderPayload(), $ctx['headers'])->assertStatus(201);
 
         $this->assertSame(0, DB::connection('tenant')->table('journal_entries')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_discount_percent_and_fixed_work(): void

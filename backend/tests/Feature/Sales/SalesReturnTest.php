@@ -8,7 +8,8 @@ use App\Models\Tenant\ChartOfAccount;
 use App\Models\Tenant\JournalEntry;
 use App\Models\Tenant\SalesInvoice;
 use App\Models\Tenant\SalesReturn;
-use Illuminate\Support\Facades\Schema;
+use App\Models\Tenant\StockBalance;
+use App\Models\Tenant\StockMovement;
 
 class SalesReturnTest extends SalesTestCase
 {
@@ -79,8 +80,8 @@ class SalesReturnTest extends SalesTestCase
         $return = $this->postJson('/api/sales/returns/from-invoice/'.$invoice['id'], [], $ctx['headers'])->assertStatus(201)->json('data');
         $this->patchJson('/api/sales/returns/'.$return['id'].'/post', [], $ctx['headers'])->assertStatus(200);
 
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_cards'));
+        $this->assertSame(0, StockMovement::query()->count());
+        $this->assertSame(0, StockBalance::query()->count());
     }
 
     public function test_void_period_lock_permission_and_tenant_isolation(): void

@@ -5,6 +5,7 @@ namespace Tests\Feature\Sales;
 use App\Models\Tenant\CustomerDeposit;
 use App\Models\Tenant\SalesOrder;
 use App\Models\Tenant\SalesQuotation;
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -128,7 +129,7 @@ class SalesOrderTest extends SalesTestCase
         $this->postJson('/api/sales/orders', $this->orderPayload(), $ctx['headers'])->assertStatus(201);
 
         $this->assertSame(0, DB::connection('tenant')->table('journal_entries')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_confirm_and_cancel_sales_order(): void

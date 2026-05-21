@@ -14,7 +14,7 @@ class InventoryPurchaseIntegrationService
 {
     public function __construct(private readonly StockMovementService $stockMovementService) {}
 
-    public function createPurchaseInFromGoodsReceipt(GoodsReceipt $goodsReceipt): StockMovement
+    public function createPurchaseInFromGoodsReceipt(GoodsReceipt $goodsReceipt): ?StockMovement
     {
         $goodsReceipt->loadMissing('lines');
         $existing = StockMovement::query()
@@ -50,9 +50,7 @@ class InventoryPurchaseIntegrationService
             ];
         }
 
-        if ($lines === []) {
-            throw ApiException::make('NO_STOCKABLE_LINES', 'No stockable lines found for stock movement.', 422);
-        }
+        if ($lines === []) return null;
 
         return $this->stockMovementService->createAndPost([
             'movement_date' => (string) $goodsReceipt->receipt_date,
@@ -111,7 +109,7 @@ class InventoryPurchaseIntegrationService
         ]);
     }
 
-    public function createPurchaseReturnOut(PurchaseReturn $return): StockMovement
+    public function createPurchaseReturnOut(PurchaseReturn $return): ?StockMovement
     {
         $return->loadMissing('lines');
         $existing = StockMovement::query()
@@ -140,9 +138,7 @@ class InventoryPurchaseIntegrationService
             ];
         }
 
-        if ($lines === []) {
-            throw ApiException::make('NO_STOCKABLE_LINES', 'No stockable lines found for stock movement.', 422);
-        }
+        if ($lines === []) return null;
 
         return $this->stockMovementService->createAndPost([
             'movement_date' => (string) $return->return_date,

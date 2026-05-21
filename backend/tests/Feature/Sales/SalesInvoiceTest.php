@@ -9,6 +9,7 @@ use App\Models\Tenant\CustomerDeposit;
 use App\Models\Tenant\CustomerDepositAllocation;
 use App\Models\Tenant\JournalEntry;
 use App\Models\Tenant\SalesInvoice;
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -167,7 +168,7 @@ class SalesInvoiceTest extends SalesTestCase
         $invoice = $this->postJson('/api/sales/invoices', $this->invoicePayload(), $ctx['headers'])->assertStatus(201)->json('data');
         $this->patchJson('/api/sales/invoices/'.$invoice['id'].'/post', [], $ctx['headers'])->assertStatus(200);
 
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
         $this->assertSame(1, JournalEntry::query()->where('source_type', 'sales_invoice')->count());
     }
 

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Purchase;
 
 use App\Models\Tenant\GoodsReceiptLine;
+use App\Models\Tenant\StockMovement;
 use App\Models\Tenant\VendorBill;
 use App\Models\Tenant\VendorBillLine;
 use Illuminate\Support\Facades\DB;
@@ -78,7 +79,7 @@ class PurchaseReturnTest extends PurchaseTestCase
         $this->assertSame(111.0, (float) $freshBill->balance_due);
         $this->assertSame(1.0, (float) VendorBillLine::query()->findOrFail($bill['lines'][0]['id'])->returned_quantity);
         $this->assertSame(1, DB::connection('tenant')->table('journal_entries')->where('source_type', 'purchase_return')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_post_goods_receipt_return_updates_returned_quantity_without_stock_movement(): void
@@ -98,7 +99,7 @@ class PurchaseReturnTest extends PurchaseTestCase
         $this->patchJson('/api/purchase/returns/'.$return['id'].'/post', [], $ctx['headers'])->assertStatus(200);
 
         $this->assertSame(1.0, (float) GoodsReceiptLine::query()->findOrFail($receipt['lines'][0]['id'])->returned_quantity);
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_void_return(): void

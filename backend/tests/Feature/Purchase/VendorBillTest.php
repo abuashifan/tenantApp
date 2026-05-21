@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Purchase;
 
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class VendorBillTest extends PurchaseTestCase
 {
@@ -24,7 +24,7 @@ class VendorBillTest extends PurchaseTestCase
 
         $this->assertSame(1, DB::connection('tenant')->table('journal_entries')->where('source_type', 'vendor_bill')->count());
         $this->assertSame(3, DB::connection('tenant')->table('journal_entry_lines')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_create_bill_from_purchase_order_copies_discount(): void

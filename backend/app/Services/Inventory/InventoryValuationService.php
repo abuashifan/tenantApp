@@ -162,6 +162,7 @@ class InventoryValuationService
             'product_id' => (int) $b->product_id,
             'product_code' => $b->product?->product_code,
             'product_name' => $b->product?->product_name,
+            'category_id' => $b->product?->product_category_id,
             'warehouse_id' => (int) $b->warehouse_id,
             'warehouse_code' => $b->warehouse?->code,
             'warehouse_name' => $b->warehouse?->name,
@@ -187,4 +188,3 @@ class InventoryValuationService
         ];
     }
 }
-

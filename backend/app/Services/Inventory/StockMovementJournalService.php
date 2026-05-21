@@ -22,12 +22,43 @@ class StockMovementJournalService
     public function createInventoryJournalForMovement(StockMovement $movement): ?JournalEntry
     {
         return match ((string) $movement->movement_type) {
+            'purchase_in' => $this->createPurchaseInJournal($movement),
+            'purchase_return_out' => $this->createPurchaseReturnOutJournal($movement),
             'sales_out' => $this->createCogsJournalForSalesOut($movement),
             'sales_return_in' => $this->createReturnJournal($movement),
             'adjustment_in', 'adjustment_out' => $this->createAdjustmentJournal($movement),
             'opening_stock' => $this->createOpeningStockJournal($movement),
             default => null,
         };
+    }
+
+    public function createPurchaseInJournal(StockMovement $movement): ?JournalEntry
+    {
+        $inventory = $this->mappingService->getInventoryAccount();
+        $interim = $this->mappingService->getInventoryInterimAccount();
+        if (! $interim) {
+            // Interim mapping is optional; skip journal when not configured.
+            return null;
+        }
+
+        return $this->createSimpleJournal($movement, [
+            ['account_id' => $inventory, 'description' => 'Inventory', 'debit' => (float) $movement->total_value, 'credit' => 0, 'line_order' => 1],
+            ['account_id' => $interim, 'description' => 'Inventory Interim', 'debit' => 0, 'credit' => (float) $movement->total_value, 'line_order' => 2],
+        ], 'Inventory receipt journal');
+    }
+
+    public function createPurchaseReturnOutJournal(StockMovement $movement): ?JournalEntry
+    {
+        $inventory = $this->mappingService->getInventoryAccount();
+        $return = $this->mappingService->getPurchaseReturnAccount();
+        if (! $return) {
+            return null;
+        }
+
+        return $this->createSimpleJournal($movement, [
+            ['account_id' => $return, 'description' => 'Purchase Return', 'debit' => (float) $movement->total_value, 'credit' => 0, 'line_order' => 1],
+            ['account_id' => $inventory, 'description' => 'Inventory', 'debit' => 0, 'credit' => (float) $movement->total_value, 'line_order' => 2],
+        ], 'Inventory purchase return journal');
     }
 
     public function createCogsJournalForSalesOut(StockMovement $movement): ?JournalEntry
@@ -121,4 +152,3 @@ class StockMovementJournalService
         });
     }
 }
-

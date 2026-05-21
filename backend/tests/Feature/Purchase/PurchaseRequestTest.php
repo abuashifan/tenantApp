@@ -3,6 +3,7 @@
 namespace Tests\Feature\Purchase;
 
 use App\Models\Tenant\PurchaseRequest;
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -103,7 +104,7 @@ class PurchaseRequestTest extends PurchaseTestCase
         $this->postJson('/api/purchase/requests', $this->purchaseRequestPayload(), $ctx['headers'])->assertStatus(201);
 
         $this->assertSame(0, DB::connection('tenant')->table('journal_entries')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_tenant_isolation(): void

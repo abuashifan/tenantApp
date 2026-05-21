@@ -277,3 +277,153 @@ Stock opname adalah sesi pencocokan stok fisik vs stok sistem (per warehouse).
 ### Rules / Limitations
 - Check period lock saat finalize.
 - Basic only: belum ada barcode/import Excel/mobile scanner/cycle count advanced.
+
+## Phase 12H — Inventory Reports Backend (Implemented)
+
+Phase 12H menambahkan report endpoint inventory **read-only** untuk dipakai UI/reporting nanti.
+
+### Rules
+
+- Default hanya membaca `stock_movements.status = posted`.
+- Draft movement tidak masuk report.
+- Void movement tidak masuk report normal, kecuali `include_void=1`.
+- Valuation report memakai **moving average** (berbasis `stock_balances` dan/atau replay posted movements sesuai endpoint).
+
+### Endpoints
+
+Permission: `inventory.reports.view`
+
+- `GET /api/inventory/reports/stock-balances`
+  - Filters: `product_id`, `warehouse_id`, `category_id`, `include_zero`, `include_negative`, `search`
+- `GET /api/inventory/reports/stock-movements`
+  - Filters: `start_date`, `end_date`, `product_id`, `warehouse_id`, `category_id`, `include_void`, `search`, `per_page`
+- `GET /api/inventory/reports/stock-card`
+  - Filters: `product_id` (required), `warehouse_id` (optional), `start_date`, `end_date`
+  - Output: opening, movements (running qty/value), ending
+- `GET /api/inventory/reports/valuation`
+  - Filters: `as_of_date` (optional), `product_id`, `warehouse_id`, `category_id`, `include_zero`
+- `GET /api/inventory/reports/low-stock`
+  - Filters: `threshold` (default `1.0`), `warehouse_id`, `category_id`
+  - Catatan MVP: schema product belum punya `min_stock`, jadi menggunakan `threshold` query param.
+- `GET /api/inventory/reports/negative-stock`
+  - Filters: `warehouse_id`, `category_id`
+
+### Output ringkas
+
+- Stock balance rows: `quantity_on_hand`, `quantity_reserved`, `quantity_available`, `average_cost`, `total_value`.
+- Stock movement rows: `movement_date`, `movement_number`, `movement_type`, `source_type/number`, `quantity_in/out`, `unit_cost`, `total_cost`.
+- Stock card: `opening_quantity/value` + `movements[]` + `ending_quantity/value`.
+
+## Phase 12I — Integration Tests & Documentation (Implemented)
+
+Phase 12I menambahkan integration + consistency tests untuk mengunci kualitas inventory backend.
+
+### Tests
+
+- `backend/tests/Feature/Inventory/InventoryWorkflowIntegrationTest.php`
+  - purchase -> goods receipt -> `purchase_in`
+  - vendor bill direct (config) -> `purchase_in`
+  - sales delivery -> `sales_out` (DO) dan invoice dari DO tidak duplikasi
+  - sales invoice direct (config) -> `sales_out`
+  - sales return -> `sales_return_in`
+  - purchase return -> `purchase_return_out`
+  - stock adjustment + opname basic
+- `backend/tests/Feature/Inventory/InventoryConsistencyTest.php`
+  - valuation total == stock balance total
+  - stock card ending == stock balance
+  - rebuild stock balances konsisten
+  - tenant isolation (high-level sanity)
+- `backend/tests/Feature/Inventory/InventoryRouteSecurityTest.php`
+  - auth + company header + permission checks untuk routes inventory
+
+### Commands (manual)
+
+```bash
+cd backend
+php artisan test --filter=InventoryWorkflowIntegrationTest
+php artisan test --filter=InventoryConsistencyTest
+php artisan test --filter=InventoryRouteSecurityTest
+php artisan test --filter=Inventory
+php artisan test
+```
+
+## Endpoint List (Phase 12)
+
+List ringkas endpoint inventory (tenant-aware):
+
+- Stock movements:
+  - `GET /api/inventory/stock-movements`
+  - `POST /api/inventory/stock-movements`
+  - `GET /api/inventory/stock-movements/{id}`
+  - `PATCH /api/inventory/stock-movements/{id}`
+  - `PATCH /api/inventory/stock-movements/{id}/post`
+  - `PATCH /api/inventory/stock-movements/{id}/void`
+- Stock balances:
+  - `GET /api/inventory/stock-balances`
+  - `POST /api/inventory/stock-balances/rebuild`
+- Valuation:
+  - `GET /api/inventory/valuation`
+  - `GET /api/inventory/valuation/as-of`
+  - `GET /api/inventory/valuation/products/{productId}`
+  - `GET /api/inventory/valuation/warehouses/{warehouseId}`
+- Adjustments:
+  - `GET /api/inventory/stock-adjustments`
+  - `POST /api/inventory/stock-adjustments`
+  - `GET /api/inventory/stock-adjustments/{id}`
+  - `PATCH /api/inventory/stock-adjustments/{id}`
+  - `PATCH /api/inventory/stock-adjustments/{id}/approve`
+  - `PATCH /api/inventory/stock-adjustments/{id}/post`
+  - `PATCH /api/inventory/stock-adjustments/{id}/void`
+- Stock opname:
+  - `GET /api/inventory/stock-opnames`
+  - `POST /api/inventory/stock-opnames`
+  - `GET /api/inventory/stock-opnames/{id}`
+  - `POST /api/inventory/stock-opnames/{id}/generate-lines`
+  - `PATCH /api/inventory/stock-opnames/{id}/lines/{lineId}`
+  - `PATCH /api/inventory/stock-opnames/{id}/counted`
+  - `PATCH /api/inventory/stock-opnames/{id}/finalize`
+  - `PATCH /api/inventory/stock-opnames/{id}/void`
+- Reports:
+  - `GET /api/inventory/reports/stock-balances`
+  - `GET /api/inventory/reports/stock-movements`
+  - `GET /api/inventory/reports/stock-card`
+  - `GET /api/inventory/reports/valuation`
+  - `GET /api/inventory/reports/low-stock`
+  - `GET /api/inventory/reports/negative-stock`
+
+## Tables (tenant) — ringkas
+
+- `stock_movements`, `stock_movement_lines`
+- `stock_balances`
+- `stock_adjustments`, `stock_adjustment_lines`
+- `stock_opnames`, `stock_opname_lines`
+
+## Services (ringkas)
+
+- `StockMovementService`, `StockBalanceService`, `InventoryValuationService`
+- `InventorySalesIntegrationService`, `InventoryPurchaseIntegrationService`
+- `StockMovementJournalService`
+- Reports:
+  - `StockBalanceReportService`
+  - `StockMovementReportService`
+  - `StockCardReportService`
+  - `InventoryValuationReportService`
+  - `InventoryAlertReportService`
+
+## Known Limitations
+
+- Tidak ada frontend inventory di Phase 12 (target Phase 17).
+- Tidak ada FIFO/LIFO.
+- Tidak ada landed cost advanced.
+- Tidak ada batch/serial tracking.
+- Tidak ada barcode/mobile scanner.
+- Tidak ada manufacturing/BOM.
+- Tidak ada advanced warehouse transfer.
+- Tidak ada export PDF/Excel.
+- Tidak ada advanced stock reservation.
+- Tidak ada reorder automation/forecasting.
+- Tidak ada multi-currency valuation advanced.
+
+## Next Phase Recommendation
+
+- Lanjut Phase 13 — Accounting Frontend MVP, karena backend core sudah cukup luas.

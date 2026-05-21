@@ -10,8 +10,8 @@ use App\Models\Tenant\CustomerDepositAllocation;
 use App\Models\Tenant\JournalEntry;
 use App\Models\Tenant\SalesInvoice;
 use App\Models\Tenant\SalesOrderLine;
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 
 class SalesWorkflowIntegrationTest extends SalesTestCase
 {
@@ -33,7 +33,7 @@ class SalesWorkflowIntegrationTest extends SalesTestCase
         $this->assertSame($order['id'], $proforma['sales_order_id']);
         $this->assertSame($proforma['id'], $invoice['proforma_invoice_id']);
         $this->assertSame(1, JournalEntry::query()->where('source_type', 'sales_invoice')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_sales_order_down_payment_is_applied_to_invoice_without_new_invoice_dp_input(): void
@@ -92,7 +92,7 @@ class SalesWorkflowIntegrationTest extends SalesTestCase
         $this->patchJson('/api/sales/invoices/'.$direct['id'].'/post', [], $ctx['headers'])->assertStatus(200);
 
         $this->assertSame(2, JournalEntry::query()->where('source_type', 'sales_invoice')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
         $this->assertSame(0, JournalEntry::query()->where('description', 'like', '%COGS%')->count());
     }
 
@@ -104,7 +104,7 @@ class SalesWorkflowIntegrationTest extends SalesTestCase
         $this->patchJson('/api/sales/delivery-orders/'.$delivery['id'].'/deliver', [], $ctx['headers'])->assertStatus(200);
 
         $this->assertSame(2.0, (float) SalesOrderLine::query()->where('sales_order_id', $order['id'])->first()->delivered_quantity);
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_ar_ledger_reconciles_after_invoice_dp_receipt_and_return(): void

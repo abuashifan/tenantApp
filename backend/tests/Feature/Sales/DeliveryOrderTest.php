@@ -4,6 +4,7 @@ namespace Tests\Feature\Sales;
 
 use App\Models\Tenant\SalesOrder;
 use App\Models\Tenant\SalesOrderLine;
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -101,7 +102,7 @@ class DeliveryOrderTest extends SalesTestCase
         $this->patchJson('/api/sales/delivery-orders/'.$delivery['id'].'/deliver', [], $ctx['headers'])->assertStatus(200);
 
         $this->assertSame(0, DB::connection('tenant')->table('journal_entries')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_cancel_and_void_delivery_order(): void

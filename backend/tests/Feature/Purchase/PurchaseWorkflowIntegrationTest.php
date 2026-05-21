@@ -4,6 +4,7 @@ namespace Tests\Feature\Purchase;
 
 use App\Models\Tenant\GoodsReceiptLine;
 use App\Models\Tenant\PurchaseOrderLine;
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -39,7 +40,7 @@ class PurchaseWorkflowIntegrationTest extends PurchaseTestCase
         $this->assertSame($request['request_number'], $order['source_number']);
         $this->assertSame($receipt['receipt_number'], $bill['source_number']);
         $this->assertSame(1, DB::connection('tenant')->table('journal_entries')->where('source_type', 'vendor_bill')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
         $this->assertFalse(Schema::connection('tenant')->hasTable('inventory_valuations'));
     }
 
@@ -121,7 +122,7 @@ class PurchaseWorkflowIntegrationTest extends PurchaseTestCase
 
         $this->assertSame(2.0, (float) PurchaseOrderLine::query()->findOrFail($order['lines'][0]['id'])->received_quantity);
         $this->assertSame(0.0, (float) GoodsReceiptLine::query()->findOrFail($receipt['lines'][0]['id'])->returned_quantity);
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_purchase_routes_require_auth_company_and_permission(): void

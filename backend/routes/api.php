@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\Inventory\StockBalanceController;
 use App\Http\Controllers\Api\Inventory\InventoryValuationController;
 use App\Http\Controllers\Api\Inventory\StockAdjustmentController;
 use App\Http\Controllers\Api\Inventory\StockOpnameController;
+use App\Http\Controllers\Api\Inventory\InventoryReportController;
 use App\Http\Controllers\Api\Sales\DeliveryOrderController;
 use App\Http\Controllers\Api\Sales\AccountsReceivableController;
 use App\Http\Controllers\Api\Sales\BillingInvoiceController;
@@ -211,6 +212,15 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('inventory')->grou
         ->middleware('permission:inventory.opname.finalize');
     Route::patch('/stock-opnames/{id}/void', [StockOpnameController::class, 'void'])
         ->middleware('permission:inventory.opname.finalize');
+
+    Route::prefix('reports')->group(function () {
+        Route::get('/stock-balances', [InventoryReportController::class, 'stockBalances'])->middleware('permission:inventory.reports.view');
+        Route::get('/stock-movements', [InventoryReportController::class, 'stockMovements'])->middleware('permission:inventory.reports.view');
+        Route::get('/stock-card', [InventoryReportController::class, 'stockCard'])->middleware('permission:inventory.reports.view');
+        Route::get('/valuation', [InventoryReportController::class, 'valuation'])->middleware('permission:inventory.reports.view');
+        Route::get('/low-stock', [InventoryReportController::class, 'lowStock'])->middleware('permission:inventory.reports.view');
+        Route::get('/negative-stock', [InventoryReportController::class, 'negativeStock'])->middleware('permission:inventory.reports.view');
+    });
 
     Route::get('/valuation', [InventoryValuationController::class, 'current'])
         ->middleware('permission:inventory.valuation.view');

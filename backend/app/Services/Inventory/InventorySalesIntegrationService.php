@@ -17,7 +17,7 @@ class InventorySalesIntegrationService
     ) {
     }
 
-    public function createSalesOutFromDeliveryOrder(DeliveryOrder $deliveryOrder): StockMovement
+    public function createSalesOutFromDeliveryOrder(DeliveryOrder $deliveryOrder): ?StockMovement
     {
         $deliveryOrder->loadMissing('lines');
         $existing = StockMovement::query()
@@ -46,9 +46,7 @@ class InventorySalesIntegrationService
             ];
         }
 
-        if ($lines === []) {
-            throw ApiException::make('NO_STOCKABLE_LINES', 'No stockable lines found for stock movement.', 422);
-        }
+        if ($lines === []) return null;
 
         return $this->stockMovementService->createAndPost([
             'movement_date' => (string) $deliveryOrder->delivery_date,
@@ -107,7 +105,7 @@ class InventorySalesIntegrationService
         ]);
     }
 
-    public function createSalesReturnIn(SalesReturn $return): StockMovement
+    public function createSalesReturnIn(SalesReturn $return): ?StockMovement
     {
         $return->loadMissing('lines');
         $existing = StockMovement::query()
@@ -140,9 +138,7 @@ class InventorySalesIntegrationService
             ];
         }
 
-        if ($lines === []) {
-            throw ApiException::make('NO_STOCKABLE_LINES', 'No stockable lines found for stock movement.', 422);
-        }
+        if ($lines === []) return null;
 
         return $this->stockMovementService->createAndPost([
             'movement_date' => (string) $return->return_date,

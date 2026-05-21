@@ -5,8 +5,8 @@ namespace Tests\Feature\Purchase;
 use App\Models\Tenant\GoodsReceipt;
 use App\Models\Tenant\PurchaseOrder;
 use App\Models\Tenant\PurchaseOrderLine;
+use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class GoodsReceiptTest extends PurchaseTestCase
 {
@@ -97,7 +97,7 @@ class GoodsReceiptTest extends PurchaseTestCase
         $this->patchJson('/api/purchase/goods-receipts/'.$receipt['id'].'/receive', [], $ctx['headers'])->assertStatus(200);
 
         $this->assertSame(0, DB::connection('tenant')->table('journal_entries')->count());
-        $this->assertFalse(Schema::connection('tenant')->hasTable('stock_movements'));
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_cancel_goods_receipt(): void

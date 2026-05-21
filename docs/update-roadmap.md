@@ -30,7 +30,7 @@ Dokumen ini tidak berisi prompt teknis, script, potongan kode, atau instruksi de
 [✓] Phase 9  — Sales Workflow & Accounts Receivable Backend
 [✓] Phase 10 — Purchase Workflow & Accounts Payable Backend
 [✓] Phase 11 — Cash Bank Backend
-[>] Phase 12 — Inventory Backend
+[✓] Phase 12 — Inventory Backend
 [ ] Phase 13 — Accounting Frontend MVP
 [ ] Phase 14 — Sales Frontend MVP
 [ ] Phase 15 — Purchase Frontend MVP
@@ -546,37 +546,37 @@ Scope:
 Status:
 
 ```text
-[ ] Belum dimulai
+[✓] Completed
 ```
 
 Subphase:
 
 ```text
-[ ] Phase 12A — Inventory Foundation
-[ ] Phase 12B — Stock Movement Engine
-[ ] Phase 12C — Stock Balance
-[ ] Phase 12D — Average Cost / Valuation Foundation
-[ ] Phase 12E — Sales & Purchase Stock Integration
-[ ] Phase 12F — Stock Adjustment
-[ ] Phase 12G — Stock Opname Basic
-[ ] Phase 12H — Inventory Reports Backend
-[ ] Phase 12I — Integration Tests & Documentation
+[✓] Phase 12A — Inventory Foundation
+[✓] Phase 12B — Stock Movement Engine
+[✓] Phase 12C — Stock Balance
+[✓] Phase 12D — Average Cost / Valuation Foundation
+[✓] Phase 12E — Sales & Purchase Stock Integration
+[✓] Phase 12F — Stock Adjustment
+[✓] Phase 12G — Stock Opname Basic
+[✓] Phase 12H — Inventory Reports Backend
+[✓] Phase 12I — Integration Tests & Documentation
 ```
 
 Scope:
 
 ```text
-[ ] Inventory foundation
-[ ] Stock movement engine
-[ ] Stock balance
-[ ] Average cost / valuation
-[ ] Sales stock integration
-[ ] Purchase stock integration
-[ ] Stock adjustment
-[ ] Stock opname
-[ ] Inventory reports
-[ ] Inventory integration tests
-[ ] Inventory documentation
+[✓] Inventory foundation
+[✓] Stock movement engine
+[✓] Stock balance
+[✓] Average cost / valuation
+[✓] Sales stock integration
+[✓] Purchase stock integration
+[✓] Stock adjustment
+[✓] Stock opname
+[✓] Inventory reports
+[✓] Inventory integration tests
+[✓] Inventory documentation
 ```
 
 ---
