@@ -13,6 +13,13 @@ class TenantConnectionManager
 
         DB::purge('tenant');
         DB::reconnect('tenant');
+
+        // Some CI/dev sandboxes restrict SQLite rollback journal file creation.
+        // For tests we can safely keep SQLite journals in memory to avoid disk I/O errors.
+        if (app()->environment('testing') && (string) config('database.connections.tenant.driver') === 'sqlite') {
+            DB::connection('tenant')->statement('PRAGMA journal_mode = MEMORY');
+            DB::connection('tenant')->statement('PRAGMA synchronous = OFF');
+        }
     }
 
     public function disconnect(): void

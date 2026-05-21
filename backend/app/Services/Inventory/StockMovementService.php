@@ -22,6 +22,7 @@ class StockMovementService
         private readonly InventoryQuantityService $qtyService,
         private readonly InventorySourceService $sourceService,
         private readonly StockMovementJournalService $journalService,
+        private readonly StockBalanceService $stockBalanceService,
         private readonly AuditLogService $auditLogService,
     ) {
     }
@@ -131,6 +132,10 @@ class StockMovementService
             $movement->posted_by = auth()->id();
             $movement->posted_at = now();
             $movement->save();
+
+            foreach ($movement->lines as $ln) {
+                $this->stockBalanceService->applyMovementLine($ln);
+            }
 
             $this->auditLogService->logSuccess([
                 'event' => 'inventory.stock_movement_posted',
@@ -290,4 +295,3 @@ class StockMovementService
         ];
     }
 }
-

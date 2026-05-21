@@ -120,3 +120,42 @@ Di Phase 12B, jurnal inventory dibuat untuk:
 - `opening_stock` (Dr Inventory, Cr Opening Stock Equity)
 
 Stock balance update belum dibuat penuh sampai Phase 12C.
+
+## Phase 12C — Stock Balance (Implemented)
+
+Phase 12C menambahkan **stock balance** yang selalu dihitung dari stock movement yang **posted**.
+
+### Table (tenant)
+
+- `stock_balances` (unique: `product_id` + `warehouse_id`)
+
+Fields utama:
+- `quantity_on_hand`
+- `quantity_reserved` (MVP: default 0)
+- `quantity_available` (on_hand - reserved)
+- `average_cost` (moving average)
+- `total_value`
+- `last_movement_id`, `last_movement_at`
+
+### Rule penting
+
+- Stock balance **tidak boleh diubah langsung dari controller**.
+- Stock balance berubah hanya melalui posting/void stock movement:
+  - `StockMovementService::post()` memanggil `StockBalanceService::applyMovementLine()` untuk setiap line.
+  - `void` untuk movement posted membuat **reversal movement** yang diposting (balance ikut ter-update), lalu movement original di-mark void.
+- Default **negative stock tidak diperbolehkan**, kecuali `config('inventory.allow_negative_stock') = true`.
+
+### API (tenant-aware)
+
+- `GET /api/inventory/stock-balances` (permission: `inventory.stock.view`)
+- `GET /api/inventory/stock-balances/product/{productId}` (permission: `inventory.stock.view`)
+- `GET /api/inventory/stock-balances/warehouse/{warehouseId}` (permission: `inventory.stock.view`)
+
+### Internal command (no public API)
+
+Rebuild stock balances hanya lewat artisan command (internal):
+
+- `php artisan inventory:rebuild-stock-balances --all`
+- `php artisan inventory:rebuild-stock-balances --product-id=1`
+- `php artisan inventory:rebuild-stock-balances --warehouse-id=1`
+- `php artisan inventory:rebuild-stock-balances --product-id=1 --warehouse-id=1`
