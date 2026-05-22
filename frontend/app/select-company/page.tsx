@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { virtualTabsStorageKey } from '@/components/layout/VirtualTabsProvider';
 import { apiRequest, getStoredToken } from '@/lib/api';
 import type { ApiResponse } from '@/types/api';
 import type { ActiveCompany, Company } from '@/types/company';
@@ -44,6 +45,7 @@ export default function SelectCompanyPage() {
 
       localStorage.setItem('active_company_id', String(companyId));
       localStorage.setItem('active_company', JSON.stringify(res.data.active_company));
+      sessionStorage.removeItem(virtualTabsStorageKey);
       router.push('/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to select company');
@@ -119,4 +121,3 @@ export default function SelectCompanyPage() {
     </main>
   );
 }
-

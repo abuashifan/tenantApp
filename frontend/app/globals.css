@@ -3,6 +3,20 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --erp-sidebar-dark: #06131e;
+  --erp-sidebar-dark-soft: #091c2a;
+  --erp-lime: #b4db24;
+  --erp-lime-soft: #f0f8d3;
+  --erp-lime-pale: #f7fbe9;
+  --erp-emerald: #49b66f;
+  --erp-emerald-dark: #2c6d43;
+  --erp-emerald-soft: #edf8f1;
+  --erp-ocean: #4bb496;
+  --erp-teal: #3dbdc2;
+  --erp-ocean-soft: #edf7f5;
+  --erp-blue: #24a1db;
+  --erp-blue-soft: #e9f6fb;
+  --erp-active-tab: #f43f5e;
 }
 
 @theme inline {

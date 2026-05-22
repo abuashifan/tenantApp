@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
+import { getSubmenuIcon } from '@/components/layout/navigation';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -53,12 +54,23 @@ function CashBankLanding() {
       <CashBankPageGate permission={CASH_BANK_NAV_ITEMS.map((item) => item.permission)}>
         <PageHeader title="Cash Bank" description="Cash Bank Frontend MVP for receipts, payments, transfers, reconciliation, and account statement reports." />
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visible.map((item) => (
-            <Link key={item.href} href={item.href} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow">
-              <h2 className="text-base font-semibold text-slate-950">{item.label}</h2>
-              <p className="mt-2 text-sm text-slate-600">{item.description}</p>
-            </Link>
-          ))}
+          {visible.map((item) => {
+            const ItemIcon = getSubmenuIcon(item.href, item.label);
+
+            return (
+              <Link key={item.href} href={item.href} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--erp-ocean-soft)] text-[var(--erp-ocean)]">
+                    <ItemIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-950">{item.label}</h2>
+                    <p className="mt-2 text-sm text-slate-600">{item.description}</p>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </CashBankPageGate>
     </AppShell>
