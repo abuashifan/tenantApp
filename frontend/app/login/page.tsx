@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { virtualTabsStorageKey } from '@/components/layout/VirtualTabsProvider';
 import { ApiRequestError, apiRequest } from '@/lib/api';
 import type { ApiResponse } from '@/types/api';
 import type { LoginResponse } from '@/types/auth';
@@ -92,6 +93,10 @@ export default function LoginPage() {
         },
       );
 
+      localStorage.removeItem('active_company_id');
+      localStorage.removeItem('active_company');
+      localStorage.removeItem('auth_permissions');
+      sessionStorage.removeItem(virtualTabsStorageKey);
       localStorage.setItem('auth_token', loginRes.data.token);
       localStorage.setItem('auth_user', JSON.stringify(loginRes.data.user));
 
@@ -103,12 +108,6 @@ export default function LoginPage() {
 
       if (companies.length === 0) {
         setError('User ini belum punya company.');
-        return;
-      }
-
-      if (companies.length === 1) {
-        localStorage.setItem('active_company_id', String(companies[0].id));
-        router.push('/dashboard');
         return;
       }
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { virtualTabsStorageKey } from '@/components/layout/VirtualTabsProvider';
-import { apiRequest, getStoredToken } from '@/lib/api';
+import { ApiRequestError, apiRequest, getStoredToken } from '@/lib/api';
 import type { ApiResponse } from '@/types/api';
 import type { ActiveCompany, Company } from '@/types/company';
 
@@ -23,7 +23,15 @@ export default function SelectCompanyPage() {
 
     apiRequest<ApiResponse<Company[]>>('/companies', { token })
       .then((res) => setCompanies(res.data ?? []))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed'))
+      .catch((e) => {
+        if (e instanceof ApiRequestError && e.status === 401) {
+          clearStoredSession();
+          router.replace('/login');
+          return;
+        }
+
+        setError(e instanceof Error ? e.message : 'Failed');
+      })
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -48,6 +56,12 @@ export default function SelectCompanyPage() {
       sessionStorage.removeItem(virtualTabsStorageKey);
       router.push('/dashboard');
     } catch (e) {
+      if (e instanceof ApiRequestError && e.status === 401) {
+        clearStoredSession();
+        router.replace('/login');
+        return;
+      }
+
       setError(e instanceof Error ? e.message : 'Failed to select company');
     } finally {
       setSelectingId(null);
@@ -120,4 +134,13 @@ export default function SelectCompanyPage() {
       </div>
     </main>
   );
+}
+
+function clearStoredSession() {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_user');
+  localStorage.removeItem('active_company_id');
+  localStorage.removeItem('active_company');
+  localStorage.removeItem('auth_permissions');
+  sessionStorage.removeItem(virtualTabsStorageKey);
 }

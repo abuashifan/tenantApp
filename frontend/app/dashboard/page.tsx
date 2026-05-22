@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiRequest, getStoredCompanyId, getStoredToken } from '@/lib/api';
 import { AppShell } from '@/components/layout/AppShell';
+import { virtualTabsStorageKey } from '@/components/layout/VirtualTabsProvider';
+import { ApiRequestError, apiRequest, getStoredCompanyId, getStoredToken } from '@/lib/api';
 import type { ApiResponse } from '@/types/api';
 import type { TenantContextTest } from '@/types/company';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [context, setContext] = useState<TenantContextTest | null>(null);
 
@@ -30,10 +32,44 @@ export default function DashboardPage() {
       token,
       companyId,
     })
-      .then((res) => setContext(res.data))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed'))
+      .then((res) => {
+        setContext(res.data);
+        setIsAuthorized(true);
+      })
+      .catch((e) => {
+        if (e instanceof ApiRequestError && e.status === 401) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+          localStorage.removeItem('active_company_id');
+          localStorage.removeItem('active_company');
+          localStorage.removeItem('auth_permissions');
+          sessionStorage.removeItem(virtualTabsStorageKey);
+          router.replace('/login');
+          return;
+        }
+
+        setError(e instanceof Error ? e.message : 'Failed');
+      })
       .finally(() => setLoading(false));
   }, [router]);
+
+  if (!isAuthorized && error) {
+    return (
+      <main className="min-h-screen bg-slate-100 p-6">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
+          {error}
+        </div>
+      </main>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <main className="min-h-screen bg-slate-100" aria-busy="true">
+        {loading ? null : null}
+      </main>
+    );
+  }
 
   return (
     <AppShell>
