@@ -34,9 +34,9 @@ Dokumen ini tidak berisi prompt teknis, script, potongan kode, atau instruksi de
 [✓] Phase 13 — Accounting Frontend MVP
 [✓] Phase 14 — Sales Frontend MVP
 [✓] Phase 15 — Purchase Frontend MVP
-[>] Phase 16 — Cash Bank Frontend MVP
-[ ] Phase 17 — Inventory Frontend MVP
-[ ] Phase 18 — Role, Permission & User Management Advanced
+[✓] Phase 16 — Cash Bank Frontend MVP
+[✓] Phase 17 — Inventory Frontend MVP
+[>] Phase 18 — Role, Permission & User Management Advanced
 [ ] Phase 19 — Reports Advanced, Export PDF/Excel, Print View
 [ ] Phase 20 — Audit Log Advanced UI
 [ ] Phase 21 — Backup & Restore Tools
@@ -709,32 +709,32 @@ Scope:
 Status:
 
 ```text
-[ ] Belum dimulai
+[✓] Selesai
 ```
 
 Subphase:
 
 ```text
-[ ] Phase 16A — Cash Bank Frontend Foundation
-[ ] Phase 16B — Cash In UI
-[ ] Phase 16C — Cash Out UI
-[ ] Phase 16D — Bank Transfer UI
-[ ] Phase 16E — Bank Reconciliation UI Basic
-[ ] Phase 16F — Cash Bank Reports UI
-[ ] Phase 16G — Cash Bank Frontend Tests & Documentation
+[✓] Phase 16A — Cash Bank Frontend Foundation
+[✓] Phase 16B — Cash In UI
+[✓] Phase 16C — Cash Out UI
+[✓] Phase 16D — Bank Transfer UI
+[✓] Phase 16E — Bank Reconciliation UI Basic
+[✓] Phase 16F — Cash Bank Reports UI
+[✓] Phase 16G — Cash Bank Frontend Tests & Documentation
 ```
 
 Scope:
 
 ```text
-[ ] Cash bank frontend foundation
-[ ] Cash in UI
-[ ] Cash out UI
-[ ] Bank transfer UI
-[ ] Bank reconciliation UI
-[ ] Cash bank reports UI
-[ ] Cash bank frontend tests
-[ ] Cash bank frontend documentation
+[✓] Cash bank frontend foundation
+[✓] Cash in UI
+[✓] Cash out UI
+[✓] Bank transfer UI
+[✓] Bank reconciliation UI
+[✓] Cash bank reports UI
+[✓] Cash bank frontend tests
+[✓] Cash bank frontend documentation
 ```
 
 ---
@@ -744,34 +744,34 @@ Scope:
 Status:
 
 ```text
-[ ] Belum dimulai
+[✓] Selesai
 ```
 
 Subphase:
 
 ```text
-[ ] Phase 17A — Inventory Frontend Foundation
-[ ] Phase 17B — Product Stock & Warehouse Pages
-[ ] Phase 17C — Stock Movement Frontend
-[ ] Phase 17D — Stock Adjustment Frontend
-[ ] Phase 17E — Stock Opname Frontend Basic
-[ ] Phase 17F — Inventory Valuation & Stock Card Frontend
-[ ] Phase 17G — Inventory Frontend Integration Tests & Documentation
+[✓] Phase 17A — Inventory Frontend Foundation
+[✓] Phase 17B — Product Stock & Warehouse Pages
+[✓] Phase 17C — Stock Movement Frontend
+[✓] Phase 17D — Stock Adjustment Frontend
+[✓] Phase 17E — Stock Opname Frontend Basic
+[✓] Phase 17F — Inventory Valuation & Stock Card Frontend
+[✓] Phase 17G — Inventory Frontend Integration Tests & Documentation
 ```
 
 Scope:
 
 ```text
-[ ] Inventory frontend foundation
-[ ] Product stock page
-[ ] Warehouse stock page
-[ ] Stock movement page
-[ ] Stock adjustment UI
-[ ] Stock opname UI
-[ ] Inventory valuation UI
-[ ] Stock card UI
-[ ] Inventory frontend tests
-[ ] Inventory frontend documentation
+[✓] Inventory frontend foundation
+[✓] Product stock page
+[✓] Warehouse stock page
+[✓] Stock movement page
+[✓] Stock adjustment UI
+[✓] Stock opname UI
+[✓] Inventory valuation UI
+[✓] Stock card UI
+[✓] Inventory frontend tests
+[✓] Inventory frontend documentation
 ```
 
 ---
@@ -1065,23 +1065,23 @@ Scope:
 # Next Active Phase
 
 ```text
-Phase 16A — Cash Bank Frontend Foundation
+Phase 18A — User Management Foundation
 ```
 
-Scope Phase 16A:
+Scope Phase 18A:
 
 ```text
-[ ] Cash bank frontend navigation and layout
-[ ] Cash bank API client helpers
-[ ] Shared cash bank UI primitives
-[ ] Permission-aware cash bank pages
+[ ] User management foundation
+[ ] Role and permission management planning
+[ ] User invitation/access workflow foundation
+[ ] Permission-aware admin pages
 ```
 
-Batasan Phase 16A:
+Batasan Phase 18A:
 
 ```text
-[ ] No backend cash bank business logic change
-[ ] No sales/purchase frontend changes
-[ ] No inventory frontend
+[ ] No accounting transaction behavior change
+[ ] No sales/purchase/cash bank/inventory behavior change
+[ ] No export engine
 [ ] No export PDF/Excel
 ```

@@ -1557,3 +1557,16 @@ Phase 18+ masuk advanced/admin/export/deployment.
 ```
 
 Dengan susunan ini, project tidak bolak-balik antara backend dan frontend secara tidak terkontrol, dan Phase 9 tetap konsisten sebagai Sales / Faktur Penjualan Backend.
+
+Phase 16 project memory:
+Phase 16 Cash Bank Frontend MVP sudah selesai.
+Phase 16 memakai backend Cash Bank dari Phase 11.
+Phase 16 mencakup Cash In, Cash Out, Bank Transfer, Bank Reconciliation Basic, Cash Bank Reports, permission-aware navigation, dan dokumentasi.
+Phase 16 tidak membuat backend cash bank baru, export PDF/Excel, bank feed, OCR, atau advanced auto matching.
+
+Phase 17 project memory:
+Phase 17 Inventory Frontend MVP sudah selesai.
+Phase 17 memakai backend Inventory dari Phase 12.
+Phase 17 mencakup Product Stock, Warehouse Stock, Stock Movement, Stock Adjustment, Stock Opname Basic, Inventory Valuation, Stock Card, permission-aware navigation, dan dokumentasi.
+Phase 17 tidak membuat backend inventory baru, export PDF/Excel, barcode scanner, mobile warehouse app, atau advanced cycle count.
+Next phase: Phase 18 — Role, Permission & User Management Advanced.

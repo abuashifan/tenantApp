@@ -11,6 +11,8 @@ import {
   getStoredPermissions,
   hasPermission,
 } from '@/lib/permissions';
+import { CASH_BANK_NAV_ITEMS } from '@/features/cash-bank/navigation';
+import { INVENTORY_NAV_ITEMS } from '@/features/inventory/navigation';
 import { PURCHASE_NAV_ITEMS } from '@/features/purchase/navigation';
 import { SALES_NAV_ITEMS } from '@/features/sales/navigation';
 
@@ -70,6 +72,14 @@ export function AppShell({ children }: AppShellProps) {
 
   const visiblePurchaseItems = useMemo(() => {
     return PURCHASE_NAV_ITEMS.filter((item) => hasPermission(permissions, item.permission));
+  }, [permissions]);
+
+  const visibleCashBankItems = useMemo(() => {
+    return CASH_BANK_NAV_ITEMS.filter((item) => hasPermission(permissions, item.permission));
+  }, [permissions]);
+
+  const visibleInventoryItems = useMemo(() => {
+    return INVENTORY_NAV_ITEMS.filter((item) => hasPermission(permissions, item.permission));
   }, [permissions]);
 
   function logout() {
@@ -169,6 +179,32 @@ export function AppShell({ children }: AppShellProps) {
             </Link>
           ) : null}
 
+          {visibleCashBankItems.length > 0 ? (
+            <Link
+              href="/cash-bank"
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                pathname?.startsWith('/cash-bank')
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              Cash Bank
+            </Link>
+          ) : null}
+
+          {visibleInventoryItems.length > 0 ? (
+            <Link
+              href="/inventory"
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                pathname?.startsWith('/inventory')
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              Inventory
+            </Link>
+          ) : null}
+
           {pathname?.startsWith('/accounting')
             ? visibleAccountingItems.map((item) => (
                 <Link
@@ -203,6 +239,38 @@ export function AppShell({ children }: AppShellProps) {
 
           {pathname?.startsWith('/purchase')
             ? visiblePurchaseItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                    pathname === item.href || pathname?.startsWith(`${item.href}/`)
+                      ? 'bg-slate-100 text-slate-950'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))
+            : null}
+
+          {pathname?.startsWith('/cash-bank')
+            ? visibleCashBankItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                    pathname === item.href || pathname?.startsWith(`${item.href}/`)
+                      ? 'bg-slate-100 text-slate-950'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))
+            : null}
+
+          {pathname?.startsWith('/inventory')
+            ? visibleInventoryItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
