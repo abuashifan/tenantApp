@@ -7,12 +7,15 @@ export type JournalFilters = {
   date_from?: string;
   date_to?: string;
   search?: string;
+  include_void?: boolean;
+  include_obsolete?: boolean;
 };
 
 export async function listJournals(filters: JournalFilters = {}) {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value) params.set(key, value);
+    if (value === undefined || value === null || value === '') return;
+    params.set(key, String(value));
   });
   const suffix = params.toString() ? `?${params.toString()}` : '';
   return apiRequest<ApiResponse<JournalEntry[]>>(`/journals${suffix}`);

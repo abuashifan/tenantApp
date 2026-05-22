@@ -92,6 +92,7 @@ export type JournalEntry = {
   is_system_generated?: boolean;
   is_obsolete?: boolean;
   void_reason?: string | null;
+  created_by?: number | null;
   lines?: JournalEntryLine[];
 };
 
