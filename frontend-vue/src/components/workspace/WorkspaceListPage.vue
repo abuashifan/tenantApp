@@ -63,6 +63,7 @@ const activeSecondaryId = computed(
 )
 const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[props.config.primaryTabId] ?? [])
 const activeSecondary = computed(() => secondaryTabs.value.find((tab) => tab.id === activeSecondaryId.value) ?? null)
+const visibleSecondaryTabs = computed(() => secondaryTabs.value.filter((tab) => tab.mode !== 'list'))
 
 const columns = computed<ColumnDef<TRow, unknown>[]>(() => {
   if (!props.config.rowActions?.length) return props.config.columns
@@ -146,7 +147,8 @@ function requestClose(tabId: string) {
 <template>
   <div class="space-y-4">
     <SecondaryTabsBar
-      :tabs="secondaryTabs"
+      v-if="visibleSecondaryTabs.length > 0"
+      :tabs="visibleSecondaryTabs"
       :active-id="activeSecondaryId"
       @activate="(id) => tabs.activateSecondaryTab(config.primaryTabId, id)"
       @close="requestClose"
