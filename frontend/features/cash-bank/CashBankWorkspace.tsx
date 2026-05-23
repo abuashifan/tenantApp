@@ -11,6 +11,12 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PermissionGuard } from '@/components/ui/PermissionGuard';
+import {
+  DocumentListWorkspace,
+  type WorkspaceColumn,
+  type WorkspaceFilterState,
+  type WorkspaceRowAction,
+} from '@/components/workspace';
 import { listChartOfAccounts } from '@/features/accounting/chart-of-accounts/api';
 import { listMasterData } from '@/features/accounting/master-data/api';
 import { createCashIn, createCashOut, createReconciliation, createTransfer, getCashBankAccounts, getCashBankReports, getCashInDetail, getCashInList, getCashOutDetail, getCashOutList, getReconciliationDetail, getReconciliationList, getTransferDetail, getTransferList, markReconciliationLines, postCashIn, postCashOut, postTransfer, refreshReconciliationLines, voidCashIn, voidCashOut, voidTransfer } from '@/features/cash-bank/api/cashBankApi';
@@ -31,6 +37,115 @@ const MODULES = {
   'cash-out': { title: 'Cash Out', singular: 'Cash Out', create: 'cash_bank.create', post: 'cash_bank.post', void: 'cash_bank.void', path: '/cash-bank/cash-out' },
   transfers: { title: 'Bank Transfers', singular: 'Bank Transfer', create: 'cash_bank.transfer', post: 'cash_bank.post', void: 'cash_bank.void', path: '/cash-bank/transfers' },
 };
+
+const cashBankStatusOptions = [
+  { label: 'All Status', value: 'all' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'Posted', value: 'posted' },
+  { label: 'Cleared', value: 'cleared' },
+  { label: 'Reconciled', value: 'reconciled' },
+  { label: 'Void', value: 'void' },
+];
+
+function cashBankColumns(mode: CashMode): WorkspaceColumn<CashBankTransaction>[] {
+  return [
+    {
+      key: 'document',
+      label: 'Document',
+      widthClassName: 'min-w-[190px]',
+      sortable: true,
+      sortValue: (row) => docNumber(row, mode),
+      render: (row) => <p className="font-bold text-slate-950">{docNumber(row, mode)}</p>,
+    },
+    {
+      key: 'date',
+      label: 'Date',
+      widthClassName: 'min-w-[140px]',
+      sortable: true,
+      sortValue: (row) => docDate(row, mode),
+      render: (row) => formatDate(docDate(row, mode)),
+    },
+    {
+      key: 'account',
+      label: 'Account / Direction',
+      widthClassName: 'min-w-[240px]',
+      sortable: true,
+      sortValue: (row) => accountText(row, mode),
+      render: (row) => accountText(row, mode),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      widthClassName: 'min-w-[140px]',
+      sortable: true,
+      sortValue: (row) => String(row.status ?? 'draft'),
+      render: (row) => <CashBankStatusBadge status={row.status} />,
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      align: 'right',
+      widthClassName: 'min-w-[150px]',
+      sortable: true,
+      sortValue: (row) => Number(row.amount ?? 0),
+      render: (row) => <p className="font-bold text-slate-950">{formatCurrency(Number(row.amount ?? 0))}</p>,
+    },
+  ];
+}
+
+const reconciliationColumns: WorkspaceColumn<BankReconciliation>[] = [
+  {
+    key: 'session',
+    label: 'Session',
+    widthClassName: 'min-w-[120px]',
+    sortable: true,
+    sortValue: (row) => row.id,
+    render: (row) => <p className="font-bold text-slate-950">#{row.id}</p>,
+  },
+  {
+    key: 'period',
+    label: 'Period',
+    widthClassName: 'min-w-[220px]',
+    sortable: true,
+    sortValue: (row) => String(row.statement_start_date ?? ''),
+    render: (row) => `${formatDate(row.statement_start_date)} - ${formatDate(row.statement_end_date)}`,
+  },
+  {
+    key: 'statement',
+    label: 'Statement',
+    align: 'right',
+    widthClassName: 'min-w-[150px]',
+    sortable: true,
+    sortValue: (row) => Number(row.statement_ending_balance ?? 0),
+    render: (row) => formatCurrency(Number(row.statement_ending_balance ?? 0)),
+  },
+  {
+    key: 'system',
+    label: 'System',
+    align: 'right',
+    widthClassName: 'min-w-[150px]',
+    sortable: true,
+    sortValue: (row) => Number(row.system_ending_balance ?? 0),
+    render: (row) => formatCurrency(Number(row.system_ending_balance ?? 0)),
+  },
+  {
+    key: 'difference',
+    label: 'Difference',
+    align: 'right',
+    widthClassName: 'min-w-[150px]',
+    sortable: true,
+    sortValue: (row) => Number(row.difference ?? 0),
+    render: (row) => formatCurrency(Number(row.difference ?? 0)),
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    widthClassName: 'min-w-[140px]',
+    sortable: true,
+    sortValue: (row) => String(row.status ?? 'draft'),
+    render: (row) => <CashBankStatusBadge status={row.status} />,
+  },
+];
 
 export function CashBankWorkspace({ segments = [] }: { segments?: string[] }) {
   const [module, action, id] = segments;
@@ -78,35 +193,61 @@ function CashBankLanding() {
 }
 
 function TransactionList({ mode }: { mode: CashMode }) {
+  const router = useRouter();
   const config = MODULES[mode];
   const [rows, setRows] = useState<CashBankTransaction[]>([]);
-  const [filters, setFilters] = useState({ search: '', status: '', date_from: '', date_to: '' });
+  const [filters, setFilters] = useState<WorkspaceFilterState>({ search: '', status: 'all', party: 'all', dateFrom: '', dateTo: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const canCreate = hasPermission(getStoredPermissions(), config.create);
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = mode === 'cash-in' ? await getCashInList(filters) : mode === 'cash-out' ? await getCashOutList(filters) : await getTransferList(filters);
+      const apiFilters = {
+        search: filters.search,
+        status: filters.status === 'all' ? '' : filters.status,
+        date_from: filters.dateFrom,
+        date_to: filters.dateTo,
+      };
+      const response = mode === 'cash-in' ? await getCashInList(apiFilters) : mode === 'cash-out' ? await getCashOutList(apiFilters) : await getTransferList(apiFilters);
       setRows(response.data ?? []);
     } catch (event) {
       setError(getApiErrorMessage(event));
     } finally {
       setLoading(false);
     }
-  }, [filters, mode]);
+  }, [filters.dateFrom, filters.dateTo, filters.search, filters.status, mode]);
   useEffect(() => { queueMicrotask(() => void load()); }, [load]);
-  const visible = useMemo(() => rows.filter((row) => JSON.stringify(row).toLowerCase().includes(filters.search.toLowerCase())), [filters.search, rows]);
+  const columns = useMemo<WorkspaceColumn<CashBankTransaction>[]>(() => cashBankColumns(mode), [mode]);
+  const rowActions = useMemo<WorkspaceRowAction<CashBankTransaction>[]>(() => [{ key: 'view', label: 'View Detail', href: (row) => `${config.path}/${row.id}` }], [config.path]);
   return (
     <AppShell>
       <CashBankPageGate permission="cash_bank.view">
-        <PageHeader title={config.title} description={`${config.singular} list with status actions and period-lock-aware backend errors.`} actions={<PermissionGuard permission={config.create}><Link href={`${config.path}/create`} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">Create {config.singular}</Link></PermissionGuard>} />
-        <div className="mt-6 space-y-4">
-          <FilterBar filters={filters} onChange={setFilters} onApply={load} />
-          {loading ? <LoadingState title={`Loading ${config.title}`} /> : null}
-          {error ? <ErrorState message={error} /> : null}
-          {!loading && !error && visible.length === 0 ? <EmptyState title={`No ${config.title.toLowerCase()}`} description="Create a transaction or adjust filters." /> : null}
-          {visible.length > 0 ? <DataTable columns={['Document', 'Date', 'Account / Direction', 'Status', 'Amount', 'Action']}>{visible.map((row) => <tr key={row.id} className="hover:bg-slate-50"><td className="px-4 py-3 font-medium">{docNumber(row, mode)}</td><td className="px-4 py-3">{formatDate(docDate(row, mode))}</td><td className="px-4 py-3">{accountText(row, mode)}</td><td className="px-4 py-3"><CashBankStatusBadge status={row.status} /></td><td className="px-4 py-3 text-right font-semibold">{formatCurrency(Number(row.amount ?? 0))}</td><td className="px-4 py-3"><Link className="underline" href={`${config.path}/${row.id}`}>View</Link></td></tr>)}</DataTable> : null}
+        <PageHeader title={config.title} description={`${config.singular} list with status actions and period-lock-aware backend errors.`} />
+        <div className="mt-6">
+          <DocumentListWorkspace
+            documentLabel={config.singular}
+            newButtonLabel={canCreate ? `Create ${config.singular}` : undefined}
+            rows={rows}
+            columns={columns}
+            filters={filters}
+            statusOptions={cashBankStatusOptions}
+            loading={loading}
+            error={error}
+            emptyTitle={`No ${config.title.toLowerCase()}`}
+            emptyDescription="Create a transaction or adjust filters."
+            searchPlaceholder={`Cari ${config.singular.toLowerCase()}, account, atau status...`}
+            partyFilterLabel={mode === 'transfers' ? undefined : 'Account'}
+            rowActions={rowActions}
+            getSearchText={(row) => JSON.stringify(row)}
+            getStatus={(row) => String(row.status ?? 'draft')}
+            getDate={(row) => docDate(row, mode)}
+            getPartyName={(row) => accountText(row, mode)}
+            onCreate={canCreate ? () => router.push(`${config.path}/create`) : undefined}
+            onApplyFilters={load}
+            onFilterChange={setFilters}
+          />
         </div>
       </CashBankPageGate>
     </AppShell>
@@ -208,12 +349,15 @@ function TransactionForm({ mode, id }: { mode: CashMode; id?: string }) {
 }
 
 function ReconciliationList() {
+  const router = useRouter();
   const [rows, setRows] = useState<BankReconciliation[]>([]);
+  const [filters, setFilters] = useState<WorkspaceFilterState>({ search: '', status: 'all', party: 'all', dateFrom: '', dateTo: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const canCreate = hasPermission(getStoredPermissions(), 'cash_bank.create');
   const load = useCallback(async () => { try { setLoading(true); setRows((await getReconciliationList()).data ?? []); } catch (event) { setError(getApiErrorMessage(event)); } finally { setLoading(false); } }, []);
   useEffect(() => { queueMicrotask(() => void load()); }, [load]);
-  return <AppShell><CashBankPageGate permission="cash_bank.view"><PageHeader title="Bank Reconciliation" description="Basic reconciliation sessions and cleared line status." actions={<PermissionGuard permission="cash_bank.create"><Link href="/cash-bank/reconciliation/create" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">New Reconciliation</Link></PermissionGuard>} /><div className="mt-6 space-y-4">{loading ? <LoadingState title="Loading reconciliations" /> : null}{error ? <ErrorState message={error} /> : null}{rows.length === 0 && !loading && !error ? <EmptyState title="No reconciliation sessions" description="Create a session or wait for backend data." /> : null}{rows.length > 0 ? <DataTable columns={['Session', 'Period', 'Statement', 'System', 'Difference', 'Status', 'Action']}>{rows.map((row) => <tr key={row.id}><td className="px-4 py-3 font-medium">#{row.id}</td><td className="px-4 py-3">{formatDate(row.statement_start_date)} - {formatDate(row.statement_end_date)}</td><td className="px-4 py-3 text-right">{formatCurrency(Number(row.statement_ending_balance ?? 0))}</td><td className="px-4 py-3 text-right">{formatCurrency(Number(row.system_ending_balance ?? 0))}</td><td className="px-4 py-3 text-right">{formatCurrency(Number(row.difference ?? 0))}</td><td className="px-4 py-3"><CashBankStatusBadge status={row.status} /></td><td className="px-4 py-3"><Link className="underline" href={`/cash-bank/reconciliation/${row.id}`}>View</Link></td></tr>)}</DataTable> : null}</div></CashBankPageGate></AppShell>;
+  return <AppShell><CashBankPageGate permission="cash_bank.view"><PageHeader title="Bank Reconciliation" description="Basic reconciliation sessions and cleared line status." /><div className="mt-6"><DocumentListWorkspace documentLabel="Bank Reconciliation" newButtonLabel={canCreate ? 'New Reconciliation' : undefined} rows={rows} columns={reconciliationColumns} filters={filters} statusOptions={cashBankStatusOptions} loading={loading} error={error} emptyTitle="No reconciliation sessions" emptyDescription="Create a session or wait for backend data." searchPlaceholder="Cari session, period, atau status..." rowActions={[{ key: 'view', label: 'View Detail', href: (row) => `/cash-bank/reconciliation/${row.id}` }]} getSearchText={(row) => JSON.stringify(row)} getStatus={(row) => String(row.status ?? 'draft')} getDate={(row) => String(row.statement_start_date ?? '').slice(0, 10)} onCreate={canCreate ? () => router.push('/cash-bank/reconciliation/create') : undefined} onApplyFilters={load} onFilterChange={setFilters} /></div></CashBankPageGate></AppShell>;
 }
 
 function ReconciliationForm() {
@@ -259,10 +403,6 @@ function CashBankReports() {
 
 function DetailCard({ row, mode }: { row: CashBankTransaction; mode: CashMode }) {
   return <div className="grid gap-4 lg:grid-cols-[1fr_320px]"><div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"><div className="flex justify-between gap-4"><div><p className="text-xs uppercase tracking-wide text-slate-500">Account / Direction</p><p className="mt-1 text-lg font-semibold text-slate-950">{accountText(row, mode)}</p><p className="mt-1 text-sm text-slate-600">Date: {formatDate(docDate(row, mode))}</p><p className="text-sm text-slate-600">Notes: {String(row.notes ?? '-')}</p></div><CashBankStatusBadge status={row.status} /></div></div><div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"><p className="text-sm text-slate-500">Amount</p><p className="mt-2 text-2xl font-semibold">{formatCurrency(Number(row.amount ?? 0))}</p></div></div>;
-}
-
-function FilterBar({ filters, onChange, onApply }: { filters: { search: string; status: string; date_from: string; date_to: string }; onChange: (value: { search: string; status: string; date_from: string; date_to: string }) => void; onApply: () => void }) {
-  return <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-5"><Input label="Search" value={filters.search} onChange={(value) => onChange({ ...filters, search: value })} /><Input label="Status" value={filters.status} onChange={(value) => onChange({ ...filters, status: value })} /><Input label="From" type="date" value={filters.date_from} onChange={(value) => onChange({ ...filters, date_from: value })} /><Input label="To" type="date" value={filters.date_to} onChange={(value) => onChange({ ...filters, date_to: value })} /><button type="button" onClick={onApply} className="self-end rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">Apply</button></div>;
 }
 
 function SummaryGrid({ data }: { data: Row }) {

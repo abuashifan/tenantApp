@@ -22,6 +22,9 @@ export function salesDocumentDate(document: SalesDocument): string {
       document.delivery_date ??
       document.proforma_date ??
       document.invoice_date ??
+      document.receipt_date ??
+      document.return_date ??
+      document.deposit_date ??
       document.document_date ??
       '-',
   ).slice(0, 10);

@@ -12,6 +12,12 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PermissionGuard } from '@/components/ui/PermissionGuard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import {
+  DocumentListWorkspace,
+  type WorkspaceColumn,
+  type WorkspaceFilterState,
+  type WorkspaceRowAction,
+} from '@/components/workspace';
 import { listChartOfAccounts } from '@/features/accounting/chart-of-accounts/api';
 import { listMasterData } from '@/features/accounting/master-data/api';
 import { purchaseGet, purchasePatch, purchasePost } from '@/features/purchase/api/purchaseApi';
@@ -150,6 +156,22 @@ const ACTIONS: Record<string, Array<{ key: string; label: string; permission: st
   ],
 };
 
+const purchaseStatusOptions = [
+  { label: 'All Status', value: 'all' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'Open', value: 'open' },
+  { label: 'Submitted', value: 'submitted' },
+  { label: 'Approved', value: 'approved' },
+  { label: 'Confirmed', value: 'confirmed' },
+  { label: 'Received', value: 'received' },
+  { label: 'Posted', value: 'posted' },
+  { label: 'Paid', value: 'paid' },
+  { label: 'Closed', value: 'closed' },
+  { label: 'Rejected', value: 'rejected' },
+  { label: 'Cancelled', value: 'cancelled' },
+  { label: 'Void', value: 'void' },
+];
+
 export function PurchaseWorkspace({ segments = [] }: PurchaseWorkspaceProps) {
   const [module, action, id] = segments;
 
@@ -209,16 +231,18 @@ function PurchaseLanding() {
 }
 
 function DocumentList({ config }: { config: PurchaseEndpointConfig }) {
+  const router = useRouter();
   const [rows, setRows] = useState<PurchaseDocument[]>([]);
-  const [filters, setFilters] = useState({ search: '', status: '', date_from: '', date_to: '' });
+  const [filters, setFilters] = useState<WorkspaceFilterState>({ search: '', status: 'all', party: 'all', dateFrom: '', dateTo: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const canCreate = hasPermission(getStoredPermissions(), `${config.permissionPrefix}.create`);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      setRows((await purchaseGet<PurchaseDocument[]>(config.apiPath, { status: filters.status })).data ?? []);
+      setRows((await purchaseGet<PurchaseDocument[]>(config.apiPath, { status: filters.status === 'all' ? undefined : filters.status })).data ?? []);
     } catch (event) {
       setError(getApiErrorMessage(event));
     } finally {
@@ -228,13 +252,8 @@ function DocumentList({ config }: { config: PurchaseEndpointConfig }) {
 
   useEffect(() => { queueMicrotask(() => void load()); }, [load]);
 
-  const visibleRows = useMemo(() => {
-    const search = filters.search.toLowerCase();
-    return rows.filter((row) => {
-      const date = documentDate(row, config);
-      return (!search || JSON.stringify(row).toLowerCase().includes(search)) && (!filters.date_from || date >= filters.date_from) && (!filters.date_to || date <= filters.date_to);
-    });
-  }, [config, filters, rows]);
+  const columns = useMemo<WorkspaceColumn<PurchaseDocument>[]>(() => purchaseColumns(config), [config]);
+  const rowActions = useMemo<WorkspaceRowAction<PurchaseDocument>[]>(() => [{ key: 'view', label: 'View Detail', href: (row) => `${config.href}/${row.id}` }], [config.href]);
 
   return (
     <AppShell>
@@ -242,27 +261,30 @@ function DocumentList({ config }: { config: PurchaseEndpointConfig }) {
         <PageHeader
           title={config.label}
           description={`${config.singular} list with backend status actions and tenant-aware company context.`}
-          actions={<PermissionGuard permission={`${config.permissionPrefix}.create`}><Link href={`${config.href}/new`} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">New {config.singular}</Link></PermissionGuard>}
         />
-        <div className="mt-6 space-y-4">
-          <FilterBar filters={filters} onChange={setFilters} onApply={load} />
-          {loading ? <LoadingState title={`Loading ${config.label}`} /> : null}
-          {error ? <ErrorState message={error} /> : null}
-          {!loading && !error && visibleRows.length === 0 ? <EmptyState title={`No ${config.label.toLowerCase()} found`} description="Create a document or adjust the filters." /> : null}
-          {visibleRows.length > 0 ? (
-            <DataTable columns={['Document', 'Date', 'Vendor/Source', 'Status', 'Total', 'Actions']}>
-              {visibleRows.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{documentNumber(row, config)}</td>
-                  <td className="px-4 py-3 text-slate-700">{formatDate(documentDate(row, config))}</td>
-                  <td className="px-4 py-3 text-slate-700">{vendorName(row)}</td>
-                  <td className="px-4 py-3"><PurchaseStatusBadge status={String(row.status ?? 'draft')} /></td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatCurrency(documentTotal(row))}</td>
-                  <td className="px-4 py-3"><Link href={`${config.href}/${row.id}`} className="text-sm font-medium text-slate-900 underline">View</Link></td>
-                </tr>
-              ))}
-            </DataTable>
-          ) : null}
+        <div className="mt-6">
+          <DocumentListWorkspace
+            documentLabel={config.singular}
+            newButtonLabel={canCreate ? `New ${config.singular}` : undefined}
+            rows={rows}
+            columns={columns}
+            filters={filters}
+            statusOptions={purchaseStatusOptions}
+            loading={loading}
+            error={error}
+            emptyTitle={`No ${config.label.toLowerCase()} found`}
+            emptyDescription="Create a document or adjust the filters."
+            searchPlaceholder={`Cari ${config.singular.toLowerCase()}, vendor, source, atau status...`}
+            partyFilterLabel="Vendor"
+            rowActions={rowActions}
+            getSearchText={(row) => JSON.stringify(row)}
+            getStatus={(row) => String(row.status ?? 'draft')}
+            getDate={(row) => documentDate(row, config)}
+            getPartyName={vendorName}
+            onCreate={canCreate ? () => router.push(`${config.href}/new`) : undefined}
+            onApplyFilters={load}
+            onFilterChange={setFilters}
+          />
         </div>
       </PurchasePageGate>
     </AppShell>
@@ -499,13 +521,30 @@ function LineEditor({ lines, setLines, selectors, priceMode, simple }: { lines: 
 }
 
 function PaymentList({ type }: { type: 'vendor-deposits' | 'vendor-payments' }) {
+  const router = useRouter();
   const config = paymentConfig(type);
+  const path = type === 'vendor-deposits' ? '/vendor-deposits' : '/payments';
+  const purchaseConfig = { ...DOCUMENTS.requests, numberKeys: config.numberKeys, dateKeys: config.dateKeys };
   const [rows, setRows] = useState<PurchaseDocument[]>([]);
+  const [filters, setFilters] = useState<WorkspaceFilterState>({ search: '', status: 'all', party: 'all', dateFrom: '', dateTo: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const load = useCallback(async () => { try { setLoading(true); setError(null); setRows((await purchaseGet<PurchaseDocument[]>(config.path)).data ?? []); } catch (event) { setError(getApiErrorMessage(event)); } finally { setLoading(false); } }, [config.path]);
+  const canCreate = hasPermission(getStoredPermissions(), `${config.permissionPrefix}.create`);
+  const status = filters.status;
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setRows((await purchaseGet<PurchaseDocument[]>(path, { status: status === 'all' ? undefined : status })).data ?? []);
+    } catch (event) {
+      setError(getApiErrorMessage(event));
+    } finally {
+      setLoading(false);
+    }
+  }, [path, status]);
+
   useEffect(() => { queueMicrotask(() => void load()); }, [load]);
-  return <AppShell><PurchasePageGate permission={`${config.permissionPrefix}.view`}><PageHeader title={config.label} description={config.description} actions={<PermissionGuard permission={`${config.permissionPrefix}.create`}><Link href={`/purchase/${type}/new`} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">New {config.singular}</Link></PermissionGuard>} /><div className="mt-6 space-y-4">{loading ? <LoadingState title={`Loading ${config.label}`} /> : null}{error ? <ErrorState message={error} /> : null}{rows.length === 0 && !loading && !error ? <EmptyState title={`No ${config.label.toLowerCase()}`} description="Create a new vendor cash document or adjust filters." /> : null}{rows.length > 0 ? <DataTable columns={['Document', 'Date', 'Vendor', 'Status', 'Amount', 'Action']}>{rows.map((row) => <tr key={row.id}><td className="px-4 py-3 font-medium">{documentNumber(row, { ...DOCUMENTS.requests, numberKeys: config.numberKeys, dateKeys: config.dateKeys })}</td><td className="px-4 py-3">{formatDate(documentDate(row, { ...DOCUMENTS.requests, numberKeys: config.numberKeys, dateKeys: config.dateKeys }))}</td><td className="px-4 py-3">{vendorName(row)}</td><td className="px-4 py-3"><PurchaseStatusBadge status={String(row.status ?? 'draft')} /></td><td className="px-4 py-3 text-right font-semibold">{formatCurrency(documentTotal(row))}</td><td className="px-4 py-3"><Link className="underline" href={`/purchase/${type}/${row.id}`}>View</Link></td></tr>)}</DataTable> : null}</div></PurchasePageGate></AppShell>;
+  return <AppShell><PurchasePageGate permission={`${config.permissionPrefix}.view`}><PageHeader title={config.label} description={config.description} /><div className="mt-6"><DocumentListWorkspace documentLabel={config.singular} newButtonLabel={canCreate ? `New ${config.singular}` : undefined} rows={rows} columns={purchaseColumns(purchaseConfig)} filters={filters} statusOptions={purchaseStatusOptions} loading={loading} error={error} emptyTitle={`No ${config.label.toLowerCase()}`} emptyDescription="Create a new vendor cash document or adjust filters." searchPlaceholder={`Cari ${config.singular.toLowerCase()}, vendor, atau status...`} partyFilterLabel="Vendor" rowActions={[{ key: 'view', label: 'View Detail', href: (row) => `/purchase/${type}/${row.id}` }]} getSearchText={(row) => JSON.stringify(row)} getStatus={(row) => String(row.status ?? 'draft')} getDate={(row) => documentDate(row, purchaseConfig)} getPartyName={vendorName} onCreate={canCreate ? () => router.push(`/purchase/${type}/new`) : undefined} onApplyFilters={load} onFilterChange={setFilters} /></div></PurchasePageGate></AppShell>;
 }
 
 function PaymentDetail({ type, id }: { type: 'vendor-deposits' | 'vendor-payments'; id: string }) {
@@ -579,13 +618,60 @@ function APObjectPage({ title, loader, permission = 'purchase.ap.view' }: { titl
   return <AppShell><PurchasePageGate permission={permission}><PageHeader title={title} description="Read-only AP report. Browser view only; PDF/Excel export is not part of Phase 15." /><div className="mt-6 space-y-4">{loading ? <LoadingState title={`Loading ${title}`} /> : null}{error ? <ErrorState message={error} /> : null}{data ? <SummaryCard data={data} /> : null}{rows.length > 0 ? <DataTable columns={Object.keys(rows[0]).slice(0, 6)}>{rows.map((row, index) => <tr key={index}>{Object.keys(rows[0]).slice(0, 6).map((key) => <td key={key} className="px-4 py-3">{String(row[key] ?? '-')}</td>)}</tr>)}</DataTable> : !loading && !error ? <EmptyState title="No report rows" description="The backend returned no tabular rows for this report." /> : null}</div></PurchasePageGate></AppShell>;
 }
 
-function FilterBar({ filters, onChange, onApply }: { filters: { search: string; status: string; date_from: string; date_to: string }; onChange: (filters: { search: string; status: string; date_from: string; date_to: string }) => void; onApply: () => void }) {
-  return <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-5"><input value={filters.search} onChange={(event) => onChange({ ...filters, search: event.target.value })} placeholder="Search" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" /><input value={filters.status} onChange={(event) => onChange({ ...filters, status: event.target.value })} placeholder="Status" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" /><input type="date" value={filters.date_from} onChange={(event) => onChange({ ...filters, date_from: event.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" /><input type="date" value={filters.date_to} onChange={(event) => onChange({ ...filters, date_to: event.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" /><button type="button" onClick={onApply} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">Apply</button></div>;
-}
-
 function PurchaseStatusBadge({ status }: { status: string }) {
   const tone = ['approved', 'confirmed', 'received', 'posted', 'paid', 'closed'].includes(status) ? 'success' : ['cancelled', 'void', 'rejected'].includes(status) ? 'danger' : ['draft', 'open'].includes(status) ? 'muted' : 'warning';
   return <StatusBadge status={status.replaceAll('_', ' ')} tone={tone} />;
+}
+
+function purchaseColumns(config: { numberKeys: string[]; dateKeys: string[] }): WorkspaceColumn<PurchaseDocument>[] {
+  return [
+    {
+      key: 'document',
+      label: 'Document',
+      widthClassName: 'min-w-[190px]',
+      sortable: true,
+      sortValue: (row) => documentNumber(row, config),
+      render: (row) => (
+        <div>
+          <p className="font-bold text-slate-950">{documentNumber(row, config)}</p>
+          <p className="mt-1 text-xs text-slate-400">{String(row.source_number ?? row.source_type ?? 'Purchase document')}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'date',
+      label: 'Date',
+      widthClassName: 'min-w-[140px]',
+      sortable: true,
+      sortValue: (row) => documentDate(row, config),
+      render: (row) => formatDate(documentDate(row, config)),
+    },
+    {
+      key: 'vendor',
+      label: 'Vendor / Source',
+      widthClassName: 'min-w-[240px]',
+      sortable: true,
+      sortValue: vendorName,
+      render: (row) => vendorName(row),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      widthClassName: 'min-w-[150px]',
+      sortable: true,
+      sortValue: (row) => String(row.status ?? 'draft'),
+      render: (row) => <PurchaseStatusBadge status={String(row.status ?? 'draft')} />,
+    },
+    {
+      key: 'total',
+      label: 'Total',
+      align: 'right',
+      widthClassName: 'min-w-[150px]',
+      sortable: true,
+      sortValue: documentTotal,
+      render: (row) => <p className="font-bold text-slate-950">{formatCurrency(documentTotal(row))}</p>,
+    },
+  ];
 }
 
 function TotalsCard({ document }: { document: PurchaseDocument }) {

@@ -19,7 +19,7 @@ import { virtualTabsStorageKey } from '@/components/layout/VirtualTabsProvider';
 import { ApiRequestError, apiRequest } from '@/lib/api';
 import type { ApiResponse } from '@/types/api';
 import type { LoginResponse } from '@/types/auth';
-import type { Company } from '@/types/company';
+import type { ActiveCompany, Company } from '@/types/company';
 
 type FeatureCard = {
   title: string;
@@ -68,7 +68,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +88,7 @@ export default function LoginPage() {
         '/auth/login',
         {
           method: 'POST',
-          body: { email, password, remember: rememberMe },
+          body: { email, password },
         },
       );
 
@@ -108,6 +107,25 @@ export default function LoginPage() {
 
       if (companies.length === 0) {
         setError('User ini belum punya company.');
+        return;
+      }
+
+      if (companies.length === 1) {
+        const activeCompanyRes = await apiRequest<
+          ApiResponse<{ active_company: ActiveCompany }>
+        >('/companies/select', {
+          method: 'POST',
+          token: loginRes.data.token,
+          body: { company_id: companies[0].id },
+        });
+
+        localStorage.setItem('active_company_id', String(companies[0].id));
+        localStorage.setItem(
+          'active_company',
+          JSON.stringify(activeCompanyRes.data.active_company),
+        );
+        sessionStorage.removeItem(virtualTabsStorageKey);
+        router.push('/dashboard');
         return;
       }
 
@@ -262,18 +280,6 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(event) => setRememberMe(event.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-[var(--color-yale-blue-900)] focus:ring-2 focus:ring-[var(--color-tropical-teal-500)]"
-                  />
-                  Remember me
-                </label>
               </div>
 
               <div className="mt-4 rounded-2xl border border-[var(--color-ocean-mist-100)] bg-[var(--color-ocean-mist-50)] px-4 py-3">

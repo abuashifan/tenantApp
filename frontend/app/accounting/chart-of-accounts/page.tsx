@@ -1,33 +1,30 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
-import { DataTable } from '@/components/ui/DataTable';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { ErrorState } from '@/components/ui/ErrorState';
-import { LoadingState } from '@/components/ui/LoadingState';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { PermissionGuard } from '@/components/ui/PermissionGuard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { formatAccountingStatus } from '@/lib/formatters';
-import { getStoredCompanyId, getStoredToken } from '@/lib/api';
-import { fetchAndStorePermissions, hasPermission } from '@/lib/permissions';
-import type { AccountType, ChartOfAccount } from '@/types/accounting';
+import {
+  DocumentListWorkspace,
+  type WorkspaceColumn,
+  type WorkspaceFilterState,
+  type WorkspaceRowAction,
+} from '@/components/workspace';
+import { AccountingPageGate } from '@/features/accounting/AccountingPageGate';
 import {
   activateChartOfAccount,
   deactivateChartOfAccount,
   listChartOfAccounts,
 } from '@/features/accounting/chart-of-accounts/api';
+import { formatAccountingStatus } from '@/lib/formatters';
+import { getStoredPermissions, hasPermission } from '@/lib/permissions';
+import type { ChartOfAccount } from '@/types/accounting';
 
-const accountTypes: Array<AccountType | 'all'> = [
-  'all',
-  'asset',
-  'liability',
-  'equity',
-  'revenue',
-  'expense',
+const accountStatusOptions = [
+  { label: 'All Status', value: 'all' },
+  { label: 'Active', value: 'active' },
+  { label: 'Inactive', value: 'inactive' },
 ];
 
 export default function ChartOfAccountsPage() {
@@ -36,22 +33,25 @@ export default function ChartOfAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<AccountType | 'all'>('all');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>(
-    'all',
-  );
+  const [filters, setFilters] = useState<WorkspaceFilterState>({
+    search: '',
+    status: 'all',
+    party: 'all',
+    dateFrom: '',
+    dateTo: '',
+  });
+  const permissions = getStoredPermissions();
+  const canCreate = hasPermission(permissions, 'coa.create');
 
   async function loadAccounts() {
     try {
       setError(null);
       setLoading(true);
       const res = await listChartOfAccounts({
-        account_type: typeFilter === 'all' ? undefined : typeFilter,
         is_active:
-          activeFilter === 'all'
+          filters.status === 'all'
             ? undefined
-            : activeFilter === 'active'
+            : filters.status === 'active'
               ? '1'
               : '0',
       });
@@ -64,47 +64,11 @@ export default function ChartOfAccountsPage() {
   }
 
   useEffect(() => {
-    const token = getStoredToken();
-    if (!token) {
-      router.replace('/login');
-      return;
-    }
-
-    const companyId = getStoredCompanyId();
-    if (!companyId) {
-      router.replace('/select-company');
-      return;
-    }
-
-    fetchAndStorePermissions()
-      .then((permissions) => {
-        if (!hasPermission(permissions, 'coa.view')) {
-          setLoading(false);
-          setError('You do not have permission to view chart of accounts.');
-          return;
-        }
-
-        void loadAccounts();
-      })
-      .catch((event) => {
-        setLoading(false);
-        setError(event instanceof Error ? event.message : 'Failed to load permissions');
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, typeFilter, activeFilter]);
-
-  const filteredAccounts = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return accounts;
-
-    return accounts.filter((account) => {
-      return (
-        account.account_code.toLowerCase().includes(q) ||
-        account.account_name.toLowerCase().includes(q) ||
-        account.account_type.toLowerCase().includes(q)
-      );
+    queueMicrotask(() => {
+      void loadAccounts();
     });
-  }, [accounts, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.status]);
 
   async function toggleActive(account: ChartOfAccount) {
     try {
@@ -125,159 +89,168 @@ export default function ChartOfAccountsPage() {
     }
   }
 
+  const parentById = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account])),
+    [accounts],
+  );
+
+  const columns = useMemo<WorkspaceColumn<ChartOfAccount>[]>(
+    () => [
+      {
+        key: 'code',
+        label: 'Code',
+        widthClassName: 'min-w-[140px]',
+        sortable: true,
+        sortValue: (account) => account.account_code,
+        render: (account) => (
+          <p className="font-bold text-slate-950">{account.account_code}</p>
+        ),
+      },
+      {
+        key: 'name',
+        label: 'Name',
+        widthClassName: 'min-w-[240px]',
+        sortable: true,
+        sortValue: (account) => account.account_name,
+        render: (account) => account.account_name,
+      },
+      {
+        key: 'type',
+        label: 'Type',
+        widthClassName: 'min-w-[140px]',
+        sortable: true,
+        sortValue: (account) => account.account_type,
+        render: (account) => formatAccountingStatus(account.account_type),
+      },
+      {
+        key: 'normal',
+        label: 'Normal',
+        widthClassName: 'min-w-[120px]',
+        sortable: true,
+        sortValue: (account) => account.normal_balance,
+        render: (account) => formatAccountingStatus(account.normal_balance),
+      },
+      {
+        key: 'parent',
+        label: 'Parent',
+        widthClassName: 'min-w-[240px]',
+        sortable: true,
+        sortValue: (account) => {
+          const parent = account.parent_account_id
+            ? parentById.get(account.parent_account_id)
+            : null;
+          return parent ? `${parent.account_code} ${parent.account_name}` : '';
+        },
+        render: (account) => {
+          const parent = account.parent_account_id
+            ? parentById.get(account.parent_account_id)
+            : null;
+          return parent ? `${parent.account_code} - ${parent.account_name}` : '-';
+        },
+      },
+      {
+        key: 'cash_bank',
+        label: 'Cash/Bank',
+        widthClassName: 'min-w-[140px]',
+        sortable: true,
+        sortValue: (account) => Number(account.is_cash_bank),
+        render: (account) =>
+          account.is_cash_bank ? (
+            <StatusBadge status="Cash/Bank" tone="default" />
+          ) : (
+            <span className="text-slate-400">-</span>
+          ),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        widthClassName: 'min-w-[120px]',
+        sortable: true,
+        sortValue: (account) => (account.is_active ? 'active' : 'inactive'),
+        render: (account) => (
+          <StatusBadge
+            status={account.is_active ? 'Active' : 'Inactive'}
+            tone={account.is_active ? 'success' : 'muted'}
+          />
+        ),
+      },
+    ],
+    [parentById],
+  );
+
+  const rowActions: WorkspaceRowAction<ChartOfAccount>[] = [
+    {
+      key: 'view',
+      label: 'View Detail',
+      href: (account) => `/accounting/chart-of-accounts/${account.id}`,
+    },
+    {
+      key: 'edit',
+      label: 'Edit',
+      href: (account) => `/accounting/chart-of-accounts/${account.id}/edit`,
+      disabled: () => !hasPermission(getStoredPermissions(), 'coa.edit'),
+    },
+    {
+      key: 'toggle-active',
+      label: 'Activate / Deactivate',
+      danger: true,
+      disabled: (account) =>
+        busyId === account.id ||
+        !hasPermission(
+          getStoredPermissions(),
+          account.is_active ? 'coa.deactivate' : 'coa.edit',
+        ),
+      onClick: toggleActive,
+    },
+  ];
+
   return (
     <AppShell>
-      <PageHeader
-        title="Chart of Accounts"
-        description="Review and maintain the tenant chart of accounts used by journals and reports."
-        actions={
-          <PermissionGuard permission="coa.create">
-            <Link
-              href="/accounting/chart-of-accounts/new"
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-            >
-              New Account
-            </Link>
-          </PermissionGuard>
-        }
-      />
+      <AccountingPageGate permission="coa.view">
+        <PageHeader
+          title="Chart of Accounts"
+          description="Review and maintain the tenant chart of accounts used by journals and reports."
+        />
 
-      <div className="mt-6 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
-        <label className="md:col-span-2">
-          <span className="text-xs font-medium text-slate-500">Search</span>
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Code, name, or type"
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+        <div className="mt-6">
+          <DocumentListWorkspace
+            documentLabel="Chart of Account"
+            newButtonLabel={canCreate ? 'New Account' : undefined}
+            rows={accounts}
+            columns={columns}
+            filters={filters}
+            statusOptions={accountStatusOptions}
+            loading={loading}
+            error={error}
+            emptyTitle="No accounts found"
+            emptyDescription="Adjust filters or create the first account for this tenant."
+            searchPlaceholder="Search code, name, type, normal balance, or parent"
+            rowActions={rowActions}
+            getSearchText={(account) => {
+              const parent = account.parent_account_id
+                ? parentById.get(account.parent_account_id)
+                : null;
+              return [
+                account.account_code,
+                account.account_name,
+                account.account_type,
+                account.normal_balance,
+                parent?.account_code,
+                parent?.account_name,
+                account.is_cash_bank ? 'cash bank' : '',
+                account.is_active ? 'active' : 'inactive',
+              ]
+                .filter(Boolean)
+                .join(' ');
+            }}
+            getStatus={(account) => (account.is_active ? 'active' : 'inactive')}
+            getDate={() => ''}
+            onCreate={canCreate ? () => router.push('/accounting/chart-of-accounts/new') : undefined}
+            onApplyFilters={loadAccounts}
+            onFilterChange={setFilters}
           />
-        </label>
-
-        <label>
-          <span className="text-xs font-medium text-slate-500">Type</span>
-          <select
-            value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value as AccountType | 'all')}
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
-          >
-            {accountTypes.map((type) => (
-              <option key={type} value={type}>
-                {type === 'all' ? 'All types' : type}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span className="text-xs font-medium text-slate-500">Status</span>
-          <select
-            value={activeFilter}
-            onChange={(event) =>
-              setActiveFilter(event.target.value as 'all' | 'active' | 'inactive')
-            }
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
-          >
-            <option value="all">All statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="mt-6">
-        {loading ? (
-          <LoadingState title="Loading accounts" />
-        ) : error ? (
-          <ErrorState message={error} />
-        ) : filteredAccounts.length === 0 ? (
-          <EmptyState
-            title="No accounts found"
-            description="Adjust filters or create the first account for this tenant."
-          />
-        ) : (
-          <DataTable
-            columns={[
-              'Code',
-              'Name',
-              'Type',
-              'Normal',
-              'Parent',
-              'Cash/Bank',
-              'Status',
-              'Actions',
-            ]}
-          >
-            {filteredAccounts.map((account) => {
-              const parent = accounts.find(
-                (item) => item.id === account.parent_account_id,
-              );
-
-              return (
-                <tr key={account.id} className="hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-                    {account.account_code}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {account.account_name}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                    {formatAccountingStatus(account.account_type)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                    {formatAccountingStatus(account.normal_balance)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-500">
-                    {parent ? `${parent.account_code} - ${parent.account_name}` : '-'}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    {account.is_cash_bank ? (
-                      <StatusBadge status="Cash/Bank" tone="default" />
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <StatusBadge
-                      status={account.is_active ? 'Active' : 'Inactive'}
-                      tone={account.is_active ? 'success' : 'muted'}
-                    />
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/accounting/chart-of-accounts/${account.id}`}
-                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        View
-                      </Link>
-                      <PermissionGuard permission="coa.edit">
-                        <Link
-                          href={`/accounting/chart-of-accounts/${account.id}/edit`}
-                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          Edit
-                        </Link>
-                      </PermissionGuard>
-                      <PermissionGuard
-                        permission={account.is_active ? 'coa.deactivate' : 'coa.edit'}
-                      >
-                        <button
-                          type="button"
-                          disabled={busyId === account.id}
-                          onClick={() => toggleActive(account)}
-                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                        >
-                          {account.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
-                      </PermissionGuard>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </DataTable>
-        )}
-      </div>
+        </div>
+      </AccountingPageGate>
     </AppShell>
   );
 }

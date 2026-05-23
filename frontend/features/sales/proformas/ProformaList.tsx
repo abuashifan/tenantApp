@@ -1,35 +1,39 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppShell } from '@/components/layout/AppShell';
-import { DataTable } from '@/components/ui/DataTable';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { ErrorState } from '@/components/ui/ErrorState';
-import { LoadingState } from '@/components/ui/LoadingState';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { PermissionGuard } from '@/components/ui/PermissionGuard';
-import { SalesFilters, type SalesFilterState } from '@/features/sales/components/SalesFilters';
+import type { WorkspaceColumn, WorkspaceFilterState } from '@/components/workspace';
+import {
+  SalesDocumentListWorkspace,
+  toWorkspaceStatusOptions,
+} from '@/features/sales/components/SalesDocumentListWorkspace';
 import { SalesStatusBadge } from '@/features/sales/components/SalesStatusBadge';
-import { SalesPageGate } from '@/features/sales/SalesPageGate';
 import { customerName, salesDocumentDate, salesDocumentNumber } from '@/features/sales/documents/documentHelpers';
+import type { ProformaInvoice } from '@/features/sales/types';
 import { getApiErrorMessage } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import type { ProformaInvoice } from '@/features/sales/types';
 import { listProformas } from './api';
 
 const statuses = ['draft', 'issued', 'accepted', 'converted', 'cancelled'];
 
 export function ProformaList() {
   const [documents, setDocuments] = useState<ProformaInvoice[]>([]);
-  const [filters, setFilters] = useState<SalesFilterState>({ search: '', status: '', date_from: '', date_to: '' });
+  const [filters, setFilters] = useState<WorkspaceFilterState>({
+    search: '',
+    status: 'all',
+    party: 'all',
+    dateFrom: '',
+    dateTo: '',
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await listProformas({ status: filters.status });
+      const response = await listProformas({
+        status: filters.status === 'all' ? undefined : filters.status,
+      });
       setDocuments(response.data ?? []);
     } catch (event) {
       setError(getApiErrorMessage(event));
@@ -37,45 +41,88 @@ export function ProformaList() {
       setLoading(false);
     }
   }, [filters.status]);
+
   useEffect(() => {
-    queueMicrotask(() => {
-      void load();
-    });
+    queueMicrotask(() => void load());
   }, [load]);
-  const rows = useMemo(() => {
-    const search = filters.search.trim().toLowerCase();
-    return documents.filter((document) => {
-      const date = salesDocumentDate(document);
-      return (!search || salesDocumentNumber(document).toLowerCase().includes(search) || customerName(document).toLowerCase().includes(search)) &&
-        (!filters.date_from || date >= filters.date_from) &&
-        (!filters.date_to || date <= filters.date_to);
-    });
-  }, [documents, filters]);
+
+  const columns = useMemo<WorkspaceColumn<ProformaInvoice>[]>(
+    () => [
+      {
+        key: 'proforma',
+        label: 'Proforma',
+        widthClassName: 'min-w-[190px]',
+        sortable: true,
+        sortValue: salesDocumentNumber,
+        render: (document) => (
+          <div>
+            <p className="font-bold text-slate-950">{salesDocumentNumber(document)}</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Valid until {document.valid_until ? formatDate(document.valid_until) : '-'}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: 'date',
+        label: 'Date',
+        widthClassName: 'min-w-[140px]',
+        sortable: true,
+        sortValue: salesDocumentDate,
+        render: (document) => formatDate(salesDocumentDate(document)),
+      },
+      {
+        key: 'customer',
+        label: 'Customer',
+        widthClassName: 'min-w-[240px]',
+        sortable: true,
+        sortValue: customerName,
+        render: (document) => customerName(document),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        widthClassName: 'min-w-[150px]',
+        sortable: true,
+        sortValue: (document) => String(document.status ?? 'draft'),
+        render: (document) => <SalesStatusBadge status={document.status ?? 'draft'} />,
+      },
+      {
+        key: 'grand_total',
+        label: 'Grand Total',
+        align: 'right',
+        widthClassName: 'min-w-[150px]',
+        sortable: true,
+        sortValue: (document) => Number(document.grand_total ?? 0),
+        render: (document) => (
+          <p className="font-bold text-slate-950">{formatCurrency(document.grand_total ?? 0)}</p>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
-    <AppShell>
-      <SalesPageGate permission="sales.proformas.view">
-        <PageHeader title="Proforma Invoices" description="Non-accounting proforma documents with issue, accept, cancel, and invoice conversion workflow." actions={<PermissionGuard permission="sales.proformas.create"><Link href="/sales/proformas/new" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">New Proforma</Link></PermissionGuard>} />
-        <div className="mt-6 space-y-4">
-          <SalesFilters filters={filters} onChange={setFilters} onApply={load} statuses={statuses} />
-          {loading ? <LoadingState title="Loading proformas" /> : null}
-          {error ? <ErrorState message={error} /> : null}
-          {!loading && !error && rows.length === 0 ? <EmptyState title="No proformas found" description="Create a proforma or adjust filters." /> : null}
-          {!loading && !error && rows.length > 0 ? (
-            <DataTable columns={['Proforma', 'Date', 'Customer', 'Status', 'Grand Total', 'Actions']}>
-              {rows.map((document) => (
-                <tr key={document.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{salesDocumentNumber(document)}</td>
-                  <td className="px-4 py-3 text-slate-700">{formatDate(salesDocumentDate(document))}</td>
-                  <td className="px-4 py-3 text-slate-700">{customerName(document)}</td>
-                  <td className="px-4 py-3"><SalesStatusBadge status={document.status ?? 'draft'} /></td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatCurrency(document.grand_total)}</td>
-                  <td className="px-4 py-3"><Link href={`/sales/proformas/${document.id}`} className="text-sm font-medium text-slate-900 underline">View</Link></td>
-                </tr>
-              ))}
-            </DataTable>
-          ) : null}
-        </div>
-      </SalesPageGate>
-    </AppShell>
+    <SalesDocumentListWorkspace
+      title="Proforma Invoices"
+      description="Non-accounting proforma documents with issue, accept, cancel, and invoice conversion workflow."
+      permission="sales.proformas.view"
+      createPermission="sales.proformas.create"
+      createHref="/sales/proformas/new"
+      detailHref={(document) => `/sales/proformas/${document.id}`}
+      documentLabel="Proforma Invoice"
+      newButtonLabel="New Proforma"
+      rows={documents}
+      columns={columns}
+      filters={filters}
+      statusOptions={toWorkspaceStatusOptions(statuses)}
+      loading={loading}
+      error={error}
+      emptyTitle="No proformas found"
+      emptyDescription="Create a proforma or adjust filters."
+      searchPlaceholder="Cari nomor proforma, customer, source, atau status..."
+      onApplyFilters={load}
+      onFilterChange={setFilters}
+    />
   );
 }

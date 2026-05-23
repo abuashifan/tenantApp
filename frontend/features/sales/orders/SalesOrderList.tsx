@@ -1,28 +1,29 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppShell } from '@/components/layout/AppShell';
-import { DataTable } from '@/components/ui/DataTable';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { ErrorState } from '@/components/ui/ErrorState';
-import { LoadingState } from '@/components/ui/LoadingState';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { PermissionGuard } from '@/components/ui/PermissionGuard';
-import { SalesFilters, type SalesFilterState } from '@/features/sales/components/SalesFilters';
+import type { WorkspaceColumn, WorkspaceFilterState } from '@/components/workspace';
+import {
+  SalesDocumentListWorkspace,
+  toWorkspaceStatusOptions,
+} from '@/features/sales/components/SalesDocumentListWorkspace';
 import { SalesStatusBadge } from '@/features/sales/components/SalesStatusBadge';
-import { SalesPageGate } from '@/features/sales/SalesPageGate';
 import { customerName, salesDocumentDate, salesDocumentNumber } from '@/features/sales/documents/documentHelpers';
+import type { SalesOrder } from '@/features/sales/types';
 import { getApiErrorMessage } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import type { SalesOrder } from '@/features/sales/types';
 import { listSalesOrders } from './api';
 
 const orderStatuses = ['draft', 'approved', 'confirmed', 'delivered', 'invoiced', 'closed', 'cancelled'];
 
 export function SalesOrderList() {
   const [orders, setOrders] = useState<SalesOrder[]>([]);
-  const [filters, setFilters] = useState<SalesFilterState>({ search: '', status: '', date_from: '', date_to: '' });
+  const [filters, setFilters] = useState<WorkspaceFilterState>({
+    search: '',
+    status: 'all',
+    party: 'all',
+    dateFrom: '',
+    dateTo: '',
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +31,9 @@ export function SalesOrderList() {
     try {
       setLoading(true);
       setError(null);
-      const response = await listSalesOrders({ status: filters.status });
+      const response = await listSalesOrders({
+        status: filters.status === 'all' ? undefined : filters.status,
+      });
       setOrders(response.data ?? []);
     } catch (event) {
       setError(getApiErrorMessage(event));
@@ -40,64 +43,86 @@ export function SalesOrderList() {
   }, [filters.status]);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      void load();
-    });
+    queueMicrotask(() => void load());
   }, [load]);
 
-  const visibleOrders = useMemo(() => {
-    const search = filters.search.trim().toLowerCase();
-    return orders.filter((order) => {
-      const date = salesDocumentDate(order);
-      const matchesSearch =
-        !search ||
-        salesDocumentNumber(order).toLowerCase().includes(search) ||
-        customerName(order).toLowerCase().includes(search);
-      return matchesSearch && (!filters.date_from || date >= filters.date_from) && (!filters.date_to || date <= filters.date_to);
-    });
-  }, [filters.date_from, filters.date_to, filters.search, orders]);
+  const columns = useMemo<WorkspaceColumn<SalesOrder>[]>(
+    () => [
+      {
+        key: 'order',
+        label: 'Order',
+        widthClassName: 'min-w-[190px]',
+        sortable: true,
+        sortValue: salesDocumentNumber,
+        render: (order) => (
+          <div>
+            <p className="font-bold text-slate-950">{salesDocumentNumber(order)}</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Source {order.quotation?.quotation_number ?? order.source_number ?? '-'}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: 'date',
+        label: 'Date',
+        widthClassName: 'min-w-[140px]',
+        sortable: true,
+        sortValue: salesDocumentDate,
+        render: (order) => formatDate(salesDocumentDate(order)),
+      },
+      {
+        key: 'customer',
+        label: 'Customer',
+        widthClassName: 'min-w-[240px]',
+        sortable: true,
+        sortValue: customerName,
+        render: (order) => customerName(order),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        widthClassName: 'min-w-[150px]',
+        sortable: true,
+        sortValue: (order) => String(order.status ?? 'draft'),
+        render: (order) => <SalesStatusBadge status={order.status ?? 'draft'} />,
+      },
+      {
+        key: 'grand_total',
+        label: 'Grand Total',
+        align: 'right',
+        widthClassName: 'min-w-[150px]',
+        sortable: true,
+        sortValue: (order) => Number(order.grand_total ?? 0),
+        render: (order) => (
+          <p className="font-bold text-slate-950">{formatCurrency(order.grand_total ?? 0)}</p>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
-    <AppShell>
-      <SalesPageGate permission="sales.orders.view">
-        <PageHeader
-          title="Sales Orders"
-          description="Create direct orders, convert quotations, manage confirmations, and monitor fulfillment quantities."
-          actions={
-            <PermissionGuard permission="sales.orders.create">
-              <Link href="/sales/orders/new" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-                New Sales Order
-              </Link>
-            </PermissionGuard>
-          }
-        />
-        <div className="mt-6 space-y-4">
-          <SalesFilters filters={filters} onChange={setFilters} onApply={load} statuses={orderStatuses} />
-          {loading ? <LoadingState title="Loading sales orders" /> : null}
-          {error ? <ErrorState message={error} /> : null}
-          {!loading && !error && visibleOrders.length === 0 ? (
-            <EmptyState title="No sales orders found" description="Create an order or convert an accepted quotation." />
-          ) : null}
-          {!loading && !error && visibleOrders.length > 0 ? (
-            <DataTable columns={['Order', 'Date', 'Customer', 'Status', 'Grand Total', 'Actions']}>
-              {visibleOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{salesDocumentNumber(order)}</td>
-                  <td className="px-4 py-3 text-slate-700">{formatDate(salesDocumentDate(order))}</td>
-                  <td className="px-4 py-3 text-slate-700">{customerName(order)}</td>
-                  <td className="px-4 py-3"><SalesStatusBadge status={order.status ?? 'draft'} /></td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatCurrency(order.grand_total)}</td>
-                  <td className="px-4 py-3">
-                    <Link href={`/sales/orders/${order.id}`} className="text-sm font-medium text-slate-900 underline">
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
-          ) : null}
-        </div>
-      </SalesPageGate>
-    </AppShell>
+    <SalesDocumentListWorkspace
+      title="Sales Orders"
+      description="Create direct orders, convert quotations, manage confirmations, and monitor fulfillment quantities."
+      permission="sales.orders.view"
+      createPermission="sales.orders.create"
+      createHref="/sales/orders/new"
+      detailHref={(order) => `/sales/orders/${order.id}`}
+      documentLabel="Sales Order"
+      newButtonLabel="New Sales Order"
+      rows={orders}
+      columns={columns}
+      filters={filters}
+      statusOptions={toWorkspaceStatusOptions(orderStatuses)}
+      loading={loading}
+      error={error}
+      emptyTitle="No sales orders found"
+      emptyDescription="Create an order or convert an accepted quotation."
+      searchPlaceholder="Cari nomor order, customer, source, atau status..."
+      onApplyFilters={load}
+      onFilterChange={setFilters}
+    />
   );
 }

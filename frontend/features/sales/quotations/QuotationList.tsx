@@ -1,28 +1,29 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppShell } from '@/components/layout/AppShell';
-import { DataTable } from '@/components/ui/DataTable';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { ErrorState } from '@/components/ui/ErrorState';
-import { LoadingState } from '@/components/ui/LoadingState';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { PermissionGuard } from '@/components/ui/PermissionGuard';
-import { SalesFilters, type SalesFilterState } from '@/features/sales/components/SalesFilters';
+import {
+  SalesDocumentListWorkspace,
+  toWorkspaceStatusOptions,
+} from '@/features/sales/components/SalesDocumentListWorkspace';
 import { SalesStatusBadge } from '@/features/sales/components/SalesStatusBadge';
-import { SalesPageGate } from '@/features/sales/SalesPageGate';
 import { customerName, salesDocumentDate, salesDocumentNumber } from '@/features/sales/documents/documentHelpers';
+import type { SalesQuotation } from '@/features/sales/types';
 import { getApiErrorMessage } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import type { SalesQuotation } from '@/features/sales/types';
+import type { WorkspaceColumn, WorkspaceFilterState } from '@/components/workspace';
 import { listSalesQuotations } from './api';
 
 const quotationStatuses = ['draft', 'sent', 'approved', 'accepted', 'rejected', 'converted', 'cancelled', 'expired'];
 
 export function QuotationList() {
   const [quotations, setQuotations] = useState<SalesQuotation[]>([]);
-  const [filters, setFilters] = useState<SalesFilterState>({ search: '', status: '', date_from: '', date_to: '' });
+  const [filters, setFilters] = useState<WorkspaceFilterState>({
+    search: '',
+    status: 'all',
+    party: 'all',
+    dateFrom: '',
+    dateTo: '',
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +31,9 @@ export function QuotationList() {
     try {
       setLoading(true);
       setError(null);
-      const response = await listSalesQuotations({ status: filters.status });
+      const response = await listSalesQuotations({
+        status: filters.status === 'all' ? undefined : filters.status,
+      });
       setQuotations(response.data ?? []);
     } catch (event) {
       setError(getApiErrorMessage(event));
@@ -45,62 +48,83 @@ export function QuotationList() {
     });
   }, [load]);
 
-  const visibleQuotations = useMemo(() => {
-    const search = filters.search.trim().toLowerCase();
-    return quotations.filter((quotation) => {
-      const date = salesDocumentDate(quotation);
-      const matchesSearch =
-        !search ||
-        salesDocumentNumber(quotation).toLowerCase().includes(search) ||
-        customerName(quotation).toLowerCase().includes(search);
-      const matchesFrom = !filters.date_from || date >= filters.date_from;
-      const matchesTo = !filters.date_to || date <= filters.date_to;
-      return matchesSearch && matchesFrom && matchesTo;
-    });
-  }, [filters.date_from, filters.date_to, filters.search, quotations]);
+  const columns = useMemo<WorkspaceColumn<SalesQuotation>[]>(
+    () => [
+      {
+        key: 'quotation',
+        label: 'Quotation',
+        widthClassName: 'min-w-[190px]',
+        sortable: true,
+        sortValue: salesDocumentNumber,
+        render: (quotation) => (
+          <div>
+            <p className="font-bold text-slate-950">{salesDocumentNumber(quotation)}</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Valid until {quotation.valid_until ? formatDate(quotation.valid_until) : '-'}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: 'date',
+        label: 'Date',
+        widthClassName: 'min-w-[140px]',
+        sortable: true,
+        sortValue: salesDocumentDate,
+        render: (quotation) => formatDate(salesDocumentDate(quotation)),
+      },
+      {
+        key: 'customer',
+        label: 'Customer',
+        widthClassName: 'min-w-[240px]',
+        sortable: true,
+        sortValue: customerName,
+        render: (quotation) => customerName(quotation),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        widthClassName: 'min-w-[150px]',
+        sortable: true,
+        sortValue: (quotation) => String(quotation.status ?? 'draft'),
+        render: (quotation) => <SalesStatusBadge status={quotation.status ?? 'draft'} />,
+      },
+      {
+        key: 'grand_total',
+        label: 'Grand Total',
+        align: 'right',
+        widthClassName: 'min-w-[150px]',
+        sortable: true,
+        sortValue: (quotation) => Number(quotation.grand_total ?? 0),
+        render: (quotation) => (
+          <p className="font-bold text-slate-950">{formatCurrency(quotation.grand_total ?? 0)}</p>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
-    <AppShell>
-      <SalesPageGate permission="sales.quotations.view">
-        <PageHeader
-          title="Sales Quotations"
-          description="Create, send, approve, accept, reject, cancel, and convert customer quotations."
-          actions={
-            <PermissionGuard permission="sales.quotations.create">
-              <Link href="/sales/quotations/new" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-                New Quotation
-              </Link>
-            </PermissionGuard>
-          }
-        />
-
-        <div className="mt-6 space-y-4">
-          <SalesFilters filters={filters} onChange={setFilters} onApply={load} statuses={quotationStatuses} />
-          {loading ? <LoadingState title="Loading quotations" /> : null}
-          {error ? <ErrorState message={error} /> : null}
-          {!loading && !error && visibleQuotations.length === 0 ? (
-            <EmptyState title="No quotations found" description="Create a quotation or adjust the filters." />
-          ) : null}
-          {!loading && !error && visibleQuotations.length > 0 ? (
-            <DataTable columns={['Quotation', 'Date', 'Customer', 'Status', 'Grand Total', 'Actions']}>
-              {visibleQuotations.map((quotation) => (
-                <tr key={quotation.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{salesDocumentNumber(quotation)}</td>
-                  <td className="px-4 py-3 text-slate-700">{formatDate(salesDocumentDate(quotation))}</td>
-                  <td className="px-4 py-3 text-slate-700">{customerName(quotation)}</td>
-                  <td className="px-4 py-3"><SalesStatusBadge status={quotation.status ?? 'draft'} /></td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatCurrency(quotation.grand_total)}</td>
-                  <td className="px-4 py-3">
-                    <Link href={`/sales/quotations/${quotation.id}`} className="text-sm font-medium text-slate-900 underline">
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
-          ) : null}
-        </div>
-      </SalesPageGate>
-    </AppShell>
+    <SalesDocumentListWorkspace
+      title="Sales Quotations"
+      description="Create, send, approve, accept, reject, cancel, and convert customer quotations."
+      permission="sales.quotations.view"
+      createPermission="sales.quotations.create"
+      createHref="/sales/quotations/new"
+      detailHref={(quotation) => `/sales/quotations/${quotation.id}`}
+      documentLabel="Sales Quotation"
+      newButtonLabel="New Quotation"
+      rows={quotations}
+      columns={columns}
+      filters={filters}
+      statusOptions={toWorkspaceStatusOptions(quotationStatuses)}
+      loading={loading}
+      error={error}
+      emptyTitle="No quotations found"
+      emptyDescription="Create a quotation or adjust the filters."
+      searchPlaceholder="Cari nomor quotation, customer, source, atau status..."
+      onApplyFilters={load}
+      onFilterChange={setFilters}
+    />
   );
 }
