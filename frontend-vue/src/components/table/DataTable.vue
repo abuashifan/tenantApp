@@ -10,10 +10,11 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
 } from '@tanstack/vue-table'
-import { computed, ref, watch } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 
 import { useVueTable } from '@tanstack/vue-table'
 
+import DataTableCheckbox from '@/components/table/DataTableCheckbox.vue'
 import DataTableEmptyState from '@/components/table/DataTableEmptyState.vue'
 import DataTablePagination from '@/components/table/DataTablePagination.vue'
 import { cn } from '@/utils/cn'
@@ -26,12 +27,14 @@ const props = withDefaults(
     emptyTitle?: string
     emptyDescription?: string
     selectedIds?: string[]
+    selectable?: boolean
   }>(),
   {
     loading: false,
     emptyTitle: 'No data',
     emptyDescription: 'Try adjusting your filters or date range.',
     selectedIds: () => [],
+    selectable: false,
   },
 )
 
@@ -43,6 +46,31 @@ const globalFilter = ref('')
 const sorting = ref<SortingState>([])
 const pagination = ref<PaginationState>({ pageIndex: 0, pageSize: 10 })
 const rowSelection = ref<RowSelectionState>({})
+
+const selectionColumn = computed<ColumnDef<TRow, unknown>>(() => ({
+  id: 'select',
+  header: ({ table }) =>
+    h(DataTableCheckbox, {
+      checked: table.getIsAllPageRowsSelected(),
+      indeterminate: table.getIsSomePageRowsSelected(),
+      ariaLabel: 'Select all rows',
+      onChange: (checked: boolean) => table.toggleAllPageRowsSelected(checked),
+    }),
+  cell: ({ row }) =>
+    h(DataTableCheckbox, {
+      checked: row.getIsSelected(),
+      disabled: !row.getCanSelect(),
+      ariaLabel: 'Select row',
+      onChange: (checked: boolean) => row.toggleSelected(checked),
+    }),
+  enableSorting: false,
+  enableHiding: false,
+}))
+
+const columnsWithSelection = computed<ColumnDef<TRow, unknown>[]>(() => {
+  if (!props.selectable) return props.columns
+  return [selectionColumn.value, ...props.columns]
+})
 
 watch(
   () => props.selectedIds,
@@ -59,7 +87,7 @@ const table = useVueTable({
     return props.data
   },
   get columns() {
-    return props.columns
+    return columnsWithSelection.value
   },
   state: {
     get globalFilter() {
@@ -87,7 +115,9 @@ const table = useVueTable({
   onRowSelectionChange: (updater) => {
     rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater
   },
-  enableRowSelection: true,
+  get enableRowSelection() {
+    return props.selectable
+  },
   getRowId: (row) => row.id,
   getCoreRowModel: getCoreRowModel(),
   getSortedRowModel: getSortedRowModel(),

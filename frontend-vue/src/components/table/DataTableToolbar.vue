@@ -9,9 +9,25 @@ const props = withDefaults(
     startDate: string
     endDate: string
     selectedCount: number
+    searchPlaceholder?: string
+    createLabel?: string
+    voidLabel?: string
+    filterLabel?: string
+    showCreate?: boolean
+    showVoid?: boolean
+    showFilter?: boolean
+    showDateFilters?: boolean
   }>(),
   {
     selectedCount: 0,
+    searchPlaceholder: 'Search transaction number…',
+    createLabel: 'Create New',
+    voidLabel: 'Void',
+    filterLabel: 'Filter',
+    showCreate: true,
+    showVoid: true,
+    showFilter: true,
+    showDateFilters: true,
   },
 )
 
@@ -36,13 +52,13 @@ const emit = defineEmits<{
             <input
               :value="props.search"
               class="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
-              placeholder="Search transaction number…"
+              :placeholder="props.searchPlaceholder"
               @input="emit('update:search', ($event.target as HTMLInputElement).value)"
             />
           </div>
         </label>
 
-        <label class="block space-y-1.5">
+        <label v-if="props.showDateFilters" class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">Start Date</span>
           <input
             :value="props.startDate"
@@ -52,7 +68,7 @@ const emit = defineEmits<{
           />
         </label>
 
-        <label class="block space-y-1.5">
+        <label v-if="props.showDateFilters" class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">End Date</span>
           <input
             :value="props.endDate"
@@ -64,17 +80,23 @@ const emit = defineEmits<{
       </div>
 
       <div class="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
-        <BaseButton variant="secondary" size="md" @click="emit('filter')">
+        <BaseButton v-if="props.showFilter" variant="secondary" size="md" @click="emit('filter')">
           <Filter class="h-4 w-4" />
-          Filter
+          {{ props.filterLabel }}
         </BaseButton>
-        <BaseButton variant="secondary" size="md" @click="emit('create')">
+        <BaseButton v-if="props.showCreate" variant="secondary" size="md" @click="emit('create')">
           <Plus class="h-4 w-4" />
-          Create New
+          {{ props.createLabel }}
         </BaseButton>
-        <BaseButton variant="danger" size="md" :disabled="props.selectedCount === 0" @click="emit('void')">
+        <BaseButton
+          v-if="props.showVoid"
+          variant="danger"
+          size="md"
+          :disabled="props.selectedCount === 0"
+          @click="emit('void')"
+        >
           <Slash class="h-4 w-4" />
-          Void
+          {{ props.voidLabel }}
         </BaseButton>
       </div>
     </div>
