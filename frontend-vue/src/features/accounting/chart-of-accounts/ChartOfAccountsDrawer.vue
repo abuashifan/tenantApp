@@ -3,12 +3,12 @@ import { computed, ref, watch } from 'vue'
 import { X } from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
-import type { ChartOfAccountRow } from '@/features/accounting/chart-of-accounts/chartOfAccounts.service'
+import type { MockChartOfAccount } from '@/stores/mockAccountingDataStore'
 
 const props = defineProps<{
   open: boolean
   mode: 'create' | 'edit'
-  account?: ChartOfAccountRow | null
+  account?: MockChartOfAccount | null
 }>()
 
 const emit = defineEmits<{
@@ -20,9 +20,9 @@ const title = computed(() => (props.mode === 'create' ? 'Add Account' : 'Edit Ac
 
 const accountCode = ref('')
 const accountName = ref('')
-const accountType = ref('asset')
+const accountType = ref<MockChartOfAccount['type']>('Kas & Bank')
 const parentAccountId = ref<string | null>(null)
-const normalBalance = ref<'debit' | 'credit'>('debit')
+const normalBalance = ref<MockChartOfAccount['normalBalance']>('Debit')
 const isActive = ref(true)
 
 watch(
@@ -32,9 +32,9 @@ watch(
     const account = props.account
     accountCode.value = account?.code ?? ''
     accountName.value = account?.name ?? ''
-    accountType.value = account?.type ?? 'asset'
-    parentAccountId.value = account?.parentId ?? null
-    normalBalance.value = account?.normalBalance ?? 'debit'
+    accountType.value = account?.type ?? 'Kas & Bank'
+    parentAccountId.value = account?.parentCode ?? null
+    normalBalance.value = account?.normalBalance ?? 'Debit'
     isActive.value = account?.isActive ?? true
   },
   { immediate: true },
@@ -45,7 +45,7 @@ function submit() {
     account_code: accountCode.value,
     account_name: accountName.value,
     account_type: accountType.value,
-    parent_account_id: parentAccountId.value,
+    parent_code: parentAccountId.value,
     normal_balance: normalBalance.value,
     is_active: isActive.value,
   })
@@ -78,6 +78,7 @@ function submit() {
               <span class="text-xs font-bold text-slate-500">Account Code</span>
               <input
                 v-model="accountCode"
+                :disabled="props.mode === 'edit'"
                 class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
                 placeholder="e.g. 1101"
               />
@@ -98,11 +99,14 @@ function submit() {
                 v-model="accountType"
                 class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
               >
-                <option value="asset">Asset</option>
-                <option value="liability">Liability</option>
-                <option value="equity">Equity</option>
-                <option value="revenue">Revenue</option>
-                <option value="expense">Expense</option>
+                <option value="Kas & Bank">Kas & Bank</option>
+                <option value="Piutang">Piutang</option>
+                <option value="Persediaan">Persediaan</option>
+                <option value="Aset Tetap">Aset Tetap</option>
+                <option value="Hutang">Hutang</option>
+                <option value="Modal">Modal</option>
+                <option value="Pendapatan">Pendapatan</option>
+                <option value="Beban">Beban</option>
               </select>
             </label>
 
@@ -111,7 +115,7 @@ function submit() {
               <input
                 v-model="parentAccountId"
                 class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
-                placeholder="(optional) parent account id"
+                placeholder="(optional) parent account code"
               />
             </label>
 
@@ -121,8 +125,8 @@ function submit() {
                 v-model="normalBalance"
                 class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
               >
-                <option value="debit">Debit</option>
-                <option value="credit">Credit</option>
+                <option value="Debit">Debit</option>
+                <option value="Credit">Credit</option>
               </select>
             </label>
 
@@ -145,4 +149,3 @@ function submit() {
     </div>
   </Teleport>
 </template>
-

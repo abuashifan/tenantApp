@@ -3,7 +3,21 @@ import type { ColumnDef } from '@tanstack/vue-table'
 
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
 import type { WorkspaceListConfig } from '@/types/workspace'
-import type { JournalListRow } from '@/features/accounting/journals/journal.service'
+import type { MockJournalStatus } from '@/stores/mockAccountingDataStore'
+
+export type JournalListRow = {
+  id: string
+  journal_number: string
+  journal_date: string
+  memo: string
+  total_debit: number
+  total_credit: number
+  status: MockJournalStatus
+  is_balanced: boolean
+  source: string
+  created_by: string
+  updated_at: string
+}
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('id-ID').format(value)
@@ -60,10 +74,9 @@ export const journalListConfig: WorkspaceListConfig<JournalListRow> = {
     label: 'Start Date',
   },
   statusOptions: [
-    { label: 'Draft', value: 'draft', tone: 'draft' },
-    { label: 'Approved', value: 'approved', tone: 'info' },
-    { label: 'Posted', value: 'posted', tone: 'success' },
-    { label: 'Void', value: 'void', tone: 'danger' },
+    { label: 'Draft', value: 'Draft', tone: 'draft' },
+    { label: 'Posted', value: 'Posted', tone: 'success' },
+    { label: 'Void', value: 'Void', tone: 'danger' },
   ],
   columns: journalListColumns,
   rowKey: 'id',
@@ -86,21 +99,14 @@ export const journalListConfig: WorkspaceListConfig<JournalListRow> = {
       label: 'Edit',
       permission: 'journal.edit',
       variant: 'secondary',
-      visibleWhen: (row) => row.status === 'draft',
-    },
-    {
-      key: 'post',
-      label: 'Post',
-      permission: 'journal.post',
-      variant: 'secondary',
-      visibleWhen: (row) => row.status === 'approved',
+      visibleWhen: (row) => row.status === 'Draft',
     },
     {
       key: 'void',
       label: 'Void',
       permission: 'journal.void',
       variant: 'danger',
-      visibleWhen: (row) => row.status === 'posted',
+      visibleWhen: (row) => row.status === 'Posted',
       confirm: {
         title: 'Void journal?',
         message: 'This action will void the selected journal after you provide a reason.',

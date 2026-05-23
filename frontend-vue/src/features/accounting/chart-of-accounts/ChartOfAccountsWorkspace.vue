@@ -1,43 +1,36 @@
 <script setup lang="ts">
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, ref } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import type { ColumnDef } from '@tanstack/vue-table'
 
 import WorkspaceListPage from '@/components/workspace/WorkspaceListPage.vue'
-import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { chartOfAccountsConfig } from '@/features/accounting/chart-of-accounts/chartOfAccounts.config'
-import {
-  listChartOfAccounts,
-  type ChartOfAccountRow,
-} from '@/features/accounting/chart-of-accounts/chartOfAccounts.service'
 import ChartOfAccountsDrawer from '@/features/accounting/chart-of-accounts/ChartOfAccountsDrawer.vue'
 import type { WorkspaceListConfig } from '@/types/workspace'
+import { useMockAccountingDataStore, type MockChartOfAccount, type MockChartOfAccountType } from '@/stores/mockAccountingDataStore'
 
-type CoaNode = ChartOfAccountRow & { level: number; hasChildren: boolean }
+type CoaNode = MockChartOfAccount & { hasChildren: boolean }
 
-const list = useWorkspaceList<ChartOfAccountRow>({
-  config: chartOfAccountsConfig,
-  fetcher: listChartOfAccounts,
-  clientFilter: true,
+const mock = useMockAccountingDataStore()
+
+const accountType = computed({
+  get: () => mock.coaFilters.type,
+  set: (value: MockChartOfAccountType | '') => mock.setCoaTypeFilter(value),
 })
-
-const accountType = ref<string>('')
-const activeFilter = ref<string>('active')
+const activeFilter = computed({
+  get: () => mock.coaFilters.active,
+  set: (value: 'active' | 'inactive' | 'all') => mock.setCoaActiveFilter(value),
+})
 
 const expandedIds = ref<Set<string>>(new Set())
 const drawerOpen = ref(false)
 const drawerMode = ref<'create' | 'edit'>('create')
-const editingAccount = ref<ChartOfAccountRow | null>(null)
+const editingAccount = ref<MockChartOfAccount | null>(null)
 
-function accountMatchesSearch(row: ChartOfAccountRow, query: string) {
-  const q = query.toLowerCase()
-  return row.code.toLowerCase().includes(q) || row.name.toLowerCase().includes(q)
-}
-
-function buildChildrenMap(rows: ChartOfAccountRow[]) {
-  const byParent = new Map<string | null, ChartOfAccountRow[]>()
+function buildChildrenMap(rows: MockChartOfAccount[]) {
+  const byParent = new Map<string | null, MockChartOfAccount[]>()
   for (const row of rows) {
-    const key = row.parentId
+    const key = row.parentCode
     const current = byParent.get(key) ?? []
     current.push(row)
     byParent.set(key, current)
@@ -45,72 +38,36 @@ function buildChildrenMap(rows: ChartOfAccountRow[]) {
   return byParent
 }
 
-function flattenTree(rows: ChartOfAccountRow[], query: string) {
+function flattenTree(rows: MockChartOfAccount[]) {
   const byParent = buildChildrenMap(rows)
   const roots = byParent.get(null) ?? []
 
-  const matchingIds = new Set<string>()
-  const parentById = new Map<string, string | null>()
-  for (const row of rows) parentById.set(row.id, row.parentId)
-
-  if (query.trim()) {
-    for (const row of rows) {
-      if (!accountMatchesSearch(row, query)) continue
-      matchingIds.add(row.id)
-      let pid = parentById.get(row.id) ?? null
-      while (pid) {
-        matchingIds.add(pid)
-        pid = parentById.get(pid) ?? null
-      }
-    }
-  }
-
   const result: CoaNode[] = []
 
-  function walk(node: ChartOfAccountRow, level: number) {
-    const children = byParent.get(node.id) ?? []
+  function walk(node: MockChartOfAccount) {
+    const children = byParent.get(node.code) ?? []
     const hasChildren = children.length > 0
-    const isVisibleBySearch = matchingIds.size === 0 || matchingIds.has(node.id)
-    if (isVisibleBySearch) {
-      result.push({ ...node, level, hasChildren })
-    }
-
-    const shouldExpand =
-      matchingIds.size > 0
-        ? true
-        : expandedIds.value.has(node.id)
+    result.push({ ...node, hasChildren })
+    const shouldExpand = expandedIds.value.has(node.code)
 
     if (!hasChildren || !shouldExpand) return
-    for (const child of children) walk(child, level + 1)
+    for (const child of children) walk(child)
   }
 
-  for (const root of roots) walk(root, 0)
+  for (const root of roots) walk(root)
   return result
 }
 
 const tableRows = computed<CoaNode[]>(() => {
-  const query = list.filters.value.search
-  return flattenTree(list.rows.value, query)
+  return flattenTree(mock.filteredChartOfAccounts)
 })
 
-const totalCount = computed(() => list.rows.value.length)
-
-watch(accountType, async (value) => {
-  if (value) list.setFilter('account_type', value)
-  else list.setFilter('account_type', undefined)
-  await list.fetchRows()
-})
-
-watch(activeFilter, async (value) => {
-  if (value === 'all') list.setFilter('is_active', undefined)
-  else list.setFilter('is_active', value === 'active')
-  await list.fetchRows()
-})
+const totalCount = computed(() => mock.filteredChartOfAccounts.length)
 
 function toggleExpand(row: CoaNode) {
   const next = new Set(expandedIds.value)
-  if (next.has(row.id)) next.delete(row.id)
-  else next.add(row.id)
+  if (next.has(row.code)) next.delete(row.code)
+  else next.add(row.code)
   expandedIds.value = next
 }
 
@@ -120,19 +77,54 @@ function openCreateDrawer() {
   drawerOpen.value = true
 }
 
-function openEditDrawer(row: ChartOfAccountRow) {
+function openEditDrawer(row: MockChartOfAccount) {
   drawerMode.value = 'edit'
   editingAccount.value = row
   drawerOpen.value = true
 }
 
+function handleSave(payload: Record<string, unknown>) {
+  const code = String(payload.account_code ?? '').trim()
+  const name = String(payload.account_name ?? '').trim()
+  const type = payload.account_type as MockChartOfAccountType | undefined
+  const parentCode = (payload.parent_code as string | null | undefined) ?? null
+  const normalBalance = (payload.normal_balance as MockChartOfAccount['normalBalance'] | undefined) ?? 'Debit'
+  const isActive = Boolean(payload.is_active)
+
+  if (!code || !name || !type) return
+
+  if (drawerMode.value === 'create') {
+    const parent = parentCode ? mock.chartOfAccounts.find((r) => r.code === parentCode) ?? null : null
+    const level = parent ? parent.level + 1 : 0
+    mock.addMockCoa({
+      code,
+      name,
+      type,
+      normalBalance,
+      parentCode: parentCode || null,
+      level,
+      isGroup: false,
+      isActive,
+      isSystemLocked: false,
+      balance: 0,
+    })
+  } else if (editingAccount.value) {
+    mock.updateMockCoa(editingAccount.value.id, {
+      name,
+      type,
+      normalBalance,
+      parentCode: parentCode || null,
+      isActive,
+    })
+  }
+}
+
 async function handleSearch(value: string) {
-  list.setSearch(value)
-  // client filter only, no fetch required
+  mock.setCoaSearch(value)
 }
 
 async function handleRefresh() {
-  await list.refresh()
+  // mock-only: no remote refresh
 }
 
 const columns = computed<ColumnDef<CoaNode, unknown>[]>(() => [
@@ -143,7 +135,7 @@ const columns = computed<ColumnDef<CoaNode, unknown>[]>(() => [
       const original = row.original
       const pad = `${original.level * 16}px`
       const icon = original.hasChildren
-        ? (expandedIds.value.has(original.id) ? ChevronDown : ChevronRight)
+        ? (expandedIds.value.has(original.code) ? ChevronDown : ChevronRight)
         : null
 
       return h(
@@ -200,7 +192,7 @@ const columns = computed<ColumnDef<CoaNode, unknown>[]>(() => [
 ])
 
 const config = computed<WorkspaceListConfig<CoaNode>>(() => ({
-  ...chartOfAccountsConfig,
+  ...(chartOfAccountsConfig as unknown as WorkspaceListConfig<CoaNode>),
   columns: columns.value,
   rowKey: 'id',
   selectable: false,
@@ -211,12 +203,12 @@ const config = computed<WorkspaceListConfig<CoaNode>>(() => ({
   <WorkspaceListPage
     :config="config"
     :rows="tableRows"
-    :loading="list.loading.value"
-    :error="list.error.value"
-    :search="list.filters.value.search"
-    :start-date="list.filters.value.startDate"
-    :end-date="list.filters.value.endDate"
-    :status="list.status.value"
+    :loading="false"
+    :error="null"
+    :search="mock.coaFilters.search"
+    :start-date="''"
+    :end-date="''"
+    :status="''"
     :selected-ids="[]"
     @refresh="handleRefresh"
     @search="handleSearch"
@@ -239,11 +231,14 @@ const config = computed<WorkspaceListConfig<CoaNode>>(() => ({
             class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
           >
             <option value="">All</option>
-            <option value="asset">Asset</option>
-            <option value="liability">Liability</option>
-            <option value="equity">Equity</option>
-            <option value="revenue">Revenue</option>
-            <option value="expense">Expense</option>
+            <option value="Kas & Bank">Kas & Bank</option>
+            <option value="Piutang">Piutang</option>
+            <option value="Persediaan">Persediaan</option>
+            <option value="Aset Tetap">Aset Tetap</option>
+            <option value="Hutang">Hutang</option>
+            <option value="Modal">Modal</option>
+            <option value="Pendapatan">Pendapatan</option>
+            <option value="Beban">Beban</option>
           </select>
         </label>
 
@@ -277,6 +272,6 @@ const config = computed<WorkspaceListConfig<CoaNode>>(() => ({
     :mode="drawerMode"
     :account="editingAccount"
     @close="drawerOpen = false"
-    @save="drawerOpen = false"
+    @save="(payload) => { handleSave(payload); drawerOpen = false }"
   />
 </template>

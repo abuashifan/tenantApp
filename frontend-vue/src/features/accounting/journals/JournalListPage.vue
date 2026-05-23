@@ -1,31 +1,37 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import JournalEntryFormPanel from '@/pages/accounting/journals/JournalEntryFormPanel.vue'
 import WorkspaceListPage from '@/components/workspace/WorkspaceListPage.vue'
-import { useWorkspaceList } from '@/composables/useWorkspaceList'
-import { journalListConfig } from '@/features/accounting/journals/journal-list.config'
-import { listJournals, voidJournal, type JournalListRow } from '@/features/accounting/journals/journal.service'
+import { journalListConfig, type JournalListRow } from '@/features/accounting/journals/journal-list.config'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
+import { useMockAccountingDataStore, type MockJournalStatus } from '@/stores/mockAccountingDataStore'
 
-const list = useWorkspaceList<JournalListRow>({
-  config: journalListConfig,
-  fetcher: listJournals,
-})
+const mock = useMockAccountingDataStore()
+const rows = computed<JournalListRow[]>(() =>
+  mock.filteredJournals.map((j) => ({
+    id: j.id,
+    journal_number: j.journalNo,
+    journal_date: j.date,
+    memo: j.description,
+    total_debit: j.totalDebit,
+    total_credit: j.totalCredit,
+    status: j.status,
+    is_balanced: j.isBalanced,
+    source: j.source,
+    created_by: j.createdBy,
+    updated_at: j.updatedAt,
+  })),
+)
 
 const tabs = useWorkspaceTabsStore()
 
-async function handleSearch(value: string) {
-  list.setSearch(value)
-  await list.fetchRows()
+function handleSearch(value: string) {
+  mock.setJournalSearch(value)
 }
 
-async function handleDateChange(range: { startDate: string; endDate: string }) {
-  list.setDateRange(range.startDate, range.endDate)
-  await list.fetchRows()
-}
-
-async function handleStatusChange(status: string) {
-  list.setStatus(status)
-  await list.fetchRows()
+function handleStatusChange(status: string) {
+  mock.setJournalStatusFilter((status || 'All') as MockJournalStatus | 'All')
 }
 
 async function handleAction(payload: { key: string; row?: JournalListRow }) {
@@ -49,28 +55,25 @@ async function handleAction(payload: { key: string; row?: JournalListRow }) {
   const reason = window.prompt('Reason for voiding selected journal')
   if (!reason) return
 
-  await voidJournal(payload.row.id, reason)
-  await list.refresh()
+  mock.voidJournal(payload.row.id)
 }
 </script>
 
 <template>
   <WorkspaceListPage
     :config="journalListConfig"
-    :rows="list.rows.value"
-    :loading="list.loading.value"
-    :error="list.error.value"
-    :search="list.filters.value.search"
-    :start-date="list.filters.value.startDate"
-    :end-date="list.filters.value.endDate"
-    :status="list.status.value"
-    :selected-ids="list.selectedIds.value"
-    @refresh="list.refresh"
+    :rows="rows"
+    :loading="false"
+    :error="null"
+    :search="mock.journalFilters.search"
+    :start-date="''"
+    :end-date="''"
+    :status="mock.journalFilters.status === 'All' ? '' : mock.journalFilters.status"
+    :selected-ids="[]"
+    @refresh="() => undefined"
     @search="handleSearch"
-    @date-change="handleDateChange"
     @status-change="handleStatusChange"
     @action-click="handleAction"
-    @update:selected-ids="list.selectedIds.value = $event"
   >
     <template #secondary>
       <JournalEntryFormPanel />

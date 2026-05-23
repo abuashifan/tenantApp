@@ -3,13 +3,13 @@ import type { ColumnDef } from '@tanstack/vue-table'
 
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
 import type { WorkspaceListConfig } from '@/types/workspace'
-import type { ChartOfAccountRow } from '@/features/accounting/chart-of-accounts/chartOfAccounts.service'
+import type { MockChartOfAccount } from '@/stores/mockAccountingDataStore'
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('id-ID').format(value)
 }
 
-export const chartOfAccountsColumns: ColumnDef<ChartOfAccountRow, unknown>[] = [
+export const chartOfAccountsColumns: ColumnDef<MockChartOfAccount, unknown>[] = [
   {
     accessorKey: 'code',
     header: 'Account Code',
@@ -37,7 +37,7 @@ export const chartOfAccountsColumns: ColumnDef<ChartOfAccountRow, unknown>[] = [
   },
 ]
 
-export const chartOfAccountsConfig: WorkspaceListConfig<ChartOfAccountRow> = {
+export const chartOfAccountsConfig: WorkspaceListConfig<MockChartOfAccount> = {
   moduleKey: 'chart-of-accounts',
   primaryTabId: '/accounting/chart-of-accounts',
   title: 'Chart of Accounts',
@@ -60,4 +60,3 @@ export const chartOfAccountsConfig: WorkspaceListConfig<ChartOfAccountRow> = {
   emptyTitle: 'No accounts',
   emptyDescription: 'No chart of accounts rows match your filter.',
 }
-
