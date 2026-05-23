@@ -1,15 +1,29 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import {
+  DateInput,
+  ErrorSummary,
+  FormActionBar,
+  FormSection,
+  FormWorkspace,
+  MoneyInput,
+  NumberInput,
+  SearchableSelect,
+  SummaryPanel,
+  TextareaInput,
+  extractFieldErrors,
+  type FieldErrorMap,
+  type FormOption,
+} from '@/components/form';
 import { AppShell } from '@/components/layout/AppShell';
-import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { listChartOfAccounts } from '@/features/accounting/chart-of-accounts/api';
 import { listMasterData } from '@/features/accounting/master-data/api';
 import { SalesPageGate } from '@/features/sales/SalesPageGate';
-import { getApiErrorMessage } from '@/lib/api';
+import { ApiRequestError, getApiErrorMessage } from '@/lib/api';
 import type { ChartOfAccount, MasterDataRecord } from '@/types/accounting';
 
 type SalesPaymentFormProps = {
@@ -31,7 +45,9 @@ export function SalesPaymentForm({ type, sourceInvoiceId, onSubmit }: SalesPayme
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -50,6 +66,23 @@ export function SalesPaymentForm({ type, sourceInvoiceId, onSubmit }: SalesPayme
     });
   }, []);
 
+  const contactOptions = useMemo<FormOption[]>(
+    () =>
+      contacts.map((contact) => ({
+        value: String(contact.id),
+        label: `${String(contact.contact_code ?? contact.id)} - ${String(contact.name ?? 'Unnamed')}`,
+      })),
+    [contacts],
+  );
+  const cashAccountOptions = useMemo<FormOption[]>(
+    () =>
+      cashAccounts.map((account) => ({
+        value: String(account.id),
+        label: `${account.account_code} - ${account.account_name}`,
+      })),
+    [cashAccounts],
+  );
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!customerId || !cashAccountId || Number(amount) <= 0) {
@@ -59,6 +92,7 @@ export function SalesPaymentForm({ type, sourceInvoiceId, onSubmit }: SalesPayme
     try {
       setSaving(true);
       setError(null);
+      setFieldErrors({});
       const payload: Record<string, unknown> = {
         customer_id: Number(customerId),
         cash_bank_account_id: Number(cashAccountId),
@@ -76,31 +110,136 @@ export function SalesPaymentForm({ type, sourceInvoiceId, onSubmit }: SalesPayme
       router.push(type === 'deposit' ? `/sales/deposits/${response.id}` : `/sales/receipts/${response.id}`);
     } catch (eventError) {
       setError(getApiErrorMessage(eventError));
+      setFieldErrors(extractFieldErrors(eventError));
+      if (!(eventError instanceof ApiRequestError)) setFieldErrors({});
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <AppShell><LoadingState title="Loading payment form data" /></AppShell>;
+  function updateValue(setter: (value: string) => void, value: string) {
+    setter(value);
+    setDirty(true);
+  }
+
+  if (loading) {
+    return (
+      <AppShell>
+        <LoadingState title="Loading payment form data" />
+      </AppShell>
+    );
+  }
+
+  const isDeposit = type === 'deposit';
+  const title = isDeposit ? 'New Customer Deposit' : 'New Sales Receipt';
 
   return (
     <AppShell>
-      <SalesPageGate permission={type === 'deposit' ? 'sales.deposits.create' : 'sales.receipts.create'}>
+      <SalesPageGate permission={isDeposit ? 'sales.deposits.create' : 'sales.receipts.create'}>
         <PageHeader
-          title={type === 'deposit' ? 'New Customer Deposit' : 'New Sales Receipt'}
-          description={type === 'deposit' ? 'Create customer down payment/deposit. This is not a general Cash Bank UI.' : 'Create customer receipt for posted sales invoice. Advanced multi-invoice allocation is out of scope.'}
+          title={title}
+          description={
+            isDeposit
+              ? 'Create customer down payment/deposit. This is not a general Cash Bank UI.'
+              : 'Create customer receipt for posted sales invoice. Advanced multi-invoice allocation is out of scope.'
+          }
         />
-        <form onSubmit={submit} className="mt-6 space-y-6">
-          {error ? <ErrorState message={error} /> : null}
-          <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-3">
-            <label><span className="text-xs font-medium text-slate-500">Customer *</span><select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Select customer</option>{contacts.map((contact) => <option key={contact.id} value={contact.id}>{String(contact.name ?? contact.id)}</option>)}</select></label>
-            <label><span className="text-xs font-medium text-slate-500">{type === 'deposit' ? 'Deposit Date' : 'Receipt Date'} *</span><input type="date" value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
-            <label><span className="text-xs font-medium text-slate-500">Cash/Bank Account *</span><select value={cashAccountId} onChange={(e) => setCashAccountId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Select account</option>{cashAccounts.map((account) => <option key={account.id} value={account.id}>{account.account_code} - {account.account_name}</option>)}</select></label>
-            <label><span className="text-xs font-medium text-slate-500">Amount *</span><input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
-            <label><span className="text-xs font-medium text-slate-500">{type === 'deposit' ? 'Sales Order ID' : 'Sales Invoice ID'}</span><input value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
-            <label className="md:col-span-3"><span className="text-xs font-medium text-slate-500">Notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
-          </div>
-          <button type="submit" disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button>
+        <form onSubmit={submit} className="mt-6">
+          <FormWorkspace
+            title={title}
+            subtitle="Payment impact is handled by the backend and accounting integration."
+            status="Draft"
+            statusTone="warning"
+            dirty={dirty}
+            loading={saving}
+            actions={[
+              { key: 'cancel', label: 'Cancel', onClick: () => router.back() },
+              {
+                key: 'save',
+                label: saving ? 'Saving...' : 'Save',
+                type: 'submit',
+                variant: 'primary',
+                loading: saving,
+              },
+            ]}
+          >
+            <div className="space-y-5">
+              <ErrorSummary message={error} fieldErrors={fieldErrors} />
+              <FormSection title={isDeposit ? 'Deposit Information' : 'Receipt Information'}>
+                <SearchableSelect
+                  label="Customer"
+                  value={customerId}
+                  options={contactOptions}
+                  onSelect={(value) => updateValue(setCustomerId, value)}
+                  onClear={() => updateValue(setCustomerId, '')}
+                  required
+                  placeholder="Select customer"
+                  error={fieldErrors.customer_id}
+                />
+                <DateInput
+                  label={isDeposit ? 'Deposit Date' : 'Receipt Date'}
+                  value={documentDate}
+                  onChange={(value) => updateValue(setDocumentDate, value)}
+                  required
+                  error={fieldErrors[isDeposit ? 'deposit_date' : 'receipt_date']}
+                />
+                <SearchableSelect
+                  label="Cash/Bank Account"
+                  value={cashAccountId}
+                  options={cashAccountOptions}
+                  onSelect={(value) => updateValue(setCashAccountId, value)}
+                  onClear={() => updateValue(setCashAccountId, '')}
+                  required
+                  placeholder="Select account"
+                  error={fieldErrors.cash_bank_account_id}
+                />
+                <MoneyInput
+                  label="Amount"
+                  value={amount}
+                  min="0"
+                  onChange={(value) => updateValue(setAmount, value)}
+                  required
+                  error={fieldErrors.amount}
+                />
+                <NumberInput
+                  label={isDeposit ? 'Sales Order ID' : 'Sales Invoice ID'}
+                  value={sourceId}
+                  min="1"
+                  step="1"
+                  onChange={(value) => updateValue(setSourceId, value)}
+                  error={fieldErrors[isDeposit ? 'sales_order_id' : 'sales_invoice_id']}
+                />
+              </FormSection>
+
+              <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+                <TextareaInput
+                  label="Notes"
+                  value={notes}
+                  onChange={(value) => updateValue(setNotes, value)}
+                  error={fieldErrors.notes}
+                />
+                <SummaryPanel
+                  title={isDeposit ? 'Deposit Summary' : 'Receipt Summary'}
+                  rows={[{ key: 'amount', label: 'Amount', value: Number(amount || 0), emphasized: true }]}
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <FormActionBar
+                  loading={saving}
+                  actions={[
+                    {
+                      key: 'save',
+                      label: saving ? 'Saving...' : 'Save',
+                      type: 'submit',
+                      variant: 'primary',
+                      loading: saving,
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          </FormWorkspace>
         </form>
       </SalesPageGate>
     </AppShell>

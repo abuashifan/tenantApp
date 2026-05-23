@@ -2,14 +2,31 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import {
+  AddressBlock,
+  DateInput,
+  ErrorSummary,
+  FormActionBar,
+  FormSection,
+  FormWorkspace,
+  LineItemsTable,
+  NumberInput,
+  SearchableSelect,
+  SelectInput,
+  TextInput,
+  TextareaInput,
+  extractFieldErrors,
+  type FieldErrorMap,
+  type FormOption,
+  type LineItemsColumn,
+} from '@/components/form';
 import { AppShell } from '@/components/layout/AppShell';
-import { DataTable } from '@/components/ui/DataTable';
-import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { listMasterData } from '@/features/accounting/master-data/api';
 import { SalesPageGate } from '@/features/sales/SalesPageGate';
-import { getApiErrorMessage } from '@/lib/api';
+import { ApiRequestError, getApiErrorMessage } from '@/lib/api';
+import { formatAccountingStatus } from '@/lib/formatters';
 import type { DeliveryOrder, SalesLineItem, SalesOrder } from '@/features/sales/types';
 import type { Department, MasterDataRecord, Project } from '@/types/accounting';
 import { createDeliveryOrder, createDeliveryOrderFromSalesOrder, updateDeliveryOrder } from './api';
@@ -42,32 +59,43 @@ export function DeliveryOrderForm({ mode, deliveryOrder, sourceOrder }: Delivery
   const [warehouses, setWarehouses] = useState<MasterDataRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [customerId, setCustomerId] = useState(String(deliveryOrder?.customer_id ?? sourceOrder?.customer_id ?? ''));
-  const [deliveryDate, setDeliveryDate] = useState(String(deliveryOrder?.delivery_date ?? today).slice(0, 10));
-  const [shippingAddress, setShippingAddress] = useState(String(deliveryOrder?.shipping_address ?? sourceOrder?.shipping_address ?? ''));
+  const [customerId, setCustomerId] = useState(
+    String(deliveryOrder?.customer_id ?? sourceOrder?.customer_id ?? ''),
+  );
+  const [deliveryDate, setDeliveryDate] = useState(
+    String(deliveryOrder?.delivery_date ?? today).slice(0, 10),
+  );
+  const [shippingAddress, setShippingAddress] = useState(
+    String(deliveryOrder?.shipping_address ?? sourceOrder?.shipping_address ?? ''),
+  );
   const [notes, setNotes] = useState(String(deliveryOrder?.notes ?? ''));
-  const [lines, setLines] = useState<DraftLine[]>(() => initialLines(deliveryOrder?.lines ?? sourceOrder?.lines));
+  const [lines, setLines] = useState<DraftLine[]>(() =>
+    initialLines(deliveryOrder?.lines ?? sourceOrder?.lines),
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
 
   useEffect(() => {
     queueMicrotask(async () => {
       try {
-        const [contactRes, productRes, unitRes, warehouseRes, departmentRes, projectRes] = await Promise.all([
-          listMasterData('/master-data/contacts'),
-          listMasterData('/master-data/products'),
-          listMasterData('/master-data/units'),
-          listMasterData('/master-data/warehouses'),
-          listMasterData('/master-data/departments'),
-          listMasterData('/master-data/projects'),
-        ]);
+        const [contactRes, productRes, unitRes, warehouseRes, departmentRes, projectRes] =
+          await Promise.all([
+            listMasterData('/master-data/contacts'),
+            listMasterData('/master-data/products'),
+            listMasterData('/master-data/units'),
+            listMasterData('/master-data/warehouses'),
+            listMasterData('/master-data/departments'),
+            listMasterData('/master-data/projects'),
+          ]);
         setContacts(contactRes.data ?? []);
         setProducts(productRes.data ?? []);
         setUnits(unitRes.data ?? []);
         setWarehouses(warehouseRes.data ?? []);
-        setDepartments(departmentRes.data as Department[]);
-        setProjects(projectRes.data as Project[]);
+        setDepartments(toArray<Department>(departmentRes.data));
+        setProjects(toArray<Project>(projectRes.data));
       } catch (event) {
         setError(getApiErrorMessage(event));
       } finally {
@@ -76,30 +104,63 @@ export function DeliveryOrderForm({ mode, deliveryOrder, sourceOrder }: Delivery
     });
   }, []);
 
+  const contactOptions = useMemo<FormOption[]>(
+    () =>
+      contacts.map((contact) => ({
+        value: String(contact.id),
+        label: `${String(contact.contact_code ?? contact.id)} - ${String(contact.name ?? 'Unnamed')}`,
+      })),
+    [contacts],
+  );
+  const productOptions = useMemo<FormOption[]>(
+    () =>
+      products.map((product) => ({
+        value: String(product.id),
+        label: `${String(product.product_code ?? product.id)} - ${String(product.product_name ?? 'Product')}`,
+      })),
+    [products],
+  );
+  const unitOptions = useMemo<FormOption[]>(
+    () => units.map((unit) => ({ value: String(unit.id), label: String(unit.code ?? unit.name ?? unit.id) })),
+    [units],
+  );
+  const warehouseOptions = useMemo<FormOption[]>(
+    () =>
+      warehouses.map((warehouse) => ({
+        value: String(warehouse.id),
+        label: `${String(warehouse.code ?? warehouse.id)} - ${String(warehouse.name ?? 'Warehouse')}`,
+      })),
+    [warehouses],
+  );
+  const departmentOptions = useMemo<FormOption[]>(
+    () => departments.map((department) => ({ value: String(department.id), label: `${department.code} - ${department.name}` })),
+    [departments],
+  );
+  const projectOptions = useMemo<FormOption[]>(
+    () => projects.map((project) => ({ value: String(project.id), label: `${project.code} - ${project.name}` })),
+    [projects],
+  );
+
   const permission = mode === 'edit' ? 'sales.delivery_orders.edit' : 'sales.delivery_orders.create';
-  const title = mode === 'edit' ? `Edit ${deliveryOrder?.delivery_number ?? 'Delivery Order'}` : mode === 'from-order' ? 'Create Delivery Order from Sales Order' : 'New Delivery Order';
-  const stockNote = useMemo(() => 'This UI creates the delivery document only. Inventory stock movement UI remains out of Phase 14 scope.', []);
+  const title =
+    mode === 'edit'
+      ? `Edit ${deliveryOrder?.delivery_number ?? 'Delivery Order'}`
+      : mode === 'from-order'
+        ? 'Create Delivery Order from Sales Order'
+        : 'New Delivery Order';
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!customerId) {
-      setError('Customer is required.');
+    const validation = validateDelivery(customerId, lines);
+    if (validation) {
+      setError(validation);
       return;
-    }
-    for (const [index, line] of lines.entries()) {
-      if (!line.description.trim() || Number(line.quantity) <= 0) {
-        setError(`Line ${index + 1}: description and positive quantity are required.`);
-        return;
-      }
-      if (line.max_quantity !== null && Number(line.quantity) > line.max_quantity) {
-        setError(`Line ${index + 1}: delivery quantity exceeds remaining quantity.`);
-        return;
-      }
     }
 
     try {
       setSaving(true);
       setError(null);
+      setFieldErrors({});
       const payload = {
         customer_id: Number(customerId),
         delivery_date: deliveryDate,
@@ -119,56 +180,279 @@ export function DeliveryOrderForm({ mode, deliveryOrder, sourceOrder }: Delivery
           sort_order: index + 1,
         })),
       };
-      const response = mode === 'edit'
-        ? await updateDeliveryOrder(deliveryOrder?.id ?? '', payload)
-        : mode === 'from-order' && sourceOrder
-          ? await createDeliveryOrderFromSalesOrder(sourceOrder.id, payload)
-          : await createDeliveryOrder(payload);
+      const response =
+        mode === 'edit'
+          ? await updateDeliveryOrder(deliveryOrder?.id ?? '', payload)
+          : mode === 'from-order' && sourceOrder
+            ? await createDeliveryOrderFromSalesOrder(sourceOrder.id, payload)
+            : await createDeliveryOrder(payload);
       router.push(`/sales/delivery-orders/${response.data.id}`);
     } catch (eventError) {
       setError(getApiErrorMessage(eventError));
+      setFieldErrors(extractFieldErrors(eventError));
+      if (!(eventError instanceof ApiRequestError)) setFieldErrors({});
     } finally {
       setSaving(false);
     }
   }
 
-  function updateLine(index: number, key: keyof DraftLine, value: string) {
-    setLines((current) => current.map((line, i) => (i === index ? { ...line, [key]: value } : line)));
+  function updateValue(setter: (value: string) => void, value: string) {
+    setter(value);
+    setDirty(true);
   }
 
-  if (loading) return <AppShell><LoadingState title="Loading delivery form data" /></AppShell>;
+  function updateLine(index: number, key: keyof DraftLine, value: string) {
+    setLines((current) =>
+      current.map((line, i) => (i === index ? { ...line, [key]: value } : line)),
+    );
+    setDirty(true);
+  }
+
+  function selectProduct(index: number, value: string) {
+    const product = products.find((item) => String(item.id) === value);
+    setLines((current) =>
+      current.map((line, i) =>
+        i === index
+          ? {
+              ...line,
+              product_id: value,
+              product_code: String(product?.product_code ?? line.product_code ?? ''),
+              description: line.description || String(product?.product_name ?? ''),
+              unit_id: line.unit_id || String(product?.unit_id ?? ''),
+            }
+          : line,
+      ),
+    );
+    setDirty(true);
+  }
+
+  const lineColumns: LineItemsColumn<DraftLine>[] = [
+    {
+      key: 'product',
+      label: 'Product',
+      widthClassName: 'min-w-60',
+      render: (line, index) => (
+        <SearchableSelect
+          value={line.product_id}
+          options={productOptions}
+          onSelect={(value) => selectProduct(index, value)}
+          onClear={() => selectProduct(index, '')}
+          placeholder="Select product"
+          error={fieldErrors[`lines.${index}.product_id`]}
+        />
+      ),
+    },
+    {
+      key: 'sku',
+      label: 'SKU',
+      widthClassName: 'min-w-32',
+      render: (line) => <TextInput value={line.product_code} onChange={() => undefined} readOnly />,
+    },
+    {
+      key: 'description',
+      label: 'Description',
+      widthClassName: 'min-w-64',
+      render: (line, index) => (
+        <TextInput
+          value={line.description}
+          onChange={(value) => updateLine(index, 'description', value)}
+          error={fieldErrors[`lines.${index}.description`]}
+        />
+      ),
+    },
+    {
+      key: 'quantity',
+      label: 'Qty',
+      align: 'right',
+      widthClassName: 'min-w-28',
+      render: (line, index) => (
+        <NumberInput
+          value={line.quantity}
+          min="0"
+          onChange={(value) => updateLine(index, 'quantity', value)}
+          error={fieldErrors[`lines.${index}.quantity`]}
+        />
+      ),
+    },
+    {
+      key: 'remaining',
+      label: 'Remaining',
+      align: 'right',
+      widthClassName: 'min-w-24',
+      render: (line) => <span className="text-slate-600">{line.max_quantity ?? '-'}</span>,
+    },
+    {
+      key: 'unit',
+      label: 'Unit',
+      widthClassName: 'min-w-32',
+      render: (line, index) => (
+        <SelectInput
+          value={line.unit_id}
+          options={unitOptions}
+          placeholder="-"
+          onChange={(value) => updateLine(index, 'unit_id', value)}
+        />
+      ),
+    },
+    {
+      key: 'warehouse',
+      label: 'Warehouse',
+      widthClassName: 'min-w-44',
+      render: (line, index) => (
+        <SelectInput
+          value={line.warehouse_id}
+          options={warehouseOptions}
+          placeholder="-"
+          onChange={(value) => updateLine(index, 'warehouse_id', value)}
+        />
+      ),
+    },
+    {
+      key: 'dimension',
+      label: 'Department / Project',
+      widthClassName: 'min-w-56',
+      render: (line, index) => (
+        <div className="space-y-2">
+          <SelectInput
+            value={line.department_id}
+            options={departmentOptions}
+            placeholder="Department"
+            onChange={(value) => updateLine(index, 'department_id', value)}
+          />
+          <SelectInput
+            value={line.project_id}
+            options={projectOptions}
+            placeholder="Project"
+            onChange={(value) => updateLine(index, 'project_id', value)}
+          />
+        </div>
+      ),
+    },
+  ];
+
+  if (loading) {
+    return (
+      <AppShell>
+        <LoadingState title="Loading delivery form data" />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
       <SalesPageGate permission={permission}>
-        <PageHeader title={title} description="Create direct or source-linked delivery documents with basic remaining quantity checks." />
-        <form onSubmit={submit} className="mt-6 space-y-6">
-          {error ? <ErrorState message={error} /> : null}
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{stockNote}</div>
-          <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-3">
-            <label><span className="text-xs font-medium text-slate-500">Customer *</span><select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"><option value="">Select customer</option>{contacts.map((contact) => <option key={contact.id} value={contact.id}>{String(contact.name ?? contact.id)}</option>)}</select></label>
-            <label><span className="text-xs font-medium text-slate-500">Delivery Date *</span><input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
-            <label className="md:col-span-3"><span className="text-xs font-medium text-slate-500">Shipping Address</span><input value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
-          </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold text-slate-950">Delivery Lines</h2><button type="button" onClick={() => setLines((current) => [...current, blankLine()])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">Add Line</button></div>
-            <DataTable columns={['Product', 'Description', 'Qty', 'Remaining', 'Unit', 'Warehouse', 'Dimension', '']}>
-              {lines.map((line, index) => (
-                <tr key={index} className="align-top">
-                  <td className="min-w-48 px-2 py-3"><select value={line.product_id} onChange={(e) => updateLine(index, 'product_id', e.target.value)} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm"><option value="">-</option>{products.map((product) => <option key={product.id} value={product.id}>{String(product.product_code ?? product.id)} - {String(product.product_name ?? 'Product')}</option>)}</select></td>
-                  <td className="min-w-52 px-2 py-3"><input value={line.description} onChange={(e) => updateLine(index, 'description', e.target.value)} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm" /></td>
-                  <td className="min-w-24 px-2 py-3"><input type="number" min="0" step="0.01" value={line.quantity} onChange={(e) => updateLine(index, 'quantity', e.target.value)} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-right text-sm" /></td>
-                  <td className="px-2 py-3 text-right text-sm text-slate-600">{line.max_quantity ?? '-'}</td>
-                  <td className="min-w-32 px-2 py-3"><select value={line.unit_id} onChange={(e) => updateLine(index, 'unit_id', e.target.value)} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm"><option value="">-</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{String(unit.code ?? unit.id)}</option>)}</select></td>
-                  <td className="min-w-36 px-2 py-3"><select value={line.warehouse_id} onChange={(e) => updateLine(index, 'warehouse_id', e.target.value)} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm"><option value="">-</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{String(w.code ?? w.id)}</option>)}</select></td>
-                  <td className="min-w-44 px-2 py-3"><select value={line.department_id} onChange={(e) => updateLine(index, 'department_id', e.target.value)} className="mb-1 w-full rounded-lg border border-slate-200 px-2 py-2 text-sm"><option value="">Dept</option>{departments.map((d) => <option key={d.id} value={d.id}>{d.code}</option>)}</select><select value={line.project_id} onChange={(e) => updateLine(index, 'project_id', e.target.value)} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm"><option value="">Project</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.code}</option>)}</select></td>
-                  <td className="px-2 py-3"><button type="button" disabled={lines.length <= 1} onClick={() => setLines((current) => current.filter((_, i) => i !== index))} className="rounded-lg border border-slate-200 px-2 py-1 text-xs disabled:opacity-40">Remove</button></td>
-                </tr>
-              ))}
-            </DataTable>
-          </div>
-          <label className="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm"><span className="text-xs font-medium text-slate-500">Notes</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
-          <button type="submit" disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60">{saving ? 'Saving...' : 'Save Delivery Order'}</button>
+        <PageHeader
+          title={title}
+          description="Create direct or source-linked delivery documents with basic remaining quantity checks."
+        />
+        <form onSubmit={submit} className="mt-6">
+          <FormWorkspace
+            title={deliveryOrder?.delivery_number ?? title}
+            subtitle="Inventory stock movement UI remains in the inventory module; this form stores the delivery document."
+            status={formatAccountingStatus(String(deliveryOrder?.status ?? 'draft'))}
+            statusTone={statusTone(String(deliveryOrder?.status ?? 'draft'))}
+            dirty={dirty}
+            loading={saving}
+            actions={[
+              { key: 'cancel', label: 'Cancel', onClick: () => router.back() },
+              {
+                key: 'save',
+                label: saving ? 'Saving...' : 'Save Delivery Order',
+                type: 'submit',
+                variant: 'primary',
+                loading: saving,
+              },
+            ]}
+          >
+            <div className="space-y-5">
+              <ErrorSummary message={error} fieldErrors={fieldErrors} />
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                This UI creates the delivery document only. Inventory stock movement UI remains out of this form.
+              </div>
+
+              <FormSection title="Delivery Information">
+                <SearchableSelect
+                  label="Customer"
+                  value={customerId}
+                  options={contactOptions}
+                  onSelect={(value) => updateValue(setCustomerId, value)}
+                  onClear={() => updateValue(setCustomerId, '')}
+                  required
+                  placeholder="Select customer"
+                  error={fieldErrors.customer_id}
+                />
+                <DateInput
+                  label="Delivery Date"
+                  value={deliveryDate}
+                  onChange={(value) => updateValue(setDeliveryDate, value)}
+                  required
+                  error={fieldErrors.delivery_date}
+                />
+                <TextInput
+                  label="Source Sales Order"
+                  value={sourceOrder?.order_number ?? String(deliveryOrder?.source_number ?? '')}
+                  onChange={() => undefined}
+                  readOnly
+                  helperText="Filled when this delivery is created from Sales Order."
+                />
+              </FormSection>
+
+              <FormSection title="Shipping Address" columns={1}>
+                <AddressBlock
+                  label="Shipping Address"
+                  value={shippingAddress}
+                  onChange={(value) => updateValue(setShippingAddress, value)}
+                  error={fieldErrors.shipping_address}
+                />
+              </FormSection>
+
+              <LineItemsTable
+                title="Delivery Lines"
+                rows={lines}
+                columns={lineColumns}
+                onAdd={() => {
+                  setLines((current) => [...current, blankLine()]);
+                  setDirty(true);
+                }}
+                onDuplicate={(index) => {
+                  setLines((current) => [
+                    ...current.slice(0, index + 1),
+                    { ...(current[index] ?? blankLine()) },
+                    ...current.slice(index + 1),
+                  ]);
+                  setDirty(true);
+                }}
+                onRemove={(index) => {
+                  setLines((current) =>
+                    current.length <= 1 ? current : current.filter((_, i) => i !== index),
+                  );
+                  setDirty(true);
+                }}
+              />
+
+              <TextareaInput
+                label="Notes"
+                value={notes}
+                onChange={(value) => updateValue(setNotes, value)}
+                error={fieldErrors.notes}
+              />
+
+              <div className="flex justify-end">
+                <FormActionBar
+                  loading={saving}
+                  actions={[
+                    {
+                      key: 'save',
+                      label: saving ? 'Saving...' : 'Save Delivery Order',
+                      type: 'submit',
+                      variant: 'primary',
+                      loading: saving,
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          </FormWorkspace>
         </form>
       </SalesPageGate>
     </AppShell>
@@ -197,5 +481,39 @@ function initialLines(lines?: SalesLineItem[]): DraftLine[] {
 }
 
 function blankLine(): DraftLine {
-  return { product_id: '', product_code: '', description: '', quantity: '1', max_quantity: null, unit_id: '', warehouse_id: '', department_id: '', project_id: '' };
+  return {
+    product_id: '',
+    product_code: '',
+    description: '',
+    quantity: '1',
+    max_quantity: null,
+    unit_id: '',
+    warehouse_id: '',
+    department_id: '',
+    project_id: '',
+  };
+}
+
+function validateDelivery(customerId: string, lines: DraftLine[]): string | null {
+  if (!customerId) return 'Customer is required.';
+  for (const [index, line] of lines.entries()) {
+    if (!line.description.trim() || Number(line.quantity) <= 0) {
+      return `Line ${index + 1}: description and positive quantity are required.`;
+    }
+    if (line.max_quantity !== null && Number(line.quantity) > line.max_quantity) {
+      return `Line ${index + 1}: delivery quantity exceeds remaining quantity.`;
+    }
+  }
+  return null;
+}
+
+function statusTone(status: string): 'default' | 'success' | 'warning' | 'danger' | 'muted' {
+  if (['delivered', 'ready', 'approved', 'posted'].includes(status)) return 'success';
+  if (['cancelled', 'void', 'rejected'].includes(status)) return 'danger';
+  if (['draft', 'partial', 'partially_delivered'].includes(status)) return 'warning';
+  return 'default';
+}
+
+function toArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
 }
