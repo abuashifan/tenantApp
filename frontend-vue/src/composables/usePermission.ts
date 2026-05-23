@@ -1,6 +1,11 @@
+import { useAuthStore } from '@/stores/authStore'
+
 export function usePermission() {
-  function can(_permission: string) {
-    return false
+  const auth = useAuthStore()
+
+  function can(permission?: string) {
+    if (!permission) return true
+    return auth.permissions.includes('*') || auth.permissions.includes(permission)
   }
 
   return { can }

@@ -1,0 +1,234 @@
+<script setup lang="ts" generic="TRow extends { id: string }">
+import { computed, h, ref, shallowRef } from 'vue'
+import type { ColumnDef } from '@tanstack/vue-table'
+
+import SecondaryTabsBar from '@/components/navigation/SecondaryTabsBar.vue'
+import WorkspaceConfirmDialog from '@/components/workspace/WorkspaceConfirmDialog.vue'
+import WorkspaceDataTable from '@/components/workspace/WorkspaceDataTable.vue'
+import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
+import WorkspaceErrorState from '@/components/workspace/WorkspaceErrorState.vue'
+import WorkspaceFilterPanel from '@/components/workspace/WorkspaceFilterPanel.vue'
+import WorkspaceLoadingState from '@/components/workspace/WorkspaceLoadingState.vue'
+import WorkspaceRowActions from '@/components/workspace/WorkspaceRowActions.vue'
+import WorkspaceToolbar from '@/components/workspace/WorkspaceToolbar.vue'
+import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
+import type { WorkspaceListConfig, WorkspacePagination, WorkspaceRowAction } from '@/types/workspace'
+
+const props = withDefaults(
+  defineProps<{
+    config: WorkspaceListConfig<TRow>
+    rows?: TRow[]
+    loading?: boolean
+    error?: string | null
+    pagination?: WorkspacePagination
+    search?: string
+    startDate?: string
+    endDate?: string
+    status?: string
+    selectedIds?: string[]
+  }>(),
+  {
+    rows: () => [],
+    loading: false,
+    error: null,
+    search: '',
+    startDate: '',
+    endDate: '',
+    status: '',
+    selectedIds: () => [],
+  },
+)
+
+const emit = defineEmits<{
+  refresh: []
+  search: [value: string]
+  filterChange: [filters: Record<string, unknown>]
+  dateChange: [range: { startDate: string; endDate: string }]
+  statusChange: [status: string]
+  pageChange: [page: number]
+  sortChange: [sorting: unknown]
+  rowClick: [row: TRow]
+  actionClick: [payload: { key: string; row?: TRow }]
+  bulkActionClick: [payload: { key: string; selectedIds: string[] }]
+  'update:selectedIds': [ids: string[]]
+}>()
+
+const tabs = useWorkspaceTabsStore()
+tabs.ensureListSecondaryTab(props.config.primaryTabId)
+
+const filtersOpen = ref(false)
+const pendingAction = shallowRef<{ action: WorkspaceRowAction<TRow>; row: TRow } | null>(null)
+const activeSecondaryId = computed(
+  () => tabs.activeSecondaryTabIdByPrimaryId[props.config.primaryTabId] ?? `${props.config.primaryTabId}::list`,
+)
+const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[props.config.primaryTabId] ?? [])
+const activeSecondary = computed(() => secondaryTabs.value.find((tab) => tab.id === activeSecondaryId.value) ?? null)
+
+const columns = computed<ColumnDef<TRow, unknown>[]>(() => {
+  if (!props.config.rowActions?.length) return props.config.columns
+
+  return [
+    ...props.config.columns,
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) =>
+        h(WorkspaceRowActions<TRow>, {
+          row: row.original,
+          actions: props.config.rowActions ?? [],
+          onActionClick: (key: string, selectedRow: TRow) => handleRowAction(key, selectedRow),
+        }),
+      enableSorting: false,
+    },
+  ]
+})
+
+function rowId(row: TRow) {
+  const key = props.config.rowKey
+  return typeof key === 'function' ? key(row) : (row[key] as string | number)
+}
+
+function rowLabel(row: TRow) {
+  const record = row as Record<string, unknown>
+  return String(record.document_number ?? record.journal_number ?? record.number ?? record.code ?? rowId(row))
+}
+
+function openCreateTab() {
+  tabs.openCreateSecondaryTab(props.config.primaryTabId, {
+    label: props.config.createLabel ?? 'Data Baru',
+  })
+  emit('actionClick', { key: 'create' })
+}
+
+function openEditTab(row: TRow) {
+  tabs.openEditSecondaryTab(props.config.primaryTabId, {
+    id: rowId(row),
+    number: rowLabel(row),
+  })
+}
+
+function openDetailTab(row: TRow) {
+  tabs.openDetailSecondaryTab(props.config.primaryTabId, {
+    id: rowId(row),
+    number: rowLabel(row),
+  })
+}
+
+function handleRowAction(key: string, row: TRow) {
+  const action = props.config.rowActions?.find((item) => item.key === key)
+  if (action?.confirm) {
+    pendingAction.value = { action, row }
+    return
+  }
+
+  executeRowAction(key, row)
+}
+
+function executeRowAction(key: string, row: TRow) {
+  if (key === 'edit') openEditTab(row)
+  if (key === 'detail' || key === 'open') openDetailTab(row)
+  emit('actionClick', { key, row })
+}
+
+function confirmPendingAction() {
+  if (!pendingAction.value) return
+  executeRowAction(pendingAction.value.action.key, pendingAction.value.row)
+  pendingAction.value = null
+}
+
+function requestClose(tabId: string) {
+  const tab = secondaryTabs.value.find((item) => item.id === tabId)
+  if (!tab || !tab.closable) return
+  tabs.closeSecondaryTab(props.config.primaryTabId, tabId)
+}
+</script>
+
+<template>
+  <div class="space-y-4">
+    <SecondaryTabsBar
+      :tabs="secondaryTabs"
+      :active-id="activeSecondaryId"
+      @activate="(id) => tabs.activateSecondaryTab(config.primaryTabId, id)"
+      @close="requestClose"
+    />
+
+    <div v-if="activeSecondary?.mode === 'list'" class="space-y-4">
+      <div>
+        <h1 class="text-2xl font-black text-slate-950">{{ config.title }}</h1>
+        <p v-if="config.subtitle" class="mt-1 text-sm text-slate-500">{{ config.subtitle }}</p>
+      </div>
+
+      <WorkspaceToolbar
+        :config="config"
+        :search="search"
+        :start-date="startDate"
+        :end-date="endDate"
+        :selected-count="selectedIds.length"
+        @update:search="emit('search', $event)"
+        @update:start-date="emit('dateChange', { startDate: $event, endDate })"
+        @update:end-date="emit('dateChange', { startDate, endDate: $event })"
+        @toggle-filters="filtersOpen = !filtersOpen"
+        @create="openCreateTab"
+        @refresh="emit('refresh')"
+        @action-click="emit('actionClick', { key: $event })"
+      >
+        <template #toolbar-bottom>
+          <slot name="toolbar-right" />
+        </template>
+      </WorkspaceToolbar>
+
+      <WorkspaceFilterPanel
+        :open="filtersOpen"
+        :status="status"
+        :status-options="config.statusOptions"
+        @update:status="emit('statusChange', $event)"
+      >
+        <slot name="advanced-filters" />
+      </WorkspaceFilterPanel>
+
+      <slot name="before-table" />
+
+      <slot v-if="loading" name="loading">
+        <WorkspaceLoadingState />
+      </slot>
+
+      <slot v-else-if="error" name="error">
+        <WorkspaceErrorState :message="error" @retry="emit('refresh')" />
+      </slot>
+
+      <slot v-else-if="rows.length === 0" name="empty">
+        <WorkspaceEmptyState :title="config.emptyTitle" :description="config.emptyDescription" />
+      </slot>
+
+      <WorkspaceDataTable
+        v-else
+        :columns="columns"
+        :rows="rows"
+        :loading="loading"
+        :selectable="config.selectable !== false"
+        :selected-ids="selectedIds"
+        :empty-title="config.emptyTitle"
+        :empty-description="config.emptyDescription"
+        @update:selected-ids="emit('update:selectedIds', $event)"
+        @row-click="emit('rowClick', $event)"
+      />
+
+      <slot name="after-table" />
+    </div>
+
+    <div v-else class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <slot name="secondary" :tab="activeSecondary" />
+    </div>
+
+    <WorkspaceConfirmDialog
+      :open="pendingAction != null"
+      :title="pendingAction?.action.confirm?.title ?? 'Confirm action'"
+      :message="pendingAction?.action.confirm?.message ?? 'Continue this action?'"
+      :confirm-label="pendingAction?.action.confirm?.confirmLabel ?? 'Confirm'"
+      :variant="pendingAction?.action.confirm?.variant"
+      @close="pendingAction = null"
+      @cancel="pendingAction = null"
+      @confirm="confirmPendingAction"
+    />
+  </div>
+</template>
