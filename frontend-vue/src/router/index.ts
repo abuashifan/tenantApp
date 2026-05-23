@@ -29,6 +29,7 @@ const router = createRouter({
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
             permissions: ['dashboard.view'],
+            apiEndpoint: '/accounting/fiscal-year/status',
             primaryTabId: '/dashboard',
             primaryTabLabel: 'Dashboard',
             primaryTabClosable: false,
@@ -40,6 +41,7 @@ const router = createRouter({
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
             permissions: ['journal.view'],
+            apiEndpoint: '/journals',
             primaryTabId: '/accounting/journals',
             primaryTabLabel: 'Journal Entries',
             primaryTabClosable: true,
@@ -52,6 +54,7 @@ const router = createRouter({
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
             permissions: ['coa.view'],
+            apiEndpoint: '/master-data/chart-of-accounts',
             primaryTabId: '/accounting/chart-of-accounts',
             primaryTabLabel: 'Chart of Accounts',
             primaryTabClosable: true,
@@ -62,7 +65,8 @@ const router = createRouter({
           name: 'general-ledger',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
-            permissions: ['reports.general_ledger.view'],
+            permissions: ['reports.view'],
+            apiEndpoint: '/reports/general-ledger',
             primaryTabId: '/reports/general-ledger',
             primaryTabLabel: 'General Ledger',
             primaryTabClosable: true,
@@ -73,7 +77,8 @@ const router = createRouter({
           name: 'trial-balance',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
-            permissions: ['reports.trial_balance.view'],
+            permissions: ['reports.view'],
+            apiEndpoint: '/reports/trial-balance',
             primaryTabId: '/reports/trial-balance',
             primaryTabLabel: 'Trial Balance',
             primaryTabClosable: true,
@@ -85,6 +90,7 @@ const router = createRouter({
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
             permissions: ['sales.invoices.view'],
+            apiEndpoint: '/sales/invoices',
             primaryTabId: '/sales/invoices',
             primaryTabLabel: 'Sales Invoices',
             primaryTabClosable: true,
@@ -96,6 +102,7 @@ const router = createRouter({
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
             permissions: ['sales.orders.view'],
+            apiEndpoint: '/sales/orders',
             primaryTabId: '/sales/orders',
             primaryTabLabel: 'Sales Orders',
             primaryTabClosable: true,
@@ -106,7 +113,8 @@ const router = createRouter({
           name: 'ar-aging',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
-            permissions: ['sales.ar_aging.view'],
+            permissions: ['sales.ar.view'],
+            apiEndpoint: '/sales/ar/aging',
             primaryTabId: '/sales/ar-aging',
             primaryTabLabel: 'AR Aging',
             primaryTabClosable: true,
@@ -117,7 +125,8 @@ const router = createRouter({
           name: 'cash-in',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
-            permissions: ['cashbank.receipts.view'],
+            permissions: ['cash_bank.view'],
+            apiEndpoint: '/cash-bank/cash-receipts',
             primaryTabId: '/cash-bank/cash-in',
             primaryTabLabel: 'Cash In',
             primaryTabClosable: true,
@@ -128,7 +137,8 @@ const router = createRouter({
           name: 'cash-out',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
-            permissions: ['cashbank.payments.view'],
+            permissions: ['cash_bank.view'],
+            apiEndpoint: '/cash-bank/cash-payments',
             primaryTabId: '/cash-bank/cash-out',
             primaryTabLabel: 'Cash Out',
             primaryTabClosable: true,
@@ -139,7 +149,8 @@ const router = createRouter({
           name: 'bank-transfer',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
-            permissions: ['cashbank.transfers.view'],
+            permissions: ['cash_bank.view'],
+            apiEndpoint: '/cash-bank/bank-transfers',
             primaryTabId: '/cash-bank/bank-transfer',
             primaryTabLabel: 'Bank Transfer',
             primaryTabClosable: true,
@@ -150,7 +161,8 @@ const router = createRouter({
           name: 'inventory-products',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
-            permissions: ['inventory.products.view'],
+            permissions: ['products.view'],
+            apiEndpoint: '/master-data/products',
             primaryTabId: '/inventory/products',
             primaryTabLabel: 'Products',
             primaryTabClosable: true,
@@ -162,6 +174,7 @@ const router = createRouter({
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
             permissions: ['inventory.stock.view'],
+            apiEndpoint: '/inventory/stock-balances',
             primaryTabId: '/inventory/stock',
             primaryTabLabel: 'Stock Balance',
             primaryTabClosable: true,
@@ -173,6 +186,7 @@ const router = createRouter({
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
             permissions: ['inventory.movements.view'],
+            apiEndpoint: '/inventory/stock-movements',
             primaryTabId: '/inventory/movements',
             primaryTabLabel: 'Stock Movement',
             primaryTabClosable: true,
@@ -184,6 +198,7 @@ const router = createRouter({
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
             permissions: ['settings.company.view'],
+            apiEndpoint: '/settings/company',
             primaryTabId: '/settings/company',
             primaryTabLabel: 'Company Settings',
             primaryTabClosable: true,
@@ -194,7 +209,8 @@ const router = createRouter({
           name: 'settings-permissions',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
-            permissions: ['settings.permissions.view'],
+            permissions: ['app.dev'],
+            apiEndpoint: '/auth/permissions',
             primaryTabId: '/settings/permissions',
             primaryTabLabel: 'Role & Permission',
             primaryTabClosable: true,
@@ -248,7 +264,7 @@ router.beforeEach(async (to) => {
 
   const requiredPermissions = to.matched.flatMap((r) => (r.meta.permissions as string[] | undefined) ?? [])
   if (requiredPermissions.length > 0) {
-    const allowed = requiredPermissions.every((p) => auth.permissions.includes(p))
+    const allowed = auth.permissions.includes('*') || requiredPermissions.every((p) => auth.permissions.includes(p))
     if (!allowed) {
       // Basic deny: redirect to dashboard (or login if not authed)
       return auth.isAuthenticated ? { path: '/dashboard' } : { path: '/login' }

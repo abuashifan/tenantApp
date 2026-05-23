@@ -3,7 +3,16 @@ import { defineStore } from 'pinia'
 export type Company = {
   id: string | number
   name: string
+  legal_name?: string
+  slug?: string
+  code?: string
+  status?: string
   user_role?: string
+  tenant_database?: {
+    database_name?: string
+    database_path?: string
+    status?: string
+  } | null
 }
 
 export const useCompanyStore = defineStore('company', {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
 
 import { ArrowLeftRight, Building2, Check, ChevronRight, LogOut, Star, Users } from 'lucide-vue-next'
 
@@ -9,67 +10,94 @@ import SearchInput from '@/components/ui/SearchInput.vue'
 import ToneBadge from '@/components/ui/ToneBadge.vue'
 import { useCompanyStore } from '@/stores/companyStore'
 import { useAuthStore } from '@/stores/authStore'
-
-type CompanyItem = {
-  id: number
-  name: string
-  role: string
-  status: 'active'
-  plan: string
-  lastAccess: string
-}
-
-const companies: CompanyItem[] = [
-  {
-    id: 1,
-    name: 'PT Maju Jaya',
-    role: 'Owner',
-    status: 'active',
-    plan: 'Professional',
-    lastAccess: 'Hari ini, 09:42',
-  },
-  {
-    id: 2,
-    name: 'CV Sumber Rejeki',
-    role: 'Admin',
-    status: 'active',
-    plan: 'Starter',
-    lastAccess: 'Kemarin, 18:10',
-  },
-  {
-    id: 3,
-    name: 'PT Contoh Demo',
-    role: 'Finance Manager',
-    status: 'active',
-    plan: 'Trial',
-    lastAccess: '2 hari lalu',
-  },
-]
+import { fetchCompanies, fetchPermissions, selectCompany } from '@/services/companyApi'
+import { logout } from '@/services/authApi'
+import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 const router = useRouter()
+const route = useRoute()
 const companyStore = useCompanyStore()
 const authStore = useAuthStore()
+const workspaceTabs = useWorkspaceTabsStore()
 
 const query = ref('')
-const selected = ref<number>(companies[0]?.id ?? 1)
+const selected = ref<string | number | null>(companyStore.companies[0]?.id ?? null)
+const loading = ref(false)
+const selecting = ref(false)
+const loggingOut = ref(false)
+const errorMessage = ref('')
 
 const filtered = computed(() =>
-  companies.filter((c) => c.name.toLowerCase().includes(query.value.trim().toLowerCase())),
+  companyStore.companies.filter((c) => c.name.toLowerCase().includes(query.value.trim().toLowerCase())),
 )
 
-function notify(message: string) {
-  alert(message)
+function errorText(e: unknown, fallback: string) {
+  if (axios.isAxiosError(e)) {
+    return e.response?.data?.message ?? (e.response ? e.message : 'Network Error: tidak bisa terhubung ke API.')
+  }
+  return (e as Error)?.message ?? fallback
 }
 
-function handleLogout() {
+onMounted(async () => {
+  if (companyStore.companies.length > 0) return
+
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const companies = await fetchCompanies()
+    companyStore.setCompanies(companies)
+    selected.value = companies[0]?.id ?? null
+  } catch (e) {
+    errorMessage.value = errorText(e, 'Gagal mengambil daftar company.')
+  } finally {
+    loading.value = false
+  }
+})
+
+async function handleLogout() {
+  loggingOut.value = true
+  errorMessage.value = ''
+  try {
+    await logout()
+  } catch (e) {
+    if (axios.isAxiosError(e) && e.response?.status !== 401) {
+      errorMessage.value = errorText(e, 'Logout gagal.')
+      loggingOut.value = false
+      return
+    }
+  }
+
   authStore.clearAuth()
-  notify('Logout (placeholder)')
+  companyStore.clearActiveCompany()
+  workspaceTabs.closeAllTabs()
+  loggingOut.value = false
+  await router.push('/login')
 }
 
-function handleContinue() {
-  companyStore.setCompanies(companies)
-  companyStore.setActiveCompany(selected.value)
-  router.push('/dashboard')
+async function handleContinue() {
+  if (selected.value == null) return
+
+  selecting.value = true
+  errorMessage.value = ''
+  try {
+    const activeCompany = await selectCompany(selected.value)
+    const merged = companyStore.companies.some((c) => c.id === activeCompany.id)
+      ? companyStore.companies.map((c) => (c.id === activeCompany.id ? activeCompany : c))
+      : [...companyStore.companies, activeCompany]
+
+    companyStore.setCompanies(merged)
+    companyStore.setActiveCompany(activeCompany.id)
+
+    const permissionData = await fetchPermissions()
+    authStore.setPermissions(permissionData.permissions)
+
+    const next = (route.query.next as string | undefined) ?? '/dashboard'
+    await router.push(next)
+  } catch (e) {
+    errorMessage.value = errorText(e, 'Gagal memilih company.')
+  } finally {
+    selecting.value = false
+  }
 }
 </script>
 
@@ -92,7 +120,7 @@ function handleContinue() {
           </div>
         </div>
 
-        <BaseButton variant="secondary" size="lg" @click="handleLogout">
+        <BaseButton variant="secondary" size="lg" :loading="loggingOut" @click="handleLogout">
           <LogOut class="h-4 w-4" />
           Keluar
         </BaseButton>
@@ -110,7 +138,19 @@ function handleContinue() {
             </ToneBadge>
           </div>
 
-          <div class="space-y-4">
+          <p v-if="errorMessage" class="mb-4 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+            {{ errorMessage }}
+          </p>
+
+          <div v-if="loading" class="rounded-[1.75rem] border border-slate-200 bg-white p-5 text-sm text-slate-500">
+            Mengambil daftar company...
+          </div>
+
+          <div v-else-if="filtered.length === 0" class="rounded-[1.75rem] border border-slate-200 bg-white p-5 text-sm text-slate-500">
+            Tidak ada company yang cocok.
+          </div>
+
+          <div v-else class="space-y-4">
             <button
               v-for="company in filtered"
               :key="company.id"
@@ -144,8 +184,8 @@ function handleContinue() {
                       </ToneBadge>
                     </div>
                     <div class="mt-2 flex flex-wrap gap-2">
-                      <ToneBadge tone="green">{{ company.role }}</ToneBadge>
-                      <ToneBadge tone="blue">{{ company.plan }}</ToneBadge>
+                      <ToneBadge tone="green">{{ company.user_role ?? 'Member' }}</ToneBadge>
+                      <ToneBadge tone="blue">{{ company.tenant_database?.status ?? company.status ?? 'active' }}</ToneBadge>
                     </div>
                   </div>
                 </div>
@@ -157,7 +197,7 @@ function handleContinue() {
 
               <div class="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-xs text-slate-500">
                 <Users class="h-4 w-4 text-slate-400" />
-                Akses terakhir: {{ company.lastAccess }}
+                Company code: {{ company.code ?? '-' }}
               </div>
             </button>
           </div>
@@ -166,7 +206,7 @@ function handleContinue() {
             <p class="text-sm text-slate-500">
               Company terpilih akan menjadi konteks tenant untuk dashboard dan seluruh modul ERP.
             </p>
-            <BaseButton class="sm:min-w-44" size="lg" @click="handleContinue">
+            <BaseButton class="sm:min-w-44" size="lg" :disabled="selected == null" :loading="selecting" @click="handleContinue">
               Lanjutkan
               <ChevronRight class="h-4 w-4" />
             </BaseButton>

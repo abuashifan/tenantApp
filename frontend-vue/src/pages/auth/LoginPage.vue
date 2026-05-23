@@ -8,9 +8,8 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-
 import AuthShell from '@/components/auth/AuthShell.vue'
 import AuthTextField from '@/components/auth/AuthTextField.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import { api } from '@/api'
-import type { ApiResponse } from '@/services/apiResponse'
-import { unwrap } from '@/services/apiResponse'
+import { fetchCompanies } from '@/services/companyApi'
+import { login } from '@/services/authApi'
 import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
 
@@ -25,27 +24,19 @@ const route = useRoute()
 const auth = useAuthStore()
 const company = useCompanyStore()
 
-type LoginData = {
-  user: { id: string | number; name: string; email: string }
-  token: string
-  token_type: 'Bearer'
-}
-
 async function handleLogin() {
   errorMessage.value = ''
   loading.value = true
   try {
-    const res = await api.post<ApiResponse<LoginData>>('/auth/login', {
+    const data = await login({
       email: email.value,
       password: password.value,
     })
-    const data = unwrap(res.data)
     auth.setAuth({ token: data.token, user: data.user })
 
-    // After login, fetch companies and go to select-company.
-    const companiesRes = await api.get<ApiResponse<unknown[]>>('/companies')
-    const companiesData = unwrap(companiesRes.data) as Array<{ id: string | number; name: string; user_role?: string }>
-    company.setCompanies(companiesData.map((c) => ({ id: c.id, name: c.name, user_role: c.user_role })))
+    const companies = await fetchCompanies()
+    company.setCompanies(companies)
+    company.clearActiveCompany()
 
     const next = (route.query.next as string | undefined) ?? '/select-company'
     await router.push(next)
