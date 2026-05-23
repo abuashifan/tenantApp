@@ -1,0 +1,161 @@
+<script setup lang="ts" generic="TRow extends { id: string }">
+import {
+  type ColumnDef,
+  type PaginationState,
+  type RowSelectionState,
+  type SortingState,
+  FlexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+} from '@tanstack/vue-table'
+import { computed, ref, watch } from 'vue'
+
+import { useVueTable } from '@tanstack/vue-table'
+
+import DataTableEmptyState from '@/components/table/DataTableEmptyState.vue'
+import DataTablePagination from '@/components/table/DataTablePagination.vue'
+import { cn } from '@/utils/cn'
+
+const props = withDefaults(
+  defineProps<{
+    columns: ColumnDef<TRow, unknown>[]
+    data: TRow[]
+    loading?: boolean
+    emptyTitle?: string
+    emptyDescription?: string
+    selectedIds?: string[]
+  }>(),
+  {
+    loading: false,
+    emptyTitle: 'No data',
+    emptyDescription: 'Try adjusting your filters or date range.',
+    selectedIds: () => [],
+  },
+)
+
+const emit = defineEmits<{
+  'update:selectedIds': [ids: string[]]
+}>()
+
+const globalFilter = ref('')
+const sorting = ref<SortingState>([])
+const pagination = ref<PaginationState>({ pageIndex: 0, pageSize: 10 })
+const rowSelection = ref<RowSelectionState>({})
+
+watch(
+  () => props.selectedIds,
+  (ids) => {
+    const next: RowSelectionState = {}
+    for (const id of ids) next[id] = true
+    rowSelection.value = next
+  },
+  { immediate: true },
+)
+
+const table = useVueTable({
+  get data() {
+    return props.data
+  },
+  get columns() {
+    return props.columns
+  },
+  state: {
+    get globalFilter() {
+      return globalFilter.value
+    },
+    get sorting() {
+      return sorting.value
+    },
+    get pagination() {
+      return pagination.value
+    },
+    get rowSelection() {
+      return rowSelection.value
+    },
+  },
+  onGlobalFilterChange: (updater) => {
+    globalFilter.value = typeof updater === 'function' ? updater(globalFilter.value) : updater
+  },
+  onSortingChange: (updater) => {
+    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
+  },
+  onPaginationChange: (updater) => {
+    pagination.value = typeof updater === 'function' ? updater(pagination.value) : updater
+  },
+  onRowSelectionChange: (updater) => {
+    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater
+  },
+  enableRowSelection: true,
+  getRowId: (row) => row.id,
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+})
+
+const selectedIdsInternal = computed(() => table.getSelectedRowModel().rows.map((r) => r.id))
+
+watch(
+  selectedIdsInternal,
+  (ids) => {
+    emit('update:selectedIds', ids)
+  },
+  { deep: true },
+)
+</script>
+
+<template>
+  <div :class="cn('overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm')">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-left text-sm">
+        <thead class="bg-slate-50 text-xs font-bold text-slate-600">
+          <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+            <th
+              v-for="header in headerGroup.headers"
+              :key="header.id"
+              class="whitespace-nowrap px-4 py-3"
+            >
+              <FlexRender
+                v-if="!header.isPlaceholder"
+                :render="header.column.columnDef.header"
+                :props="header.getContext()"
+              />
+            </th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-slate-100">
+          <tr v-if="loading">
+            <td :colspan="table.getAllColumns().length" class="px-4 py-10">
+              <div class="flex items-center justify-center gap-3 text-sm font-semibold text-slate-500">
+                <span class="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-r-transparent" />
+                Loading…
+              </div>
+            </td>
+          </tr>
+
+          <tr v-else-if="table.getRowModel().rows.length === 0">
+            <td :colspan="table.getAllColumns().length" class="px-4 py-8">
+              <DataTableEmptyState :title="emptyTitle" :description="emptyDescription" />
+            </td>
+          </tr>
+
+          <tr
+            v-else
+            v-for="row in table.getRowModel().rows"
+            :key="row.id"
+            class="hover:bg-slate-50/70"
+          >
+            <td v-for="cell in row.getVisibleCells()" :key="cell.id" class="whitespace-nowrap px-4 py-3">
+              <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <DataTablePagination :table="table as any" />
+  </div>
+</template>
