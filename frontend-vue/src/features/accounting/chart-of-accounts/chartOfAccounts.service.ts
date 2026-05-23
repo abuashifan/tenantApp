@@ -60,7 +60,9 @@ export function mapChartOfAccount(row: BackendChartOfAccount): ChartOfAccountRow
 }
 
 export async function listChartOfAccounts(params: ChartOfAccountsListParams = {}) {
-  const response = await api.get<ApiResponse<BackendListPayload<BackendChartOfAccount>>>('/chart-of-accounts', { params })
+  const response = await api.get<ApiResponse<BackendListPayload<BackendChartOfAccount>>>(
+    '/master-data/chart-of-accounts',
+    { params },
+  )
   return normalizeList(unwrap(response.data)).map(mapChartOfAccount)
 }
-
