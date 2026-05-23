@@ -29,6 +29,8 @@ export type MockChartOfAccount = {
 export type MockJournalSource = 'Manual' | 'Sales Invoice' | 'Cash Receipt' | 'Adjustment'
 export type MockJournalStatus = 'Draft' | 'Posted' | 'Void'
 
+export type MockLedgerSource = 'Manual' | 'Sales Invoice' | 'Cash Receipt' | 'Cash Payment' | 'Adjustment'
+
 export type MockJournal = {
   id: string
   journalNo: string
@@ -43,6 +45,22 @@ export type MockJournal = {
   updatedAt: string
 }
 
+export type MockLedgerLine = {
+  id: string
+  accountCode: string
+  accountName: string
+  accountType: string
+  normalBalance: MockNormalBalance
+  date: string
+  journalId: string
+  journalNo: string
+  description: string
+  source: MockLedgerSource
+  status: MockJournalStatus
+  debit: number
+  credit: number
+}
+
 type CoaFilters = {
   search: string
   type: MockChartOfAccountType | ''
@@ -54,6 +72,26 @@ type JournalFilters = {
   status: MockJournalStatus | 'All'
 }
 
+type LedgerFilters = {
+  search: string
+  accountCode: string | null
+  dateFrom: string | null
+  dateTo: string | null
+  status: 'All' | MockJournalStatus
+}
+
+type MockAccountingState = {
+  chartOfAccounts: MockChartOfAccount[]
+  journals: MockJournal[]
+  ledgerLines: MockLedgerLine[]
+  coaFilters: CoaFilters
+  journalFilters: JournalFilters
+  ledgerFilters: LedgerFilters
+  selectedCoaId: string | null
+  selectedJournalId: string | null
+  selectedLedgerAccountCode: string | null
+}
+
 function normalizeText(value: string) {
   return value.trim().toLowerCase()
 }
@@ -63,9 +101,46 @@ function containsText(haystack: string, needle: string) {
   return normalizeText(haystack).includes(needle)
 }
 
+function getLedgerAccountCode(state: MockAccountingState) {
+  return state.ledgerFilters.accountCode ?? state.selectedLedgerAccountCode
+}
+
+function getSelectedLedgerAccount(state: MockAccountingState): MockChartOfAccount | null {
+  const code = getLedgerAccountCode(state)
+  if (!code) return null
+  return state.chartOfAccounts.find((a) => a.code === code) ?? null
+}
+
+function getFilteredLedgerLinesFromState(state: MockAccountingState): MockLedgerLine[] {
+  const accountCode = getLedgerAccountCode(state)
+  if (!accountCode) return []
+
+  const search = normalizeText(state.ledgerFilters.search)
+  const dateFrom = state.ledgerFilters.dateFrom
+  const dateTo = state.ledgerFilters.dateTo
+  const status = state.ledgerFilters.status
+
+  return state.ledgerLines.filter((row) => {
+    if (row.accountCode !== accountCode) return false
+    if (status === 'All') {
+      if (row.status === 'Void') return false
+    } else if (row.status !== status) {
+      return false
+    }
+    if (dateFrom && row.date < dateFrom) return false
+    if (dateTo && row.date > dateTo) return false
+    if (search) {
+      const hay = `${row.journalNo} ${row.description} ${row.source}`.toLowerCase()
+      if (!hay.includes(search)) return false
+    }
+    return true
+  })
+}
+
 function makeMockCoa(): MockChartOfAccount[] {
   // Temporary mock balances for UI testing only.
   // TODO: Real balances must come from posted journal lines / reports API in backend later.
+  // Temporary frontend mock balance only. Final official account balances must be derived from posted journal lines on the backend. Do not treat COA balance as permanent master data.
   const rows: MockChartOfAccount[] = [
     { id: '111.000-00', code: '111.000-00', name: 'Kas dan Setara Kas', type: 'Kas & Bank', normalBalance: 'Debit', parentCode: null, level: 0, isGroup: true, isActive: true, isSystemLocked: true, balance: 125_000_000 },
     { id: '111.100-00', code: '111.100-00', name: 'Kas dan Setara Kas Jakarta', type: 'Kas & Bank', normalBalance: 'Debit', parentCode: '111.000-00', level: 1, isGroup: true, isActive: true, isSystemLocked: false, balance: 80_000_000 },
@@ -173,10 +248,121 @@ function makeMockJournals(): MockJournal[] {
   return rows
 }
 
+function makeMockLedgerLines(coa: MockChartOfAccount[], journals: MockJournal[]): MockLedgerLine[] {
+  const leafAccounts = coa.filter((a) => !a.isGroup)
+  const byCode = new Map<string, MockChartOfAccount>()
+  for (const acc of coa) byCode.set(acc.code, acc)
+
+  function account(code: string) {
+    const acc = byCode.get(code)
+    if (!acc) {
+      return {
+        accountCode: code,
+        accountName: code,
+        accountType: 'Beban' as MockChartOfAccountType,
+        normalBalance: 'Debit' as MockNormalBalance,
+      }
+    }
+    return {
+      accountCode: acc.code,
+      accountName: acc.name,
+      accountType: acc.type,
+      normalBalance: acc.normalBalance,
+    }
+  }
+
+  const lines: MockLedgerLine[] = []
+
+  function push(i: number, payload: Omit<MockLedgerLine, 'id'>) {
+    lines.push({ id: `LED-${String(i).padStart(4, '0')}`, ...payload })
+  }
+
+  const bank = account('111.102-01')
+  const cashSmall = account('111.101-01')
+  const ar = account('112.100-00')
+  const inventory = account('113.100-00')
+  const ap = account('211.100-00')
+  const revenue = account('411.100-00')
+  const cogs = account('511.100-00')
+  const salary = account('611.100-00')
+  const transport = account('611.200-00')
+  const office = account('611.300-00')
+
+  let idx = 1
+
+  for (const j of journals) {
+    const amount = Math.max(j.totalDebit, j.totalCredit)
+    const status = j.status
+    const source = (j.source === 'Manual' ? 'Manual' : j.source) as MockLedgerSource
+
+    if (j.description.toLowerCase().includes('penjualan')) {
+      push(idx++, { ...bank, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: amount, credit: 0 })
+      push(idx++, { ...revenue, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: 0, credit: amount })
+      push(idx++, { ...cogs, date: j.date, journalId: j.id, journalNo: j.journalNo, description: `HPP - ${j.description}`, source, status, debit: Math.round(amount * 0.7), credit: 0 })
+      push(idx++, { ...inventory, date: j.date, journalId: j.id, journalNo: j.journalNo, description: `Persediaan keluar - ${j.description}`, source, status, debit: 0, credit: Math.round(amount * 0.7) })
+      continue
+    }
+
+    if (j.description.toLowerCase().includes('penerimaan kas')) {
+      push(idx++, { ...bank, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: amount, credit: 0 })
+      push(idx++, { ...ar, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: 0, credit: amount })
+      continue
+    }
+
+    if (j.description.toLowerCase().includes('pembayaran supplier')) {
+      push(idx++, { ...ap, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source: 'Cash Payment', status, debit: amount, credit: 0 })
+      push(idx++, { ...bank, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source: 'Cash Payment', status, debit: 0, credit: amount })
+      continue
+    }
+
+    if (j.description.toLowerCase().includes('gaji')) {
+      push(idx++, { ...salary, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: amount, credit: 0 })
+      push(idx++, { ...bank, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: 0, credit: amount })
+      continue
+    }
+
+    if (j.description.toLowerCase().includes('transport')) {
+      push(idx++, { ...transport, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: amount, credit: 0 })
+      push(idx++, { ...cashSmall, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: 0, credit: amount })
+      continue
+    }
+
+    if (j.description.toLowerCase().includes('operasional') || j.description.toLowerCase().includes('kantor')) {
+      push(idx++, { ...office, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: amount, credit: 0 })
+      push(idx++, { ...cashSmall, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: 0, credit: amount })
+      continue
+    }
+
+    if (j.description.toLowerCase().includes('setoran bank')) {
+      push(idx++, { ...bank, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: amount, credit: 0 })
+      push(idx++, { ...cashSmall, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit: 0, credit: amount })
+      continue
+    }
+
+    // fallback: assign to a deterministic account to reach >= 60 lines
+    const fallback = leafAccounts[(idx - 1) % leafAccounts.length] ?? leafAccounts[0]
+    const acc = fallback ? account(fallback.code) : bank
+    const debit = idx % 2 === 0 ? amount : 0
+    const credit = debit === 0 ? amount : 0
+    push(idx++, { ...acc, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit, credit })
+  }
+
+  // Ensure minimum 60 lines by duplicating a few operational adjustments if needed.
+  while (lines.length < 60) {
+    const j = journals[(lines.length + 1) % journals.length]
+    if (!j) break
+    const amount = 150_000 * ((lines.length % 7) + 1)
+    push(idx++, { ...office, date: j.date, journalId: j.id, journalNo: j.journalNo, description: `Koreksi biaya operasional (${lines.length + 1})`, source: 'Adjustment', status: 'Draft', debit: amount, credit: 0 })
+  }
+
+  return lines
+}
+
 export const useMockAccountingDataStore = defineStore('mockAccountingData', {
   state: () => ({
     chartOfAccounts: makeMockCoa() as MockChartOfAccount[],
     journals: makeMockJournals() as MockJournal[],
+    ledgerLines: [] as MockLedgerLine[],
     coaFilters: {
       search: '',
       type: '' as CoaFilters['type'],
@@ -186,8 +372,16 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
       search: '',
       status: 'All' as JournalFilters['status'],
     },
+    ledgerFilters: {
+      search: '',
+      accountCode: '111.102-01' as string | null,
+      dateFrom: '2026-05-01' as string | null,
+      dateTo: '2026-05-31' as string | null,
+      status: 'Posted' as LedgerFilters['status'],
+    },
     selectedCoaId: null as string | null,
     selectedJournalId: null as string | null,
+    selectedLedgerAccountCode: '111.102-01' as string | null,
   }),
 
   getters: {
@@ -256,9 +450,90 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
       }
       return counts
     },
+
+    ledgerAccounts(state): MockChartOfAccount[] {
+      const used = new Set(state.ledgerLines.map((l) => l.accountCode))
+      return state.chartOfAccounts.filter((a) => !a.isGroup && used.has(a.code))
+    },
+
+    selectedLedgerAccount(state): MockChartOfAccount | null {
+      return getSelectedLedgerAccount(state as MockAccountingState)
+    },
+
+    filteredLedgerLines(state): MockLedgerLine[] {
+      return getFilteredLedgerLinesFromState(state as MockAccountingState)
+    },
+
+    ledgerOpeningBalance(state): number {
+      const account = getSelectedLedgerAccount(state as MockAccountingState)
+      const code = getLedgerAccountCode(state as MockAccountingState)
+      const dateFrom = state.ledgerFilters.dateFrom
+      if (!account || !code || !dateFrom) return 0
+
+      const lines = state.ledgerLines.filter((l) => l.accountCode === code && l.date < dateFrom && l.status !== 'Void')
+      const debit = lines.reduce((sum, l) => sum + l.debit, 0)
+      const credit = lines.reduce((sum, l) => sum + l.credit, 0)
+      return account.normalBalance === 'Debit' ? debit - credit : credit - debit
+    },
+
+    ledgerRunningLines(_state): Array<MockLedgerLine & { runningBalance: number }> {
+      const state = _state as MockAccountingState
+      const account = getSelectedLedgerAccount(state)
+      const opening = (this as unknown as { ledgerOpeningBalance: number }).ledgerOpeningBalance
+      const lines = [...getFilteredLedgerLinesFromState(state)]
+      if (!account) return []
+
+      lines.sort((a, b) => (a.date === b.date ? a.journalNo.localeCompare(b.journalNo) : a.date.localeCompare(b.date)))
+      let balance = opening
+      return lines.map((l) => {
+        balance =
+          account.normalBalance === 'Debit'
+            ? balance + l.debit - l.credit
+            : balance + l.credit - l.debit
+        return { ...l, runningBalance: balance }
+      })
+    },
+
+    ledgerSummary(_state): {
+      accountCode: string
+      accountName: string
+      accountType: string
+      normalBalance: MockNormalBalance
+      openingBalance: number
+      periodDebit: number
+      periodCredit: number
+      endingBalance: number
+      lineCount: number
+    } | null {
+      const state = _state as MockAccountingState
+      const account = getSelectedLedgerAccount(state)
+      if (!account) return null
+
+      const openingBalance = (this as unknown as { ledgerOpeningBalance: number }).ledgerOpeningBalance
+      const running = (this as unknown as { ledgerRunningLines: Array<MockLedgerLine & { runningBalance: number }> }).ledgerRunningLines
+      const periodDebit = running.reduce((sum, l) => sum + l.debit, 0)
+      const periodCredit = running.reduce((sum, l) => sum + l.credit, 0)
+      const endingBalance = running.length > 0 ? running[running.length - 1]!.runningBalance : openingBalance
+
+      return {
+        accountCode: account.code,
+        accountName: account.name,
+        accountType: account.type,
+        normalBalance: account.normalBalance,
+        openingBalance,
+        periodDebit,
+        periodCredit,
+        endingBalance,
+        lineCount: running.length,
+      }
+    },
   },
 
   actions: {
+    initLedgerLines() {
+      if (this.ledgerLines.length > 0) return
+      this.ledgerLines = makeMockLedgerLines(this.chartOfAccounts, this.journals)
+    },
     setCoaSearch(keyword: string) {
       this.coaFilters.search = keyword
     },
@@ -303,6 +578,43 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
     },
     voidJournal(id: string) {
       this.updateMockJournal(id, { status: 'Void' })
+    },
+
+    setLedgerSearch(keyword: string) {
+      this.ledgerFilters.search = keyword
+    },
+    setLedgerAccountCode(accountCode: string | null) {
+      this.ledgerFilters.accountCode = accountCode
+      this.selectedLedgerAccountCode = accountCode
+    },
+    setLedgerDateRange(from: string | null, to: string | null) {
+      this.ledgerFilters.dateFrom = from
+      this.ledgerFilters.dateTo = to
+    },
+    setLedgerStatus(status: LedgerFilters['status']) {
+      this.ledgerFilters.status = status
+    },
+    resetLedgerFilters() {
+      this.ledgerFilters = {
+        search: '',
+        accountCode: '111.102-01',
+        dateFrom: '2026-05-01',
+        dateTo: '2026-05-31',
+        status: 'Posted',
+      }
+      this.selectedLedgerAccountCode = '111.102-01'
+    },
+    selectLedgerAccount(accountCode: string | null) {
+      this.selectedLedgerAccountCode = accountCode
+      this.ledgerFilters.accountCode = accountCode
+    },
+
+    addMockLedgerLine(payload: Omit<MockLedgerLine, 'id'>) {
+      const id = `LED-${Math.random().toString(16).slice(2)}`
+      this.ledgerLines = [{ id, ...payload }, ...this.ledgerLines]
+    },
+    updateMockLedgerLine(id: string, payload: Partial<MockLedgerLine>) {
+      this.ledgerLines = this.ledgerLines.map((row) => (row.id === id ? { ...row, ...payload } : row))
     },
   },
 })
