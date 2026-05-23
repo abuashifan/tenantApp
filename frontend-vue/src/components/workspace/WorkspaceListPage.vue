@@ -80,35 +80,16 @@ const columns = computed<ColumnDef<TRow, unknown>[]>(() => {
   ]
 })
 
-function rowId(row: TRow) {
-  const key = props.config.rowKey
-  return typeof key === 'function' ? key(row) : (row[key] as string | number)
-}
-
-function rowLabel(row: TRow) {
-  const record = row as Record<string, unknown>
-  return String(record.document_number ?? record.journal_number ?? record.number ?? record.code ?? rowId(row))
-}
-
 function openCreateTab() {
-  tabs.openCreateSecondaryTab(props.config.primaryTabId, {
-    label: props.config.createLabel ?? 'Data Baru',
-  })
   emit('actionClick', { key: 'create' })
 }
 
 function openEditTab(row: TRow) {
-  tabs.openEditSecondaryTab(props.config.primaryTabId, {
-    id: rowId(row),
-    number: rowLabel(row),
-  })
+  emit('actionClick', { key: 'edit', row })
 }
 
 function openDetailTab(row: TRow) {
-  tabs.openDetailSecondaryTab(props.config.primaryTabId, {
-    id: rowId(row),
-    number: rowLabel(row),
-  })
+  emit('actionClick', { key: 'detail', row })
 }
 
 function handleRowAction(key: string, row: TRow) {

@@ -4,7 +4,6 @@ import type { ColumnDef } from '@tanstack/vue-table'
 
 import DataTable from '@/components/table/DataTable.vue'
 import DataTableToolbar from '@/components/table/DataTableToolbar.vue'
-import UnsavedChangesDialog from '@/components/dialog/UnsavedChangesDialog.vue'
 import WorkspaceSelectionActions from '@/components/workspace/WorkspaceSelectionActions.vue'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
@@ -56,7 +55,6 @@ const emit = defineEmits<{
   create: []
   void: [selectedIds: string[]]
   editFirstSelected: [id: string]
-  saveDirtyTab: [tabId: string]
   loadError: [message: string]
 }>()
 
@@ -70,8 +68,6 @@ const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[props.primary
 const activeSecondary = computed(() => secondaryTabs.value.find((t) => t.id === activeSecondaryId.value) ?? null)
 
 const selectedIds = ref<string[]>([])
-const closePendingId = ref<string | null>(null)
-const unsavedOpen = computed(() => closePendingId.value != null)
 
 const sourceRows = computed(() => props.rows)
 const list = useWorkspaceList<TRow>({
@@ -81,32 +77,6 @@ const list = useWorkspaceList<TRow>({
 })
 const rowsForTable = computed<TRow[]>(() => list.visibleRows.value)
 
-function requestClose(tabId: string) {
-  const tab = secondaryTabs.value.find((t) => t.id === tabId)
-  if (!tab || !tab.closable) return
-
-  if (!tab.dirty) {
-    tabs.closeSecondaryTab(props.primaryId, tabId)
-    return
-  }
-
-  closePendingId.value = tabId
-}
-
-function discardClose() {
-  if (!closePendingId.value) return
-  tabs.clearDraftState(closePendingId.value)
-  tabs.closeSecondaryTab(props.primaryId, closePendingId.value)
-  closePendingId.value = null
-}
-
-function saveClose() {
-  if (!closePendingId.value) return
-  emit('saveDirtyTab', closePendingId.value)
-  tabs.setSecondaryDirty(closePendingId.value, false)
-  tabs.closeSecondaryTab(props.primaryId, closePendingId.value)
-  closePendingId.value = null
-}
 
 function editFirstSelected() {
   const id = selectedIds.value[0]
@@ -177,11 +147,5 @@ watch(
       <slot name="form" :tab="activeSecondary" />
     </div>
 
-    <UnsavedChangesDialog
-      :open="unsavedOpen"
-      @close="closePendingId = null"
-      @discard="discardClose"
-      @save="saveClose"
-    />
   </div>
 </template>

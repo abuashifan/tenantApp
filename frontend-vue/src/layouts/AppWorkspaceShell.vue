@@ -15,6 +15,7 @@ import AppSidebarCollapsed, { type SidebarItem, type SidebarModule } from '@/com
 import AppSidebarFull from '@/components/layout/AppSidebarFull.vue'
 import AppTopbar from '@/components/layout/AppTopbar.vue'
 import SecondaryTabsBar from '@/components/navigation/SecondaryTabsBar.vue'
+import UnsavedChangesDialog from '@/components/dialog/UnsavedChangesDialog.vue'
 import WorkspaceContentArea from '@/workspace/WorkspaceContentArea.vue'
 import { useCompanyStore } from '@/stores/companyStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -119,10 +120,13 @@ async function onOpenItem(item: SidebarItem) {
 }
 
 const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[activePrimaryId.value] ?? [])
+const visibleSecondaryTabs = computed(() => secondaryTabs.value.filter((t) => t.mode !== 'list'))
 const activeSecondaryId = computed(
   () => tabs.activeSecondaryTabIdByPrimaryId[activePrimaryId.value] ?? `${activePrimaryId.value}::list`,
 )
-const showSecondary = computed(() => activePrimaryId.value !== '/dashboard' && secondaryTabs.value.length > 0)
+const showSecondary = computed(() => activePrimaryId.value !== '/dashboard' && visibleSecondaryTabs.value.length > 0)
+const closePendingSecondaryId = ref<string | null>(null)
+const unsavedOpen = computed(() => closePendingSecondaryId.value != null)
 
 async function closePrimary(tabId: string) {
   tabs.closePrimaryTab(tabId)
@@ -135,7 +139,29 @@ async function activatePrimary(tabId: string) {
 }
 
 function closeSecondary(tabId: string) {
-  tabs.closeSecondaryTab(activePrimaryId.value, tabId)
+  const tab = secondaryTabs.value.find((t) => t.id === tabId)
+  if (!tab || !tab.closable) return
+
+  if (!tab.dirty) {
+    tabs.closeSecondaryTab(activePrimaryId.value, tabId)
+    return
+  }
+
+  closePendingSecondaryId.value = tabId
+}
+
+function discardCloseSecondary() {
+  if (!closePendingSecondaryId.value) return
+  tabs.clearDraftState(closePendingSecondaryId.value)
+  tabs.closeSecondaryTab(activePrimaryId.value, closePendingSecondaryId.value)
+  closePendingSecondaryId.value = null
+}
+
+function saveCloseSecondary() {
+  if (!closePendingSecondaryId.value) return
+  tabs.setSecondaryDirty(closePendingSecondaryId.value, false)
+  tabs.closeSecondaryTab(activePrimaryId.value, closePendingSecondaryId.value)
+  closePendingSecondaryId.value = null
 }
 
 const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju Jaya')
@@ -175,7 +201,7 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
 
       <div v-if="showSecondary" class="border-b border-slate-200 bg-white px-4 py-2 lg:px-6">
         <SecondaryTabsBar
-          :tabs="secondaryTabs"
+          :tabs="visibleSecondaryTabs"
           :active-id="activeSecondaryId"
           @activate="(id) => tabs.activateSecondaryTab(activePrimaryId, id)"
           @close="closeSecondary"
@@ -186,5 +212,12 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
         <WorkspaceContentArea />
       </main>
     </div>
+
+    <UnsavedChangesDialog
+      :open="unsavedOpen"
+      @close="closePendingSecondaryId = null"
+      @discard="discardCloseSecondary"
+      @save="saveCloseSecondary"
+    />
   </div>
 </template>

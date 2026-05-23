@@ -4,11 +4,14 @@ import WorkspaceListPage from '@/components/workspace/WorkspaceListPage.vue'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { journalListConfig } from '@/features/accounting/journals/journal-list.config'
 import { listJournals, voidJournal, type JournalListRow } from '@/features/accounting/journals/journal.service'
+import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 const list = useWorkspaceList<JournalListRow>({
   config: journalListConfig,
   fetcher: listJournals,
 })
+
+const tabs = useWorkspaceTabsStore()
 
 async function handleSearch(value: string) {
   list.setSearch(value)
@@ -26,6 +29,21 @@ async function handleStatusChange(status: string) {
 }
 
 async function handleAction(payload: { key: string; row?: JournalListRow }) {
+  if (payload.key === 'create') {
+    tabs.openCreateSecondaryTab(journalListConfig.primaryTabId, { label: journalListConfig.createLabel ?? 'Data Baru' })
+    return
+  }
+
+  if (payload.key === 'edit' && payload.row) {
+    tabs.openEditSecondaryTab(journalListConfig.primaryTabId, { id: payload.row.id, number: payload.row.journal_number })
+    return
+  }
+
+  if ((payload.key === 'detail' || payload.key === 'open') && payload.row) {
+    tabs.openDetailSecondaryTab(journalListConfig.primaryTabId, { id: payload.row.id, number: payload.row.journal_number })
+    return
+  }
+
   if (payload.key !== 'void' || !payload.row) return
 
   const reason = window.prompt('Reason for voiding selected journal')

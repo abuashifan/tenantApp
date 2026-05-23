@@ -101,7 +101,8 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
   }
 
   const visibleRows = computed(() => {
-    if (shouldFetchRemote.value || options.clientFilter === false) return rows.value
+    if (options.clientFilter === false) return rows.value
+    if (shouldFetchRemote.value && options.clientFilter !== true) return rows.value
 
     const query = filters.value.search.trim().toLowerCase()
     if (!query) return rows.value
