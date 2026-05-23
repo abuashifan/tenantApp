@@ -23,7 +23,11 @@ import type {
   StoredActiveCompany,
 } from './types';
 import { UserMenu } from './UserMenu';
-import { useVirtualTabs, virtualTabsStorageKey } from './VirtualTabsProvider';
+import {
+  getVirtualTabsStorageKey,
+  useVirtualTabs,
+  virtualTabsStorageKey,
+} from './VirtualTabsProvider';
 import { getStoredCompanyId, getStoredToken } from '@/lib/api';
 import { fetchAndStorePermissions, getStoredPermissions } from '@/lib/permissions';
 
@@ -37,7 +41,8 @@ const dashboardTab = createDashboardTab();
 
 type PendingDirtyAction =
   | { type: 'close-all' }
-  | { type: 'close-primary'; tabId: string; fallback: PrimaryTab; wasActive: boolean };
+  | { type: 'close-primary'; tabId: string; fallback: PrimaryTab; wasActive: boolean }
+  | { type: 'close-secondary'; primaryTabId: string; secondaryTabId: string };
 
 function readActiveCompany(): StoredActiveCompany | null {
   if (typeof window === 'undefined') return null;
@@ -50,6 +55,10 @@ function readActiveCompany(): StoredActiveCompany | null {
   } catch {
     return null;
   }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export function AppShell({ children }: AppShellProps) {
@@ -68,17 +77,20 @@ export function AppShell({ children }: AppShellProps) {
     hasHydrated: hasRestoredShellState,
     primaryTabs,
     activePrimaryTabId,
-    secondaryTabsByPrimary,
-    dirtyState,
+    secondaryTabsByPrimaryId,
+    activeSecondaryTabIdByPrimaryId,
+    dirtyStateBySecondaryTabId,
     activePrimaryTab,
     activeSecondaryTabs,
     activeSecondaryTabId,
     openPrimaryTab,
     closePrimaryTab: closePrimaryTabState,
-    selectPrimaryTab,
-    openSecondaryTab,
+    activatePrimaryTab,
+    openCreateSecondaryTab,
+    openEditSecondaryTab,
+    openDetailSecondaryTab,
     closeSecondaryTab: closeSecondaryTabState,
-    selectSecondaryTab,
+    activateSecondaryTab,
     closeAllTabs,
     resetTabs,
   } = useVirtualTabs();
@@ -113,7 +125,9 @@ export function AppShell({ children }: AppShellProps) {
   );
   const activeModuleId =
     selectedModuleId ??
-    (activePrimaryTab.id === dashboardTab.id ? activeLookup.group.id : activePrimaryTab.moduleId);
+    (activePrimaryTab.id === dashboardTab.id
+      ? activeLookup.group.id
+      : activePrimaryTab.moduleId ?? 'dashboard');
   const activeItemId = activePrimaryTab.id === dashboardTab.id ? activeLookup.item?.id ?? null : activePrimaryTab.id;
   const flyoutGroup = moduleGroups.find((group) => group.id === flyoutGroupId) ?? null;
 
@@ -123,7 +137,7 @@ export function AppShell({ children }: AppShellProps) {
     const timeout = window.setTimeout(() => {
       if (!activeLookup.item) {
         if (pathname === '/dashboard') {
-          selectPrimaryTab(dashboardTab.id);
+          activatePrimaryTab(dashboardTab.id);
           setSelectedModuleId('dashboard');
         }
         return;
@@ -131,6 +145,7 @@ export function AppShell({ children }: AppShellProps) {
 
       const nextTab = createPrimaryTab(activeLookup.item, activeLookup.group.id);
       openPrimaryTab(nextTab);
+      syncRouteToSecondaryTab(nextTab, pathname);
       setSelectedModuleId(activeLookup.group.id);
       setExpandedModuleId(activeLookup.group.id);
     }, 0);
@@ -139,6 +154,13 @@ export function AppShell({ children }: AppShellProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasRestoredShellState, pathname, activeLookup.group.id, activeLookup.item?.id]);
 
+  useEffect(() => {
+    if (!hasRestoredShellState || !activeLookup.item) return;
+    if (activePrimaryTab.id !== activeLookup.item.href) return;
+    syncRouteToSecondaryTab(activePrimaryTab, pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasRestoredShellState, pathname, activePrimaryTab.id, activeLookup.item?.id]);
+
   function logout() {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
@@ -146,12 +168,13 @@ export function AppShell({ children }: AppShellProps) {
     localStorage.removeItem('active_company');
     localStorage.removeItem('auth_permissions');
     sessionStorage.removeItem(virtualTabsStorageKey);
+    sessionStorage.removeItem(getVirtualTabsStorageKey());
     resetTabs();
     router.push('/login');
   }
 
   function handleDashboardSelect() {
-    selectPrimaryTab(dashboardTab.id);
+    activatePrimaryTab(dashboardTab.id);
     setSelectedModuleId('dashboard');
     setExpandedModuleId(null);
     setFlyoutGroupId(null);
@@ -184,15 +207,16 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   function handlePrimaryTabSelect(tab: PrimaryTab) {
-    selectPrimaryTab(tab.id);
+    activatePrimaryTab(tab.id);
     if (tab.id === dashboardTab.id) {
       setSelectedModuleId('dashboard');
       setExpandedModuleId(null);
     } else {
-      setSelectedModuleId(tab.moduleId);
-      setExpandedModuleId(tab.moduleId);
+      setSelectedModuleId(tab.moduleId ?? null);
+      setExpandedModuleId(tab.moduleId ?? null);
     }
-    router.push(tab.href);
+    const restoredSecondary = getActiveSecondaryForPrimary(tab.id);
+    router.push(restoredSecondary?.href ?? tab.href);
   }
 
   function closePrimaryTab(tabId: string) {
@@ -221,30 +245,92 @@ export function AppShell({ children }: AppShellProps) {
 
     if (!wasActive) return;
 
-    setSelectedModuleId(fallback.moduleId);
-    setExpandedModuleId(fallback.id === dashboardTab.id ? null : fallback.moduleId);
-    router.push(fallback.href);
+    setSelectedModuleId(fallback.moduleId ?? null);
+    setExpandedModuleId(fallback.id === dashboardTab.id ? null : fallback.moduleId ?? null);
+    const restoredSecondary = getActiveSecondaryForPrimary(fallback.id);
+    router.push(restoredSecondary?.href ?? fallback.href);
+  }
+
+  function syncRouteToSecondaryTab(tab: PrimaryTab, currentPathname: string | null) {
+    if (!currentPathname || tab.id === dashboardTab.id) return;
+
+    const base = tab.href.replace(/\/$/, '');
+    const activeForTab = getActiveSecondaryForPrimary(tab.id);
+    if (activeForTab?.href === currentPathname) return;
+
+    if (currentPathname === `${base}/new`) {
+      openCreateSecondaryTab(tab.id, { href: currentPathname });
+      return;
+    }
+
+    const editMatch = currentPathname.match(new RegExp(`^${escapeRegExp(base)}/([^/]+)/edit$`));
+    if (editMatch?.[1]) {
+      openEditSecondaryTab(tab.id, {
+        entityId: decodeURIComponent(editMatch[1]),
+        href: currentPathname,
+      });
+      return;
+    }
+
+    const detailMatch = currentPathname.match(new RegExp(`^${escapeRegExp(base)}/([^/]+)$`));
+    if (detailMatch?.[1]) {
+      openDetailSecondaryTab(tab.id, {
+        entityId: decodeURIComponent(detailMatch[1]),
+        href: currentPathname,
+      });
+      return;
+    }
+
+    const listTab = (secondaryTabsByPrimaryId[tab.id] ?? []).find((entry) => entry.mode === 'list');
+    if (listTab && currentPathname === base) activateSecondaryTab(tab.id, listTab.id);
+  }
+
+  function getActiveSecondaryForPrimary(primaryTabId: string) {
+    const tabs = secondaryTabsByPrimaryId[primaryTabId] ?? [];
+    const activeId = activeSecondaryTabIdByPrimaryId[primaryTabId];
+    return tabs.find((tab) => tab.id === activeId) ?? tabs[0] ?? null;
   }
 
   function addSecondaryTab() {
     if (activePrimaryTab.id === dashboardTab.id) return;
 
-    const formCount = activeSecondaryTabs.filter((tab) => !tab.isList).length + 1;
-    const label = formCount === 1 ? 'Data Baru' : `Data Baru ${formCount}`;
-    const newTab: SecondaryTab = {
-      id: `${activePrimaryTab.id}::form-${Date.now()}`,
-      label,
-      isList: false,
-      closable: true,
-      dirty: true,
-    };
-
-    openSecondaryTab(activePrimaryTab.id, newTab);
+    const newTab = openCreateSecondaryTab(activePrimaryTab.id);
+    if (newTab?.href) router.push(newTab.href);
   }
 
   function closeSecondaryTab(tab: SecondaryTab) {
     if (!tab.closable) return;
-    closeSecondaryTabState(activePrimaryTab.id, tab.id);
+    if (dirtyStateBySecondaryTabId[tab.id]) {
+      const action: PendingDirtyAction = {
+        type: 'close-secondary',
+        primaryTabId: activePrimaryTab.id,
+        secondaryTabId: tab.id,
+      };
+      setPendingDirtyAction(action);
+      setCloseAllQueue([]);
+      setCloseAllCandidate({
+        primaryTabId: activePrimaryTab.id,
+        secondaryTabId: tab.id,
+        label: tab.label,
+      });
+      return;
+    }
+    closeSecondaryTabAfterDirty(activePrimaryTab.id, tab.id);
+  }
+
+  function closeSecondaryTabAfterDirty(primaryTabId: string, secondaryTabId: string) {
+    const fallbackHref = getSecondaryFallbackHref(primaryTabId, secondaryTabId);
+    closeSecondaryTabState(primaryTabId, secondaryTabId);
+    if (fallbackHref) router.push(fallbackHref);
+  }
+
+  function getSecondaryFallbackHref(primaryTabId: string, secondaryTabId: string) {
+    const tabs = secondaryTabsByPrimaryId[primaryTabId] ?? [];
+    const closeIndex = tabs.findIndex((entry) => entry.id === secondaryTabId);
+    const remaining = tabs.filter((entry) => entry.id !== secondaryTabId);
+    const fallback = remaining[Math.max(0, closeIndex - 1)] ?? remaining[0] ?? null;
+    const primaryTab = primaryTabs.find((entry) => entry.id === primaryTabId);
+    return fallback?.href ?? primaryTab?.href ?? null;
   }
 
   function resetToDashboard() {
@@ -256,8 +342,8 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   function getDirtyCandidates(primaryTabId: string) {
-    return (secondaryTabsByPrimary[primaryTabId] ?? [])
-      .filter((tab) => tab.closable && dirtyState[tab.id])
+    return (secondaryTabsByPrimaryId[primaryTabId] ?? [])
+      .filter((tab) => tab.closable && dirtyStateBySecondaryTabId[tab.id])
       .map((tab) => ({
         primaryTabId,
         secondaryTabId: tab.id,
@@ -268,6 +354,8 @@ export function AppShell({ children }: AppShellProps) {
   function finishDirtyAction(action: PendingDirtyAction | null) {
     if (action?.type === 'close-primary') {
       closePrimaryTabAfterDirty(action.tabId, action.fallback, action.wasActive);
+    } else if (action?.type === 'close-secondary') {
+      closeSecondaryTabAfterDirty(action.primaryTabId, action.secondaryTabId);
     } else {
       resetToDashboard();
     }
@@ -289,7 +377,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   function handleCloseAll() {
-    const dirtyCandidates = Object.keys(secondaryTabsByPrimary).flatMap(getDirtyCandidates);
+    const dirtyCandidates = Object.keys(secondaryTabsByPrimaryId).flatMap(getDirtyCandidates);
 
     if (dirtyCandidates.length === 0) {
       resetToDashboard();
@@ -304,6 +392,10 @@ export function AppShell({ children }: AppShellProps) {
   function discardCloseAllCandidate() {
     if (!closeAllCandidate) return;
 
+    if (pendingDirtyAction?.type === 'close-secondary') {
+      finishDirtyAction(pendingDirtyAction);
+      return;
+    }
     closeSecondaryTabState(closeAllCandidate.primaryTabId, closeAllCandidate.secondaryTabId);
     continueCloseAll(closeAllQueue);
   }
@@ -375,7 +467,11 @@ export function AppShell({ children }: AppShellProps) {
           activePrimaryTab={activePrimaryTab}
           tabs={activeSecondaryTabs}
           activeTabId={activeSecondaryTabId}
-          onSelectTab={(tabId) => selectSecondaryTab(activePrimaryTab.id, tabId)}
+          onSelectTab={(tabId) => {
+            const tab = activeSecondaryTabs.find((entry) => entry.id === tabId);
+            activateSecondaryTab(activePrimaryTab.id, tabId);
+            router.push(tab?.href ?? activePrimaryTab.href);
+          }}
           onCloseTab={closeSecondaryTab}
           onAddTab={addSecondaryTab}
         />

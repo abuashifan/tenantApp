@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
-import { virtualTabsStorageKey } from '@/components/layout/VirtualTabsProvider';
+import {
+  getVirtualTabsStorageKey,
+  virtualTabsStorageKey,
+} from '@/components/layout/VirtualTabsProvider';
 import { ApiRequestError, apiRequest, getStoredCompanyId, getStoredToken } from '@/lib/api';
 import type { ApiResponse } from '@/types/api';
 import type { TenantContextTest } from '@/types/company';
@@ -44,6 +47,7 @@ export default function DashboardPage() {
           localStorage.removeItem('active_company');
           localStorage.removeItem('auth_permissions');
           sessionStorage.removeItem(virtualTabsStorageKey);
+          sessionStorage.removeItem(getVirtualTabsStorageKey());
           router.replace('/login');
           return;
         }

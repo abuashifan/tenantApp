@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { virtualTabsStorageKey } from '@/components/layout/VirtualTabsProvider';
+import {
+  getVirtualTabsStorageKey,
+  virtualTabsStorageKey,
+} from '@/components/layout/VirtualTabsProvider';
 import { ApiRequestError, apiRequest, getStoredToken } from '@/lib/api';
 import type { ApiResponse } from '@/types/api';
 import type { ActiveCompany, Company } from '@/types/company';
@@ -51,6 +54,8 @@ export default function SelectCompanyPage() {
         { method: 'POST', token, body: { company_id: companyId } },
       );
 
+      sessionStorage.removeItem(getVirtualTabsStorageKey());
+      sessionStorage.removeItem(getVirtualTabsStorageKey(String(companyId)));
       localStorage.setItem('active_company_id', String(companyId));
       localStorage.setItem('active_company', JSON.stringify(res.data.active_company));
       sessionStorage.removeItem(virtualTabsStorageKey);
@@ -143,4 +148,5 @@ function clearStoredSession() {
   localStorage.removeItem('active_company');
   localStorage.removeItem('auth_permissions');
   sessionStorage.removeItem(virtualTabsStorageKey);
+  sessionStorage.removeItem(getVirtualTabsStorageKey());
 }

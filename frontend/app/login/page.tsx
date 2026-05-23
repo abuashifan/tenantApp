@@ -15,7 +15,10 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { virtualTabsStorageKey } from '@/components/layout/VirtualTabsProvider';
+import {
+  getVirtualTabsStorageKey,
+  virtualTabsStorageKey,
+} from '@/components/layout/VirtualTabsProvider';
 import { ApiRequestError, apiRequest } from '@/lib/api';
 import type { ApiResponse } from '@/types/api';
 import type { LoginResponse } from '@/types/auth';
@@ -96,6 +99,7 @@ export default function LoginPage() {
       localStorage.removeItem('active_company');
       localStorage.removeItem('auth_permissions');
       sessionStorage.removeItem(virtualTabsStorageKey);
+      sessionStorage.removeItem(getVirtualTabsStorageKey());
       localStorage.setItem('auth_token', loginRes.data.token);
       localStorage.setItem('auth_user', JSON.stringify(loginRes.data.user));
 
@@ -125,6 +129,7 @@ export default function LoginPage() {
           JSON.stringify(activeCompanyRes.data.active_company),
         );
         sessionStorage.removeItem(virtualTabsStorageKey);
+        sessionStorage.removeItem(getVirtualTabsStorageKey(String(companies[0].id)));
         router.push('/dashboard');
         return;
       }

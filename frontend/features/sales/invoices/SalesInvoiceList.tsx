@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye } from 'lucide-react';
+import { Eye, PenLine } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
@@ -15,6 +15,7 @@ import {
 import { SalesStatusBadge } from '@/features/sales/components/SalesStatusBadge';
 import { SalesPageGate } from '@/features/sales/SalesPageGate';
 import { customerName, salesDocumentDate, salesDocumentNumber } from '@/features/sales/documents/documentHelpers';
+import { useVirtualTabs } from '@/hooks/useVirtualTabs';
 import { getApiErrorMessage } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { getStoredPermissions, hasPermission } from '@/lib/permissions';
@@ -29,6 +30,7 @@ const statusOptions: WorkspaceSelectOption[] = [
 
 export function SalesInvoiceList() {
   const router = useRouter();
+  const { openCreateFormForCurrentPrimary, openEditFormForCurrentPrimary } = useVirtualTabs();
   const [documents, setDocuments] = useState<SalesInvoice[]>([]);
   const [filters, setFilters] = useState<WorkspaceFilterState>({
     search: '',
@@ -190,8 +192,23 @@ export function SalesInvoiceList() {
         icon: <Eye className="h-4 w-4 text-slate-400" />,
         href: (document) => `/sales/invoices/${document.id}`,
       },
+      {
+        key: 'edit',
+        label: 'Edit',
+        icon: <PenLine className="h-4 w-4 text-slate-400" />,
+        onClick: (document) => {
+          const tab = openEditFormForCurrentPrimary({
+            entityId: document.id,
+            entityNumber: salesDocumentNumber(document),
+            label: salesDocumentNumber(document),
+            href: `/sales/invoices/${document.id}/edit`,
+          });
+          router.push(tab?.href ?? `/sales/invoices/${document.id}/edit`);
+        },
+        disabled: () => !hasPermission(getStoredPermissions(), 'sales.invoices.edit'),
+      },
     ],
-    [],
+    [openEditFormForCurrentPrimary, router],
   );
 
   return (
@@ -231,7 +248,16 @@ export function SalesInvoiceList() {
             getStatus={(document) => String(document.status ?? 'draft')}
             getDate={salesDocumentDate}
             getPartyName={customerName}
-            onCreate={canCreate ? () => router.push('/sales/invoices/new') : undefined}
+            onCreate={
+              canCreate
+                ? () => {
+                    const tab = openCreateFormForCurrentPrimary({
+                      href: '/sales/invoices/new',
+                    });
+                    router.push(tab?.href ?? '/sales/invoices/new');
+                  }
+                : undefined
+            }
             onApplyFilters={load}
             onFilterChange={setFilters}
           />

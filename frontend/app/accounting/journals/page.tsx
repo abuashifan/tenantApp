@@ -1,6 +1,6 @@
 'use client';
 
-import { Ban, Eye } from 'lucide-react';
+import { Ban, Eye, PenLine } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
@@ -16,6 +16,7 @@ import {
 } from '@/components/workspace';
 import { AccountingPageGate } from '@/features/accounting/AccountingPageGate';
 import { listJournals, voidJournal } from '@/features/accounting/journals/api';
+import { useVirtualTabs } from '@/hooks/useVirtualTabs';
 import { getApiErrorMessage } from '@/lib/api';
 import { formatAccountingStatus, formatDate } from '@/lib/formatters';
 import { getStoredPermissions, hasPermission } from '@/lib/permissions';
@@ -45,6 +46,7 @@ const statusOptions: WorkspaceSelectOption[] = [
 
 export default function JournalsPage() {
   const router = useRouter();
+  const { openCreateFormForCurrentPrimary, openEditFormForCurrentPrimary } = useVirtualTabs();
   const [journals, setJournals] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -170,8 +172,23 @@ export default function JournalsPage() {
         icon: <Eye className="h-4 w-4 text-slate-400" />,
         href: (journal) => `/accounting/journals/${journal.id}`,
       },
+      {
+        key: 'edit',
+        label: 'Edit',
+        icon: <PenLine className="h-4 w-4 text-slate-400" />,
+        onClick: (journal) => {
+          const tab = openEditFormForCurrentPrimary({
+            entityId: journal.id,
+            entityNumber: journal.journal_number,
+            label: journal.journal_number,
+            href: `/accounting/journals/${journal.id}/edit`,
+          });
+          router.push(tab?.href ?? `/accounting/journals/${journal.id}/edit`);
+        },
+        disabled: () => !hasPermission(getStoredPermissions(), 'journal.edit'),
+      },
     ],
-    [],
+    [openEditFormForCurrentPrimary, router],
   );
 
   const handleBulkVoid = useCallback(async (selectedIds: Array<string | number>) => {
@@ -248,7 +265,16 @@ export default function JournalsPage() {
             }
             getStatus={(journal) => journal.status}
             getDate={(journal) => String(journal.journal_date ?? '').slice(0, 10)}
-            onCreate={canCreate ? () => router.push('/accounting/journals/new') : undefined}
+            onCreate={
+              canCreate
+                ? () => {
+                    const tab = openCreateFormForCurrentPrimary({
+                      href: '/accounting/journals/new',
+                    });
+                    router.push(tab?.href ?? '/accounting/journals/new');
+                  }
+                : undefined
+            }
             onApplyFilters={loadJournals}
             onFilterChange={setFilters}
           />

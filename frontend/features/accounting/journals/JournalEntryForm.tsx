@@ -11,6 +11,7 @@ import { listMasterData } from '@/features/accounting/master-data/api';
 import { createJournal, updateJournal } from './api';
 import { formatCurrency } from '@/lib/formatters';
 import { getApiErrorMessage } from '@/lib/api';
+import { useVirtualTabDraft } from '@/hooks/useVirtualTabDraft';
 import type {
   ChartOfAccount,
   Department,
@@ -33,20 +34,33 @@ type DraftLine = {
   credit: string;
 };
 
+type JournalDraftState = {
+  journalDate: string;
+  description: string;
+  editReason: string;
+  lines: DraftLine[];
+};
+
 export function JournalEntryForm({ journal }: JournalEntryFormProps) {
   const router = useRouter();
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [journalDate, setJournalDate] = useState(toDateInput(journal?.journal_date));
-  const [description, setDescription] = useState(journal?.description ?? '');
-  const [editReason, setEditReason] = useState('');
-  const [lines, setLines] = useState<DraftLine[]>(() =>
-    journal?.lines?.length ? journal.lines.map(lineToDraft) : [blankLine(), blankLine()],
+  const initialDraft = useMemo<JournalDraftState>(
+    () => ({
+      journalDate: toDateInput(journal?.journal_date),
+      description: journal?.description ?? '',
+      editReason: '',
+      lines: journal?.lines?.length ? journal.lines.map(lineToDraft) : [blankLine(), blankLine()],
+    }),
+    [journal],
   );
+  const { draft, setDraft, patchDraft, setDirty, resetDraft } =
+    useVirtualTabDraft<JournalDraftState>(initialDraft);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { journalDate, description, editReason, lines } = draft;
 
   async function loadSelectors() {
     try {
@@ -81,15 +95,23 @@ export function JournalEntryForm({ journal }: JournalEntryFormProps) {
   const formIssues = useMemo(() => validateLines(lines, totals.balanced), [lines, totals.balanced]);
 
   function updateLine(index: number, key: keyof DraftLine, value: string) {
-    setLines((current) =>
-      current.map((line, lineIndex) =>
-        lineIndex === index ? normalizeLineInput({ ...line, [key]: value }, key) : line,
-      ),
+    setDraft((current) =>
+      ({
+        ...current,
+        lines: current.lines.map((line, lineIndex) =>
+          lineIndex === index ? normalizeLineInput({ ...line, [key]: value }, key) : line,
+        ),
+      }),
     );
+    setDirty(true);
   }
 
   function removeLine(index: number) {
-    setLines((current) => current.filter((_, lineIndex) => lineIndex !== index));
+    setDraft((current) => ({
+      ...current,
+      lines: current.lines.filter((_, lineIndex) => lineIndex !== index),
+    }));
+    setDirty(true);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -118,6 +140,7 @@ export function JournalEntryForm({ journal }: JournalEntryFormProps) {
       };
 
       const res = journal ? await updateJournal(journal.id, payload) : await createJournal(payload);
+      resetDraft(initialDraft);
       router.push(`/accounting/journals/${res.data.id}`);
     } catch (eventError) {
       setError(getApiErrorMessage(eventError));
@@ -139,7 +162,10 @@ export function JournalEntryForm({ journal }: JournalEntryFormProps) {
             type="date"
             required
             value={journalDate}
-            onChange={(event) => setJournalDate(event.target.value)}
+            onChange={(event) => {
+              patchDraft({ journalDate: event.target.value });
+              setDirty(true);
+            }}
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
           />
         </label>
@@ -148,7 +174,10 @@ export function JournalEntryForm({ journal }: JournalEntryFormProps) {
           <span className="text-xs font-medium text-slate-500">Description</span>
           <input
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={(event) => {
+              patchDraft({ description: event.target.value });
+              setDirty(true);
+            }}
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
           />
         </label>
@@ -158,7 +187,10 @@ export function JournalEntryForm({ journal }: JournalEntryFormProps) {
             <span className="text-xs font-medium text-slate-500">Edit Reason for Posted Journal</span>
             <input
               value={editReason}
-              onChange={(event) => setEditReason(event.target.value)}
+              onChange={(event) => {
+                patchDraft({ editReason: event.target.value });
+                setDirty(true);
+              }}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
             />
           </label>
@@ -173,7 +205,10 @@ export function JournalEntryForm({ journal }: JournalEntryFormProps) {
           </div>
           <button
             type="button"
-            onClick={() => setLines((current) => [...current, blankLine()])}
+            onClick={() => {
+              setDraft((current) => ({ ...current, lines: [...current.lines, blankLine()] }));
+              setDirty(true);
+            }}
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Add Line

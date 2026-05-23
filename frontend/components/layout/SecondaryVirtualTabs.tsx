@@ -37,7 +37,7 @@ export function SecondaryVirtualTabs({
               key={tab.id}
               className={cx(
                 'group flex h-10 items-center gap-2 rounded-t-lg border border-b-0 px-3 text-sm transition',
-                tab.isList ? 'min-w-14 max-w-14 justify-center' : 'min-w-32 max-w-56',
+                tab.mode === 'list' ? 'min-w-14 max-w-14 justify-center' : 'min-w-32 max-w-56',
                 active
                   ? 'border-slate-300 bg-white text-slate-950 shadow-sm'
                   : 'border-slate-300 bg-slate-200 text-slate-600 hover:bg-white',
@@ -48,11 +48,11 @@ export function SecondaryVirtualTabs({
                 onClick={() => onSelectTab(tab.id)}
                 className={cx(
                   'min-w-0 flex-1 font-semibold',
-                  tab.isList ? 'flex items-center justify-center' : 'truncate text-left',
+                  tab.mode === 'list' ? 'flex items-center justify-center' : 'truncate text-left',
                 )}
                 title={tab.label}
               >
-                {tab.isList ? <ListTree className="h-5 w-5" /> : tab.label}
+                {tab.mode === 'list' ? <ListTree className="h-5 w-5" /> : tab.label}
               </button>
               {tab.closable ? (
                 <button

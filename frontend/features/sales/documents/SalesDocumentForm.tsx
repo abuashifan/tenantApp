@@ -28,6 +28,7 @@ import { listChartOfAccounts } from '@/features/accounting/chart-of-accounts/api
 import { listMasterData } from '@/features/accounting/master-data/api';
 import { ApiRequestError, getApiErrorMessage } from '@/lib/api';
 import { formatAccountingStatus, formatCurrency } from '@/lib/formatters';
+import { useVirtualTabs } from '@/hooks/useVirtualTabs';
 import type { ChartOfAccount, Department, MasterDataRecord, Project } from '@/types/accounting';
 import { calculateSalesLine, calculateSalesTotals } from './calculations';
 import { normalizeSalesLines } from './documentHelpers';
@@ -75,6 +76,7 @@ export function SalesDocumentForm({
   onSubmit,
 }: SalesDocumentFormProps) {
   const router = useRouter();
+  const { activeSecondaryTabId, setSecondaryDirty } = useVirtualTabs();
   const today = new Date().toISOString().slice(0, 10);
   const [contacts, setContacts] = useState<MasterDataRecord[]>([]);
   const [products, setProducts] = useState<MasterDataRecord[]>([]);
@@ -135,6 +137,11 @@ export function SalesDocumentForm({
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
   const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (!activeSecondaryTabId) return;
+    setSecondaryDirty(activeSecondaryTabId, dirty);
+  }, [activeSecondaryTabId, dirty, setSecondaryDirty]);
 
   async function loadSelectors() {
     try {
@@ -243,6 +250,8 @@ export function SalesDocumentForm({
       setError(null);
       setFieldErrors({});
       const result = await onSubmit(buildPayload());
+      setDirty(false);
+      if (activeSecondaryTabId) setSecondaryDirty(activeSecondaryTabId, false);
       const routes = {
         quotation: '/sales/quotations',
         order: '/sales/orders',
