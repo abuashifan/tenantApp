@@ -142,7 +142,7 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-slate-100 text-slate-900">
+  <div class="flex h-screen overflow-hidden bg-slate-100 text-slate-900">
     <AppSidebarCollapsed
       v-if="ui.sidebarCollapsed"
       :modules="modules"
@@ -164,7 +164,7 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
       @open-item="onOpenItem"
     />
 
-    <div class="flex min-w-0 flex-1 flex-col">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <AppTopbar
         :tabs="primaryTabs"
         :active-id="activePrimaryId"
