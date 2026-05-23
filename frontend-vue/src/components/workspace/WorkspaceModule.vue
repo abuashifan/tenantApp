@@ -4,7 +4,6 @@ import type { ColumnDef } from '@tanstack/vue-table'
 
 import DataTable from '@/components/table/DataTable.vue'
 import DataTableToolbar from '@/components/table/DataTableToolbar.vue'
-import SecondaryTabsBar from '@/components/navigation/SecondaryTabsBar.vue'
 import UnsavedChangesDialog from '@/components/dialog/UnsavedChangesDialog.vue'
 import WorkspaceSelectionActions from '@/components/workspace/WorkspaceSelectionActions.vue'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
@@ -130,13 +129,6 @@ watch(
 
 <template>
   <div class="space-y-4">
-    <SecondaryTabsBar
-      :tabs="secondaryTabs"
-      :active-id="activeSecondaryId"
-      @activate="(id) => tabs.activateSecondaryTab(primaryId, id)"
-      @close="requestClose"
-    />
-
     <div v-if="activeSecondary?.mode === 'list'" class="space-y-4">
       <DataTableToolbar
         v-model:search="list.filters.value.search"

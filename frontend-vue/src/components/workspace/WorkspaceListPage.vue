@@ -2,7 +2,6 @@
 import { computed, h, ref, shallowRef } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 
-import SecondaryTabsBar from '@/components/navigation/SecondaryTabsBar.vue'
 import WorkspaceConfirmDialog from '@/components/workspace/WorkspaceConfirmDialog.vue'
 import WorkspaceDataTable from '@/components/workspace/WorkspaceDataTable.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
@@ -58,12 +57,9 @@ tabs.ensureListSecondaryTab(props.config.primaryTabId)
 
 const filtersOpen = ref(false)
 const pendingAction = shallowRef<{ action: WorkspaceRowAction<TRow>; row: TRow } | null>(null)
-const activeSecondaryId = computed(
-  () => tabs.activeSecondaryTabIdByPrimaryId[props.config.primaryTabId] ?? `${props.config.primaryTabId}::list`,
-)
+const activeSecondaryId = computed(() => tabs.activeSecondaryTabIdByPrimaryId[props.config.primaryTabId] ?? '')
 const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[props.config.primaryTabId] ?? [])
 const activeSecondary = computed(() => secondaryTabs.value.find((tab) => tab.id === activeSecondaryId.value) ?? null)
-const visibleSecondaryTabs = computed(() => secondaryTabs.value.filter((tab) => tab.mode !== 'list'))
 
 const columns = computed<ColumnDef<TRow, unknown>[]>(() => {
   if (!props.config.rowActions?.length) return props.config.columns
@@ -136,24 +132,10 @@ function confirmPendingAction() {
   executeRowAction(pendingAction.value.action.key, pendingAction.value.row)
   pendingAction.value = null
 }
-
-function requestClose(tabId: string) {
-  const tab = secondaryTabs.value.find((item) => item.id === tabId)
-  if (!tab || !tab.closable) return
-  tabs.closeSecondaryTab(props.config.primaryTabId, tabId)
-}
 </script>
 
 <template>
   <div class="space-y-4">
-    <SecondaryTabsBar
-      v-if="visibleSecondaryTabs.length > 0"
-      :tabs="visibleSecondaryTabs"
-      :active-id="activeSecondaryId"
-      @activate="(id) => tabs.activateSecondaryTab(config.primaryTabId, id)"
-      @close="requestClose"
-    />
-
     <div v-if="activeSecondary?.mode === 'list'" class="space-y-4">
       <div>
         <h1 class="text-2xl font-black text-slate-950">{{ config.title }}</h1>
