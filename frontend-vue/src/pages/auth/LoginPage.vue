@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import axios from 'axios'
 
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-vue-next'
 
@@ -49,11 +50,16 @@ async function handleLogin() {
     const next = (route.query.next as string | undefined) ?? '/select-company'
     await router.push(next)
   } catch (e) {
-    const message =
-      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-      (e as Error).message ??
-      'Login gagal'
-    errorMessage.value = message
+    if (axios.isAxiosError(e) && !e.response) {
+      errorMessage.value =
+        'Network Error: tidak bisa terhubung ke API. Pastikan backend jalan dan Vite proxy/env sudah benar.'
+    } else {
+      const message =
+        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        (e as Error).message ??
+        'Login gagal'
+      errorMessage.value = message
+    }
   } finally {
     loading.value = false
   }
