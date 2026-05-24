@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Field } from 'vee-validate'
 
+import TransactionAccountSelector from '@/components/transaction-form/TransactionAccountSelector.vue'
+
 withDefaults(
   defineProps<{
     cashBankAccountName?: string
@@ -21,17 +23,13 @@ withDefaults(
 
 <template>
   <div class="grid gap-3 sm:grid-cols-2">
-    <label class="block space-y-1.5">
-      <span class="text-xs font-bold text-slate-500">{{ cashBankAccountLabel }}</span>
-      <Field
-        :name="cashBankAccountName"
-        as="input"
-        type="text"
-        placeholder="Cash/Bank account id…"
-        :disabled="readonly"
-        class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:bg-slate-50"
-      />
-    </label>
+    <TransactionAccountSelector
+      :name="cashBankAccountName"
+      :label="cashBankAccountLabel"
+      :readonly="readonly"
+      placeholder="Select cash/bank account…"
+      :params="{ is_active: true, is_cash_bank: true }"
+    />
 
     <label class="block space-y-1.5">
       <span class="text-xs font-bold text-slate-500">{{ amountLabel }}</span>
@@ -47,4 +45,3 @@ withDefaults(
     </label>
   </div>
 </template>
-
