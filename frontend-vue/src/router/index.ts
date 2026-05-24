@@ -75,11 +75,16 @@ const router = createRouter({
         {
           path: 'reports/trial-balance',
           name: 'trial-balance',
+          redirect: '/accounting/trial-balance',
+        },
+        {
+          path: 'accounting/trial-balance',
+          name: 'accounting-trial-balance',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
           meta: {
             permissions: ['reports.view'],
             apiEndpoint: '/reports/trial-balance',
-            primaryTabId: '/reports/trial-balance',
+            primaryTabId: '/accounting/trial-balance',
             primaryTabLabel: 'Trial Balance',
             primaryTabClosable: true,
           },

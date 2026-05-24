@@ -90,6 +90,43 @@ type MockAccountingState = {
   selectedCoaId: string | null
   selectedJournalId: string | null
   selectedLedgerAccountCode: string | null
+  trialBalanceFiltersDraft?: TrialBalanceFilters
+  trialBalanceFilters?: TrialBalanceFilters
+}
+
+export type TrialBalanceAccountType = 'All' | 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense'
+export type TrialBalanceBalanceView = 'hide_zero' | 'show_all' | 'only_with_balance'
+
+export type TrialBalanceFilters = {
+  search: string
+  period: 'May 2026' | 'April 2026' | 'March 2026'
+  asOfDate: string
+  accountType: TrialBalanceAccountType
+  balanceView: TrialBalanceBalanceView
+}
+
+export type TrialBalanceRow = {
+  id: string
+  accountCode: string
+  accountName: string
+  accountType: Exclude<TrialBalanceAccountType, 'All'>
+  debit: number
+  credit: number
+  netBalance: number
+}
+
+function mapCoaTypeToTrialBalanceType(type: MockChartOfAccountType): Exclude<TrialBalanceAccountType, 'All'> {
+  if (type === 'Hutang') return 'Liability'
+  if (type === 'Modal') return 'Equity'
+  if (type === 'Pendapatan') return 'Revenue'
+  if (type === 'Beban') return 'Expense'
+  return 'Asset'
+}
+
+function periodStart(period: TrialBalanceFilters['period']) {
+  if (period === 'March 2026') return '2026-03-01'
+  if (period === 'April 2026') return '2026-04-01'
+  return '2026-05-01'
 }
 
 function normalizeText(value: string) {
@@ -345,6 +382,8 @@ function makeMockLedgerLines(coa: MockChartOfAccount[], journals: MockJournal[])
     const debit = idx % 2 === 0 ? amount : 0
     const credit = debit === 0 ? amount : 0
     push(idx++, { ...acc, date: j.date, journalId: j.id, journalNo: j.journalNo, description: j.description, source, status, debit, credit })
+    // Offset line to keep the mock ledger balanced for trial balance testing.
+    push(idx++, { ...bank, date: j.date, journalId: j.id, journalNo: j.journalNo, description: `${j.description} (offset)`, source, status, debit: credit, credit: debit })
   }
 
   // Ensure minimum 60 lines by duplicating a few operational adjustments if needed.
@@ -353,6 +392,7 @@ function makeMockLedgerLines(coa: MockChartOfAccount[], journals: MockJournal[])
     if (!j) break
     const amount = 150_000 * ((lines.length % 7) + 1)
     push(idx++, { ...office, date: j.date, journalId: j.id, journalNo: j.journalNo, description: `Koreksi biaya operasional (${lines.length + 1})`, source: 'Adjustment', status: 'Draft', debit: amount, credit: 0 })
+    push(idx++, { ...cashSmall, date: j.date, journalId: j.id, journalNo: j.journalNo, description: `Koreksi biaya operasional (${lines.length + 1}) (offset)`, source: 'Adjustment', status: 'Draft', debit: 0, credit: amount })
   }
 
   return lines
@@ -382,6 +422,20 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
     selectedCoaId: null as string | null,
     selectedJournalId: null as string | null,
     selectedLedgerAccountCode: '111.102-01' as string | null,
+    trialBalanceFiltersDraft: {
+      search: '',
+      period: 'May 2026' as TrialBalanceFilters['period'],
+      asOfDate: '2026-05-31',
+      accountType: 'All' as TrialBalanceAccountType,
+      balanceView: 'hide_zero' as TrialBalanceBalanceView,
+    },
+    trialBalanceFilters: {
+      search: '',
+      period: 'May 2026' as TrialBalanceFilters['period'],
+      asOfDate: '2026-05-31',
+      accountType: 'All' as TrialBalanceAccountType,
+      balanceView: 'hide_zero' as TrialBalanceBalanceView,
+    },
   }),
 
   getters: {
@@ -527,6 +581,109 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
         lineCount: running.length,
       }
     },
+
+    trialBalanceRows(state): TrialBalanceRow[] {
+      const filters = state.trialBalanceFilters ?? state.trialBalanceFiltersDraft
+      if (!filters) return []
+
+      const start = periodStart(filters.period)
+      const end = filters.asOfDate
+      const query = normalizeText(filters.search)
+
+      const coaLeaf = state.chartOfAccounts.filter((a) => !a.isGroup)
+      const byCode = new Map(coaLeaf.map((a) => [a.code, a]))
+
+      const totals = new Map<string, { debit: number; credit: number }>()
+      for (const line of state.ledgerLines) {
+        if (line.status !== 'Posted') continue
+        if (line.date < start || line.date > end) continue
+        const bucket = totals.get(line.accountCode) ?? { debit: 0, credit: 0 }
+        bucket.debit += line.debit
+        bucket.credit += line.credit
+        totals.set(line.accountCode, bucket)
+      }
+
+      const rows: TrialBalanceRow[] = []
+      for (const [code, amount] of totals.entries()) {
+        const acc = byCode.get(code)
+        if (!acc) continue
+
+        const accountType = mapCoaTypeToTrialBalanceType(acc.type)
+        if (filters.accountType !== 'All' && accountType !== filters.accountType) continue
+
+        const debit = amount.debit
+        const credit = amount.credit
+        const netBalance = debit - credit
+
+        if (filters.balanceView === 'hide_zero' && debit === 0 && credit === 0) continue
+        if (filters.balanceView === 'only_with_balance' && netBalance === 0) continue
+
+        if (query) {
+          const hay = `${acc.code} ${acc.name}`.toLowerCase()
+          if (!hay.includes(query)) continue
+        }
+
+        rows.push({
+          id: acc.code,
+          accountCode: acc.code,
+          accountName: acc.name,
+          accountType,
+          debit,
+          credit,
+          netBalance,
+        })
+      }
+
+      // Keep it clean: sort by type then account code
+      const order: Record<TrialBalanceRow['accountType'], number> = {
+        Asset: 1,
+        Liability: 2,
+        Equity: 3,
+        Revenue: 4,
+        Expense: 5,
+      }
+      rows.sort((a, b) => (order[a.accountType] - order[b.accountType]) || a.accountCode.localeCompare(b.accountCode))
+
+      if (filters.balanceView === 'show_all') {
+        // Include accounts with zero movement as well (posted only).
+        const existing = new Set(rows.map((r) => r.accountCode))
+        for (const acc of coaLeaf) {
+          if (existing.has(acc.code)) continue
+          const accountType = mapCoaTypeToTrialBalanceType(acc.type)
+          if (filters.accountType !== 'All' && accountType !== filters.accountType) continue
+          if (query) {
+            const hay = `${acc.code} ${acc.name}`.toLowerCase()
+            if (!hay.includes(query)) continue
+          }
+          rows.push({
+            id: acc.code,
+            accountCode: acc.code,
+            accountName: acc.name,
+            accountType,
+            debit: 0,
+            credit: 0,
+            netBalance: 0,
+          })
+        }
+        rows.sort((a, b) => (order[a.accountType] - order[b.accountType]) || a.accountCode.localeCompare(b.accountCode))
+      }
+
+      return rows
+    },
+
+    trialBalanceTotals(_state): { totalDebit: number; totalCredit: number; difference: number; isBalanced: boolean; accountCount: number } {
+      const rows = (this as unknown as { trialBalanceRows: TrialBalanceRow[] }).trialBalanceRows
+      const totalDebit = rows.reduce((s, r) => s + r.debit, 0)
+      const totalCredit = rows.reduce((s, r) => s + r.credit, 0)
+      const difference = totalDebit - totalCredit
+      return {
+        totalDebit,
+        totalCredit,
+        difference,
+        isBalanced: totalDebit === totalCredit,
+        accountCount: rows.length,
+      }
+    },
   },
 
   actions: {
@@ -615,6 +772,44 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
     },
     updateMockLedgerLine(id: string, payload: Partial<MockLedgerLine>) {
       this.ledgerLines = this.ledgerLines.map((row) => (row.id === id ? { ...row, ...payload } : row))
+    },
+
+    setTrialBalanceSearch(keyword: string) {
+      if (!this.trialBalanceFiltersDraft) return
+      this.trialBalanceFiltersDraft.search = keyword
+    },
+    setTrialBalancePeriod(period: TrialBalanceFilters['period']) {
+      if (!this.trialBalanceFiltersDraft) return
+      this.trialBalanceFiltersDraft.period = period
+    },
+    setTrialBalanceAsOfDate(asOfDate: string) {
+      if (!this.trialBalanceFiltersDraft) return
+      this.trialBalanceFiltersDraft.asOfDate = asOfDate
+    },
+    setTrialBalanceAccountType(accountType: TrialBalanceAccountType) {
+      if (!this.trialBalanceFiltersDraft) return
+      this.trialBalanceFiltersDraft.accountType = accountType
+    },
+    setTrialBalanceBalanceView(balanceView: TrialBalanceBalanceView) {
+      if (!this.trialBalanceFiltersDraft) return
+      this.trialBalanceFiltersDraft.balanceView = balanceView
+    },
+    resetTrialBalanceFilters() {
+      this.trialBalanceFiltersDraft = {
+        search: '',
+        period: 'May 2026',
+        asOfDate: '2026-05-31',
+        accountType: 'All',
+        balanceView: 'hide_zero',
+      }
+    },
+    applyTrialBalanceFilters() {
+      if (!this.trialBalanceFiltersDraft) return
+      this.trialBalanceFilters = { ...this.trialBalanceFiltersDraft }
+    },
+    refreshTrialBalance() {
+      // mock-only refresh: recompute ledger lines if needed
+      this.initLedgerLines()
     },
   },
 })

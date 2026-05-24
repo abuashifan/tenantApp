@@ -36,7 +36,7 @@ const modules: SidebarModule[] = [
       { id: 'journal', label: 'Journal Entries', href: '/accounting/journals' },
       { id: 'coa', label: 'Chart of Accounts', href: '/accounting/chart-of-accounts' },
       { id: 'ledger', label: 'General Ledger', href: '/reports/general-ledger' },
-      { id: 'trial', label: 'Trial Balance', href: '/reports/trial-balance' },
+      { id: 'trial', label: 'Trial Balance', href: '/accounting/trial-balance' },
     ],
   },
   {

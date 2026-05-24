@@ -28,6 +28,7 @@ const props = withDefaults(
     emptyDescription?: string
     selectedIds?: string[]
     selectable?: boolean
+    rowClickable?: boolean
   }>(),
   {
     loading: false,
@@ -35,11 +36,13 @@ const props = withDefaults(
     emptyDescription: 'Try adjusting your filters or date range.',
     selectedIds: () => [],
     selectable: false,
+    rowClickable: false,
   },
 )
 
 const emit = defineEmits<{
   'update:selectedIds': [ids: string[]]
+  rowClick: [row: TRow]
 }>()
 
 const globalFilter = ref('')
@@ -176,7 +179,8 @@ watch(
             v-else
             v-for="row in table.getRowModel().rows"
             :key="row.id"
-            class="hover:bg-slate-50/70"
+            :class="cn('hover:bg-slate-50/70', rowClickable && 'cursor-pointer')"
+            @click="rowClickable ? emit('rowClick', row.original) : undefined"
           >
             <td v-for="cell in row.getVisibleCells()" :key="cell.id" class="whitespace-nowrap px-4 py-3">
               <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
