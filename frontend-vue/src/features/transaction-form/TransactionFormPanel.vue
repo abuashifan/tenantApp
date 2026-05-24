@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BaseButton from '@/components/ui/BaseButton.vue'
 import TransactionDateFields from '@/components/transaction-form/TransactionDateFields.vue'
+import TransactionCashBankAmountFields from '@/components/transaction-form/TransactionCashBankAmountFields.vue'
 import TransactionFormHeader from '@/components/transaction-form/TransactionFormHeader.vue'
 import TransactionFormSection from '@/components/transaction-form/TransactionFormSection.vue'
 import TransactionFormShell from '@/components/transaction-form/TransactionFormShell.vue'
@@ -35,6 +36,12 @@ useTransactionTotals(tx.form as any)
 const partnerName =
   props.config.partnerField ?? (props.config.partnerType === 'vendor' ? 'vendor_id' : props.config.partnerType === 'customer' ? 'customer_id' : '')
 
+const needsCashBankAndAmount =
+  props.config.documentType === 'sales.customer-deposits' ||
+  props.config.documentType === 'purchase.vendor-deposits' ||
+  props.config.documentType === 'sales.receipts' ||
+  props.config.documentType === 'purchase.payments'
+
 async function onSubmit() {
   await tx.save()
 }
@@ -67,9 +74,13 @@ async function onSubmit() {
         </div>
       </TransactionFormSection>
 
+      <TransactionFormSection v-if="needsCashBankAndAmount" title="Payment">
+        <TransactionCashBankAmountFields :readonly="tx.isReadonly.value" />
+      </TransactionFormSection>
+
       <TransactionLineTable v-if="config.hasLines" name="lines" :readonly="tx.isReadonly.value" />
 
-      <TransactionFormSection title="Totals">
+      <TransactionFormSection v-if="config.hasLines" title="Totals">
         <TransactionTotalsPanel />
       </TransactionFormSection>
 
