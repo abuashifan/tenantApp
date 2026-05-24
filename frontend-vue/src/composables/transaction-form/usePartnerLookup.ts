@@ -13,11 +13,14 @@ export function usePartnerLookup() {
     error.value = null
     try {
       const res = await contactsService.list({ is_active: true })
-      const payload = res.data as ApiResponse<any[]>
+      const payload = res.data as ApiResponse<Array<Record<string, unknown>>>
       const items = Array.isArray(payload.data) ? payload.data : []
       return items
-        .filter((c) => (partnerType === 'customer' ? c?.is_customer : c?.is_supplier))
-        .map((c) => ({ id: Number(c.id), label: c.contact_code ? `${c.contact_code} - ${c.name}` : String(c.name) }))
+        .filter((c) => (partnerType === 'customer' ? Boolean((c as any)?.is_customer) : Boolean((c as any)?.is_supplier)))
+        .map((c) => ({
+          id: Number((c as any).id),
+          label: (c as any).contact_code ? `${(c as any).contact_code} - ${(c as any).name}` : String((c as any).name),
+        }))
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Unable to load partners.'
       return []
@@ -28,4 +31,3 @@ export function usePartnerLookup() {
 
   return { loading, error, listPartners }
 }
-

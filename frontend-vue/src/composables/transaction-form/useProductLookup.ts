@@ -13,11 +13,14 @@ export function useProductLookup() {
     error.value = null
     try {
       const res = await productsService.list({ is_active: true })
-      const payload = res.data as ApiResponse<any[]>
+      const payload = res.data as ApiResponse<Array<Record<string, unknown>>>
       const items = Array.isArray(payload.data) ? payload.data : []
       return items.map((p) => ({
-        id: Number(p.id),
-        label: p.code || p.sku ? `${p.code || p.sku} - ${p.name}` : String(p.name),
+        id: Number((p as any).id),
+        label:
+          (p as any).code || (p as any).sku
+            ? `${(p as any).code || (p as any).sku} - ${(p as any).name}`
+            : String((p as any).name),
       }))
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Unable to load products.'
@@ -29,4 +32,3 @@ export function useProductLookup() {
 
   return { loading, error, listProducts }
 }
-

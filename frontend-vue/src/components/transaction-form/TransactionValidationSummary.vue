@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useFormErrors } from 'vee-validate'
+import { useFormContext, useFormErrors } from 'vee-validate'
 
 const props = withDefaults(
   defineProps<{
@@ -10,11 +10,16 @@ const props = withDefaults(
 )
 
 const errors = useFormErrors()
+const form = useFormContext()
 const items = computed(() => Object.entries(errors.value).map(([path, message]) => ({ path, message })))
+const shouldShow = computed(() => (form?.submitCount.value ?? 0) > 0)
 </script>
 
 <template>
-  <div v-if="items.length" class="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800 shadow-sm">
+  <div
+    v-if="shouldShow && items.length"
+    class="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800 shadow-sm"
+  >
     <p class="font-black">{{ title }}</p>
     <ul class="mt-2 list-disc space-y-1 pl-5">
       <li v-for="item in items" :key="item.path">

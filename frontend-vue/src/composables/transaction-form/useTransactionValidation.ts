@@ -9,7 +9,8 @@ function normalizePath(path: string) {
 export function applyLaravelValidationErrors(form: FormContext, errors: ValidationErrors | undefined) {
   if (!errors) return
   for (const [path, messages] of Object.entries(errors)) {
-    form.setFieldError(normalizePath(path), messages?.[0] ?? 'Invalid value')
+    const first = Array.isArray(messages) ? messages[0] : undefined
+    form.setFieldError(normalizePath(path), first ?? 'Invalid value')
   }
 }
 
@@ -20,4 +21,3 @@ export function toErrorMessage(cause: unknown) {
   if (typeof api.message === 'string') return api.message
   return 'Request failed.'
 }
-
