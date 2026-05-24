@@ -8,7 +8,6 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import DataTable from '@/components/table/DataTable.vue'
 import ToneBadge from '@/components/ui/ToneBadge.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
-import StatusBadge from '@/components/ui/StatusBadge.vue'
 import { useMockAccountingDataStore, type TrialBalanceRow, type TrialBalanceAccountType, type TrialBalanceBalanceView } from '@/stores/mockAccountingDataStore'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
@@ -162,27 +161,6 @@ function openGeneralLedger(row: TrialBalanceRow) {
         </div>
       </div>
 
-    </div>
-
-    <div class="grid gap-3 lg:grid-cols-4">
-      <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-xs font-bold text-slate-500">Total Debit</p>
-        <p class="mt-2 text-lg font-black tabular-nums text-slate-950">{{ formatRupiah(totals.totalDebit) }}</p>
-      </div>
-      <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-xs font-bold text-slate-500">Total Credit</p>
-        <p class="mt-2 text-lg font-black tabular-nums text-slate-950">{{ formatRupiah(totals.totalCredit) }}</p>
-      </div>
-      <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-xs font-bold text-slate-500">Difference</p>
-        <p class="mt-2 text-lg font-black tabular-nums text-slate-950">{{ formatRupiah(Math.abs(totals.difference)) }}</p>
-      </div>
-      <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-xs font-bold text-slate-500">Status</p>
-        <div class="mt-2">
-          <StatusBadge :status="totals.isBalanced ? 'Balanced' : 'Unbalanced'" />
-        </div>
-      </div>
     </div>
 
     <WorkspaceEmptyState
