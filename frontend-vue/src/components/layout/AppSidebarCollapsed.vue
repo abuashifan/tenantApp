@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-
 import { Building2, PanelLeftOpen, X, ChevronRight } from 'lucide-vue-next'
 
+import type { SidebarMenuGroup, SidebarMenuItem } from '@/navigation/sidebar'
 import { cn } from '@/utils/cn'
 
-export type SidebarItem = { id: string; label: string; href: string }
-export type SidebarModule = { key: string; label: string; icon: Component; items: SidebarItem[] }
-
 defineProps<{
-  modules: SidebarModule[]
+  modules: SidebarMenuGroup[]
   activeModuleKey: string
+  activeHref: string
   floatingModuleKey: string | null
 }>()
 
@@ -18,7 +15,7 @@ const emit = defineEmits<{
   activateModule: [moduleKey: string]
   setFloating: [moduleKey: string | null]
   expand: []
-  openItem: [item: SidebarItem]
+  openItem: [item: SidebarMenuItem]
 }>()
 </script>
 
@@ -80,7 +77,13 @@ const emit = defineEmits<{
         v-for="item in modules.find((m) => m.key === floatingModuleKey)?.items ?? []"
         :key="item.id"
         type="button"
-        class="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold text-slate-600 hover:bg-[#f7fbe9] hover:text-[#48580e]"
+        :class="
+          cn(
+            'flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold hover:bg-[#f7fbe9] hover:text-[#48580e]',
+            activeHref === item.href ? 'bg-[#f7fbe9] text-[#48580e]' : 'text-slate-600',
+          )
+        "
+        :aria-current="activeHref === item.href ? 'page' : undefined"
         @click="emit('openItem', item)"
       >
         {{ item.label }}

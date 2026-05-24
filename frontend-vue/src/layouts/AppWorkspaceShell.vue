@@ -1,84 +1,37 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 
-import {
-  ClipboardList,
-  LayoutDashboard,
-  Settings,
-  ShoppingCart,
-  WalletCards,
-  Warehouse,
-} from 'lucide-vue-next'
-
-import AppSidebarCollapsed, { type SidebarItem, type SidebarModule } from '@/components/layout/AppSidebarCollapsed.vue'
+import AppSidebarCollapsed from '@/components/layout/AppSidebarCollapsed.vue'
 import AppSidebarFull from '@/components/layout/AppSidebarFull.vue'
 import AppTopbar from '@/components/layout/AppTopbar.vue'
 import SecondaryTabsBar from '@/components/navigation/SecondaryTabsBar.vue'
 import UnsavedChangesDialog from '@/components/dialog/UnsavedChangesDialog.vue'
+import { sidebarMenuGroups, type SidebarMenuGroup, type SidebarMenuItem } from '@/navigation/sidebar'
 import WorkspaceContentArea from '@/workspace/WorkspaceContentArea.vue'
+import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 const router = useRouter()
+const auth = useAuthStore()
 const ui = useUiStore()
 const company = useCompanyStore()
 const tabs = useWorkspaceTabsStore()
 
-const modules: SidebarModule[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, items: [] },
-  {
-    key: 'accounting',
-    label: 'Accounting',
-    icon: ClipboardList,
-    items: [
-      { id: 'journal', label: 'Journal Entries', href: '/accounting/journals' },
-      { id: 'coa', label: 'Chart of Accounts', href: '/accounting/chart-of-accounts' },
-      { id: 'ledger', label: 'General Ledger', href: '/reports/general-ledger' },
-      { id: 'trial', label: 'Trial Balance', href: '/accounting/trial-balance' },
-    ],
-  },
-  {
-    key: 'sales',
-    label: 'Sales & AR',
-    icon: ShoppingCart,
-    items: [
-      { id: 'sales-invoice', label: 'Sales Invoices', href: '/sales/invoices' },
-      { id: 'sales-order', label: 'Sales Orders', href: '/sales/orders' },
-      { id: 'ar-aging', label: 'AR Aging', href: '/sales/ar-aging' },
-    ],
-  },
-  {
-    key: 'cashbank',
-    label: 'Cash & Bank',
-    icon: WalletCards,
-    items: [
-      { id: 'cash-in', label: 'Cash In', href: '/cash-bank/cash-in' },
-      { id: 'cash-out', label: 'Cash Out', href: '/cash-bank/cash-out' },
-      { id: 'bank-transfer', label: 'Bank Transfer', href: '/cash-bank/bank-transfer' },
-    ],
-  },
-  {
-    key: 'inventory',
-    label: 'Inventory',
-    icon: Warehouse,
-    items: [
-      { id: 'products', label: 'Products', href: '/inventory/products' },
-      { id: 'stock', label: 'Stock Balance', href: '/inventory/stock' },
-      { id: 'movement', label: 'Stock Movement', href: '/inventory/movements' },
-    ],
-  },
-  {
-    key: 'settings',
-    label: 'Settings',
-    icon: Settings,
-    items: [
-      { id: 'company-setting', label: 'Company Settings', href: '/settings/company' },
-      { id: 'permissions', label: 'Role & Permission', href: '/settings/permissions' },
-    ],
-  },
-]
+function canAccessItem(item: SidebarMenuItem) {
+  return auth.permissions.includes('*') || auth.permissions.includes(item.permission)
+}
+
+const modules = computed<SidebarMenuGroup[]>(() =>
+  sidebarMenuGroups
+    .map((module) => ({
+      ...module,
+      items: module.items.filter(canAccessItem),
+    }))
+    .filter((module) => module.key === 'dashboard' || module.items.length > 0),
+)
 
 const activeModuleKey = ref('dashboard')
 const floatingModuleKey = ref<string | null>(null)
@@ -89,6 +42,15 @@ watchEffect(() => {
 
 const activePrimaryId = computed(() => tabs.activePrimaryTabId)
 const primaryTabs = computed(() => tabs.primaryTabs)
+
+watch(
+  activePrimaryId,
+  (path) => {
+    const module = modules.value.find((item) => item.href === path || item.items.some((child) => child.href === path))
+    if (module) activeModuleKey.value = module.key
+  },
+  { immediate: true },
+)
 
 async function openPrimary(path: string, label: string, closable = true) {
   tabs.openPrimaryTab({ id: path, label, path, closable })
@@ -114,7 +76,7 @@ async function onCollapsedModule(moduleKey: string) {
   floatingModuleKey.value = moduleKey
 }
 
-async function onOpenItem(item: SidebarItem) {
+async function onOpenItem(item: SidebarMenuItem) {
   await openPrimary(item.href, item.label, true)
   floatingModuleKey.value = null
 }
@@ -175,6 +137,7 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
       v-if="ui.sidebarCollapsed"
       :modules="modules"
       :active-module-key="activeModuleKey"
+      :active-href="activePrimaryId"
       :floating-module-key="floatingModuleKey"
       @expand="ui.toggleSidebar()"
       @activate-module="onCollapsedModule"
@@ -185,6 +148,7 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
       v-else
       :modules="modules"
       :active-module-key="activeModuleKey"
+      :active-href="activePrimaryId"
       :active-company-name="activeCompanyName"
       :active-company-id="company.activeCompanyId"
       @collapse="ui.toggleSidebar()"

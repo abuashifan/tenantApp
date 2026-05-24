@@ -1,6 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
+import { sidebarPlaceholderItems } from '@/navigation/sidebar'
+
+const placeholderWorkspaceRoutes = sidebarPlaceholderItems.map((item) => ({
+  path: item.href.slice(1),
+  name: `workspace-${item.id}`,
+  component: () => import('@/pages/workspace/RouteIntent.vue'),
+  meta: {
+    permissions: [item.permission],
+    apiEndpoint: item.endpoint,
+    primaryTabId: item.href,
+    primaryTabLabel: item.label,
+    primaryTabClosable: true,
+    workspacePlaceholder: true,
+  },
+}))
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -89,138 +104,7 @@ const router = createRouter({
             primaryTabClosable: true,
           },
         },
-        {
-          path: 'sales/invoices',
-          name: 'sales-invoices',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['sales.invoices.view'],
-            apiEndpoint: '/sales/invoices',
-            primaryTabId: '/sales/invoices',
-            primaryTabLabel: 'Sales Invoices',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'sales/orders',
-          name: 'sales-orders',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['sales.orders.view'],
-            apiEndpoint: '/sales/orders',
-            primaryTabId: '/sales/orders',
-            primaryTabLabel: 'Sales Orders',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'sales/ar-aging',
-          name: 'ar-aging',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['sales.ar.view'],
-            apiEndpoint: '/sales/ar/aging',
-            primaryTabId: '/sales/ar-aging',
-            primaryTabLabel: 'AR Aging',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'cash-bank/cash-in',
-          name: 'cash-in',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['cash_bank.view'],
-            apiEndpoint: '/cash-bank/cash-receipts',
-            primaryTabId: '/cash-bank/cash-in',
-            primaryTabLabel: 'Cash In',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'cash-bank/cash-out',
-          name: 'cash-out',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['cash_bank.view'],
-            apiEndpoint: '/cash-bank/cash-payments',
-            primaryTabId: '/cash-bank/cash-out',
-            primaryTabLabel: 'Cash Out',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'cash-bank/bank-transfer',
-          name: 'bank-transfer',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['cash_bank.view'],
-            apiEndpoint: '/cash-bank/bank-transfers',
-            primaryTabId: '/cash-bank/bank-transfer',
-            primaryTabLabel: 'Bank Transfer',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'inventory/products',
-          name: 'inventory-products',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['products.view'],
-            apiEndpoint: '/master-data/products',
-            primaryTabId: '/inventory/products',
-            primaryTabLabel: 'Products',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'inventory/stock',
-          name: 'inventory-stock',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['inventory.stock.view'],
-            apiEndpoint: '/inventory/stock-balances',
-            primaryTabId: '/inventory/stock',
-            primaryTabLabel: 'Stock Balance',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'inventory/movements',
-          name: 'inventory-movements',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['inventory.movements.view'],
-            apiEndpoint: '/inventory/stock-movements',
-            primaryTabId: '/inventory/movements',
-            primaryTabLabel: 'Stock Movement',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'settings/company',
-          name: 'settings-company',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['settings.company.view'],
-            apiEndpoint: '/settings/company',
-            primaryTabId: '/settings/company',
-            primaryTabLabel: 'Company Settings',
-            primaryTabClosable: true,
-          },
-        },
-        {
-          path: 'settings/permissions',
-          name: 'settings-permissions',
-          component: () => import('@/pages/workspace/RouteIntent.vue'),
-          meta: {
-            permissions: ['app.dev'],
-            apiEndpoint: '/auth/permissions',
-            primaryTabId: '/settings/permissions',
-            primaryTabLabel: 'Role & Permission',
-            primaryTabClosable: true,
-          },
-        },
+        ...placeholderWorkspaceRoutes,
         // Design/demo routes (restricted)
         {
           path: 'design/reusable-table',

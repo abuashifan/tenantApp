@@ -1,0 +1,173 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+
+import BaseButton from '@/components/ui/BaseButton.vue'
+import WorkspaceListPage from '@/components/workspace/WorkspaceListPage.vue'
+import { listBackendResource, type BackendResourceRow } from './backendResource.service'
+import { makeBackendResourceConfig, resourceCapability } from './backendResource.config'
+import { findSidebarMenuItem } from '@/navigation/sidebar'
+import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
+
+const tabs = useWorkspaceTabsStore()
+const menuItem = computed(() => findSidebarMenuItem(tabs.activePrimaryTabId))
+const config = computed(() => (menuItem.value ? makeBackendResourceConfig(menuItem.value) : null))
+const capability = computed(() => (menuItem.value ? resourceCapability(menuItem.value) : null))
+
+const rows = ref<BackendResourceRow[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
+const search = ref('')
+const startDate = ref('')
+const endDate = ref('')
+const status = ref('')
+const selectedIds = ref<string[]>([])
+const filterGuidance = computed(() => {
+  if (capability.value?.requiredDateFilter === 'range' && (!startDate.value || !endDate.value)) {
+    return 'Select a start date and end date to load this report.'
+  }
+  if (capability.value?.requiredDateFilter === 'as-of' && !endDate.value) {
+    return 'Select an end date to use as the as-of date for this report.'
+  }
+  return ''
+})
+
+function rowText(row: BackendResourceRow) {
+  return Object.values(row)
+    .filter((value) => typeof value !== 'object')
+    .join(' ')
+    .toLowerCase()
+}
+
+function dateValue(row: BackendResourceRow) {
+  return String(row.document_date ?? row.date ?? row.transaction_date ?? row.created_at ?? '')
+}
+
+function statusValue(row: BackendResourceRow) {
+  const value = row.status ?? row.state ?? row.is_active
+  if (typeof value === 'boolean') return value ? 'active' : 'inactive'
+  return String(value ?? '').toLowerCase()
+}
+
+const filteredRows = computed(() => {
+  const query = search.value.trim().toLowerCase()
+  return rows.value.filter((row) => {
+    if (query && !rowText(row).includes(query)) return false
+    if (status.value && statusValue(row) !== status.value) return false
+    const date = dateValue(row)
+    if (startDate.value && date && date < startDate.value) return false
+    if (endDate.value && date && date > endDate.value) return false
+    return true
+  })
+})
+
+async function load() {
+  if (!menuItem.value) return
+  if (filterGuidance.value) {
+    rows.value = []
+    error.value = null
+    return
+  }
+  loading.value = true
+  error.value = null
+  try {
+    const params: Record<string, unknown> = {}
+    if (capability.value?.requiredDateFilter === 'range') {
+      params.start_date = startDate.value
+      params.end_date = endDate.value
+    }
+    if (capability.value?.requiredDateFilter === 'as-of') {
+      params.as_of_date = endDate.value
+    }
+    rows.value = await listBackendResource(menuItem.value.endpoint, params)
+  } catch (reason) {
+    error.value = reason instanceof Error ? reason.message : 'Unable to load workspace data.'
+  } finally {
+    loading.value = false
+  }
+}
+
+function resetFilters() {
+  search.value = ''
+  startDate.value = ''
+  endDate.value = ''
+  status.value = ''
+  if (!filterGuidance.value) void load()
+}
+
+function openCreate() {
+  if (!config.value) return
+  tabs.openCreateSecondaryTab(config.value.primaryTabId, { label: config.value.createLabel ?? 'Create' })
+}
+
+function openRowTab(key: string, row?: BackendResourceRow) {
+  if (!config.value || !row) return
+  const entity = { id: row.id, number: String(row.document_number ?? row.number ?? row.code ?? row.id) }
+  if (key === 'edit') tabs.openEditSecondaryTab(config.value.primaryTabId, entity)
+  if (key === 'detail' || key === 'open') tabs.openDetailSecondaryTab(config.value.primaryTabId, entity)
+}
+
+function closeSecondary(tabId?: string) {
+  if (!config.value || !tabId) return
+  tabs.closeSecondaryTab(config.value.primaryTabId, tabId)
+}
+
+watch(
+  () => menuItem.value?.href,
+  () => {
+    if (!menuItem.value) return
+    tabs.ensureListSecondaryTab(menuItem.value.href, { label: menuItem.value.label })
+    resetFilters()
+    void load()
+  },
+  { immediate: true },
+)
+</script>
+
+<template>
+  <WorkspaceListPage
+    v-if="config && menuItem"
+    v-model:selected-ids="selectedIds"
+    :config="config"
+    :rows="filteredRows"
+    :loading="loading"
+    :error="error"
+    :search="search"
+    :start-date="startDate"
+    :end-date="endDate"
+    :status="status"
+    @refresh="load"
+    @search="search = $event"
+    @date-change="({ startDate: from, endDate: to }) => { startDate = from; endDate = to; load() }"
+    @status-change="status = $event"
+    @action-click="(payload) => payload.key === 'create' ? openCreate() : openRowTab(payload.key, payload.row)"
+  >
+    <template #before-table>
+      <div v-if="filterGuidance" class="rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-600 shadow-sm">
+        {{ filterGuidance }}
+      </div>
+    </template>
+
+    <template #toolbar-right>
+      <span class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600">
+        {{ filteredRows.length }} rows
+      </span>
+    </template>
+
+    <template #secondary="{ tab }">
+      <div class="space-y-4">
+        <div>
+          <p class="text-sm font-semibold text-[#1d81af]">{{ menuItem.module }}</p>
+          <h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+            {{ tab?.mode === 'create' ? `Create ${menuItem.label}` : `${menuItem.label} ${tab?.entityNumber ?? ''}` }}
+          </h1>
+          <p class="mt-2 text-sm leading-6 text-slate-500">
+            Form belum diimplementasikan. Workspace tab sudah terhubung untuk melanjutkan desain form pada fase modul ini.
+          </p>
+        </div>
+        <BaseButton variant="secondary" size="md" @click="closeSecondary(tab?.id)">
+          Back to List
+        </BaseButton>
+      </div>
+    </template>
+  </WorkspaceListPage>
+</template>

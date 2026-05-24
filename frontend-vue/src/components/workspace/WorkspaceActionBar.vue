@@ -50,7 +50,7 @@ const visibleActions = computed(() =>
       {{ action.label }}
     </BaseButton>
 
-    <BaseButton v-if="can(createPermission)" variant="secondary" size="md" @click="emit('create')">
+    <BaseButton v-if="createLabel && createPermission && can(createPermission)" variant="secondary" size="md" @click="emit('create')">
       <Plus class="h-4 w-4" />
       {{ createLabel }}
     </BaseButton>

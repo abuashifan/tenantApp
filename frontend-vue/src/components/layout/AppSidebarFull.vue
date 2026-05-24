@@ -1,23 +1,20 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-
 import { Building2, ChevronDown, Lock, PanelLeftClose } from 'lucide-vue-next'
 
+import type { SidebarMenuGroup, SidebarMenuItem } from '@/navigation/sidebar'
 import { cn } from '@/utils/cn'
 
-export type SidebarItem = { id: string; label: string; href: string }
-export type SidebarModule = { key: string; label: string; icon: Component; items: SidebarItem[] }
-
 defineProps<{
-  modules: SidebarModule[]
+  modules: SidebarMenuGroup[]
   activeModuleKey: string
+  activeHref: string
   activeCompanyName: string
   activeCompanyId: string | number | null
 }>()
 
 const emit = defineEmits<{
   toggleModule: [moduleKey: string]
-  openItem: [item: SidebarItem]
+  openItem: [item: SidebarMenuItem]
   collapse: []
 }>()
 </script>
@@ -84,7 +81,13 @@ const emit = defineEmits<{
               v-for="item in module.items"
               :key="item.id"
               type="button"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/65 transition hover:bg-white/10 hover:text-white"
+              :class="
+                cn(
+                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition hover:bg-white/10 hover:text-white',
+                  activeHref === item.href ? 'bg-white/10 font-bold text-white' : 'text-white/65',
+                )
+              "
+              :aria-current="activeHref === item.href ? 'page' : undefined"
               @click="emit('openItem', item)"
             >
               <span class="h-1.5 w-1.5 rounded-full bg-[#b4db24]" />

@@ -5,13 +5,18 @@ import type { ColumnDef } from '@tanstack/vue-table'
 
 import WorkspaceListPage from '@/components/workspace/WorkspaceListPage.vue'
 import { chartOfAccountsConfig } from '@/features/accounting/chart-of-accounts/chartOfAccounts.config'
-import ChartOfAccountsDrawer from '@/features/accounting/chart-of-accounts/ChartOfAccountsDrawer.vue'
+import ChartOfAccountFormPanel from '@/features/accounting/chart-of-accounts/ChartOfAccountFormPanel.vue'
 import type { WorkspaceListConfig } from '@/types/workspace'
 import { useMockAccountingDataStore, type MockChartOfAccount, type MockChartOfAccountType } from '@/stores/mockAccountingDataStore'
+import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 type CoaNode = MockChartOfAccount & { hasChildren: boolean }
 
 const mock = useMockAccountingDataStore()
+const tabs = useWorkspaceTabsStore()
+tabs.ensureListSecondaryTab(chartOfAccountsConfig.primaryTabId, {
+  label: chartOfAccountsConfig.listTabLabel ?? chartOfAccountsConfig.title,
+})
 
 const accountType = computed({
   get: () => mock.coaFilters.type,
@@ -23,9 +28,17 @@ const activeFilter = computed({
 })
 
 const expandedIds = ref<Set<string>>(new Set())
-const drawerOpen = ref(false)
-const drawerMode = ref<'create' | 'edit'>('create')
-const editingAccount = ref<MockChartOfAccount | null>(null)
+const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[chartOfAccountsConfig.primaryTabId] ?? [])
+const activeSecondaryId = computed(
+  () =>
+    tabs.activeSecondaryTabIdByPrimaryId[chartOfAccountsConfig.primaryTabId] ??
+    `${chartOfAccountsConfig.primaryTabId}::list`,
+)
+const activeSecondary = computed(() => secondaryTabs.value.find((tab) => tab.id === activeSecondaryId.value) ?? null)
+const editingAccount = computed(() => {
+  if (activeSecondary.value?.mode !== 'edit') return null
+  return mock.chartOfAccounts.find((row) => row.id === activeSecondary.value?.entityId) ?? null
+})
 
 function buildChildrenMap(rows: MockChartOfAccount[]) {
   const byParent = new Map<string | null, MockChartOfAccount[]>()
@@ -71,16 +84,17 @@ function toggleExpand(row: CoaNode) {
   expandedIds.value = next
 }
 
-function openCreateDrawer() {
-  drawerMode.value = 'create'
-  editingAccount.value = null
-  drawerOpen.value = true
+function openCreateForm() {
+  tabs.openCreateSecondaryTab(chartOfAccountsConfig.primaryTabId, {
+    label: chartOfAccountsConfig.createLabel ?? 'Add Account',
+  })
 }
 
-function openEditDrawer(row: MockChartOfAccount) {
-  drawerMode.value = 'edit'
-  editingAccount.value = row
-  drawerOpen.value = true
+function openEditForm(row: MockChartOfAccount) {
+  tabs.openEditSecondaryTab(chartOfAccountsConfig.primaryTabId, {
+    id: row.id,
+    number: row.code,
+  })
 }
 
 function handleSave(payload: Record<string, unknown>) {
@@ -93,7 +107,7 @@ function handleSave(payload: Record<string, unknown>) {
 
   if (!code || !name || !type) return
 
-  if (drawerMode.value === 'create') {
+  if (activeSecondary.value?.mode === 'create') {
     const parent = parentCode ? mock.chartOfAccounts.find((r) => r.code === parentCode) ?? null : null
     const level = parent ? parent.level + 1 : 0
     mock.addMockCoa({
@@ -117,6 +131,15 @@ function handleSave(payload: Record<string, unknown>) {
       isActive,
     })
   }
+
+  closeActiveForm()
+}
+
+function closeActiveForm() {
+  const tab = activeSecondary.value
+  if (!tab?.closable) return
+  tabs.clearDraftState(tab.id)
+  tabs.closeSecondaryTab(chartOfAccountsConfig.primaryTabId, tab.id)
 }
 
 async function handleSearch(value: string) {
@@ -183,7 +206,7 @@ const columns = computed<ColumnDef<CoaNode, unknown>[]>(() => [
         {
           type: 'button',
           class: 'text-xs font-bold text-slate-500 hover:text-slate-900',
-          onClick: () => openEditDrawer(row.original),
+          onClick: () => openEditForm(row.original),
         },
         'Edit',
       ),
@@ -212,7 +235,7 @@ const config = computed<WorkspaceListConfig<CoaNode>>(() => ({
     :selected-ids="[]"
     @refresh="handleRefresh"
     @search="handleSearch"
-    @action-click="(p) => (p.key === 'create' ? openCreateDrawer() : undefined)"
+    @action-click="(p) => (p.key === 'create' ? openCreateForm() : undefined)"
   >
     <template #toolbar-right>
       <div class="flex flex-wrap items-center gap-2">
@@ -258,20 +281,22 @@ const config = computed<WorkspaceListConfig<CoaNode>>(() => ({
           <button
             type="button"
             class="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
-            @click="openCreateDrawer"
+            @click="openCreateForm"
           >
             Add
           </button>
         </div>
       </div>
     </template>
-  </WorkspaceListPage>
 
-  <ChartOfAccountsDrawer
-    :open="drawerOpen"
-    :mode="drawerMode"
-    :account="editingAccount"
-    @close="drawerOpen = false"
-    @save="(payload) => { handleSave(payload); drawerOpen = false }"
-  />
+    <template #secondary>
+      <ChartOfAccountFormPanel
+        :mode="activeSecondary?.mode === 'edit' ? 'edit' : 'create'"
+        :account="editingAccount"
+        :accounts="mock.chartOfAccounts"
+        @cancel="closeActiveForm"
+        @save="handleSave"
+      />
+    </template>
+  </WorkspaceListPage>
 </template>
