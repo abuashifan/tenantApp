@@ -14,7 +14,6 @@ import FormActions from '@/components/form/FormActions.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import TransactionLineTable, { type JournalLine } from '@/components/transaction/TransactionLineTable.vue'
-import TransactionBalanceSummary from '@/components/transaction/TransactionBalanceSummary.vue'
 import { useWorkspaceDraft } from '@/composables/useWorkspaceDraft'
 
 type JournalDraft = {
@@ -173,8 +172,19 @@ function notify(message: string) {
         </template>
       </FormHeader>
 
-      <div class="grid gap-6 lg:grid-cols-[1fr_0.45fr]">
-        <div class="space-y-6">
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <!-- Mobile: Header first, Lines second -->
+        <!-- Desktop/tablet landscape: Lines left, Header right -->
+        <div class="order-2 space-y-6 xl:order-1">
+          <TransactionLineTable
+            name="lines"
+            :account-options="accountOptions"
+            :department-options="departmentOptions"
+            :project-options="projectOptions"
+          />
+        </div>
+
+        <div class="order-1 space-y-6 xl:order-2">
           <FormSection title="Journal Header">
             <FormGrid :cols="2">
               <FormDateInput name="header.date" label="Journal Date" />
@@ -187,26 +197,6 @@ function notify(message: string) {
               <FormTextarea name="header.memo" label="Memo" placeholder="Optional memo…" />
             </div>
           </FormSection>
-
-          <TransactionLineTable
-            name="lines"
-            :account-options="accountOptions"
-            :department-options="departmentOptions"
-            :project-options="projectOptions"
-          />
-        </div>
-
-        <div class="space-y-6">
-          <TransactionBalanceSummary :total-debit="totalDebit" :total-credit="totalCredit" />
-
-          <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 class="text-sm font-extrabold text-slate-900">Rules</h2>
-            <ul class="mt-3 list-disc space-y-1 pl-5 text-xs leading-5 text-slate-500">
-              <li>Save Draft allowed anytime.</li>
-              <li>Post hanya aktif jika balanced.</li>
-              <li>Department/Project optional per line.</li>
-            </ul>
-          </div>
         </div>
       </div>
 
