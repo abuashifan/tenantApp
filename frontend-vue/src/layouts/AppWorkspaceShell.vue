@@ -120,7 +120,9 @@ async function onOpenItem(item: SidebarItem) {
 }
 
 const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[activePrimaryId.value] ?? [])
-const visibleSecondaryTabs = computed(() => secondaryTabs.value.filter((t) => t.mode !== 'list'))
+const visibleSecondaryTabs = computed(() =>
+  secondaryTabs.value.filter((t) => t.mode !== 'list' || t.label.trim().length > 0),
+)
 const activeSecondaryId = computed(
   () => tabs.activeSecondaryTabIdByPrimaryId[activePrimaryId.value] ?? `${activePrimaryId.value}::list`,
 )

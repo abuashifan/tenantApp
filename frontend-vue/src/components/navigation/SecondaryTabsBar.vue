@@ -34,7 +34,7 @@ const emit = defineEmits<{
         @keydown.enter="emit('activate', tab.id)"
       >
         <ListTree v-if="tab.mode === 'list'" class="h-4 w-4" />
-        <span v-else class="truncate">{{ tab.label }}</span>
+        <span v-if="tab.label" class="truncate">{{ tab.label }}</span>
         <span v-if="tab.dirty" class="h-2 w-2 rounded-full bg-[#e11d48]" />
         <button
           v-if="tab.closable"

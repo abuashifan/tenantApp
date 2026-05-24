@@ -20,7 +20,9 @@ const statusOptions = [
 
 const mock = useMockAccountingDataStore()
 const tabs = useWorkspaceTabsStore()
-tabs.ensureListSecondaryTab(journalListConfig.primaryTabId)
+tabs.ensureListSecondaryTab(journalListConfig.primaryTabId, {
+  label: journalListConfig.listTabLabel,
+})
 
 const selectedIds = ref<string[]>([])
 const statusSelect = ref<InstanceType<typeof BaseMultiSelect> | null>(null)

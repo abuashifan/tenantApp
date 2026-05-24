@@ -137,15 +137,16 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
       }
     },
 
-    ensureListSecondaryTab(primaryTabId: string) {
+    ensureListSecondaryTab(primaryTabId: string, options?: { label?: string }) {
       const listId = listSecondaryId(primaryTabId)
       const existing = this.secondaryTabsByPrimaryId[primaryTabId] ?? []
-      if (!existing.some((t) => t.id === listId)) {
+      const existingList = existing.find((t) => t.id === listId)
+      if (!existingList) {
         this.secondaryTabsByPrimaryId[primaryTabId] = [
           {
             id: listId,
             primaryTabId,
-            label: '',
+            label: options?.label ?? '',
             mode: 'list',
             closable: false,
             dirty: false,
@@ -154,6 +155,10 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
           },
           ...existing,
         ]
+      } else if (options?.label && existingList.label !== options.label) {
+        this.secondaryTabsByPrimaryId[primaryTabId] = existing.map((tab) =>
+          tab.id === listId ? { ...tab, label: options.label ?? tab.label, updatedAt: now() } : tab,
+        )
       }
       if (!this.activeSecondaryTabIdByPrimaryId[primaryTabId]) {
         this.activeSecondaryTabIdByPrimaryId[primaryTabId] = listId
