@@ -30,6 +30,10 @@ const props = withDefaults(
     selectable?: boolean
     rowClickable?: boolean
     tableMaxHeight?: string
+    compact?: boolean
+    metaTitle?: string
+    metaDescription?: string
+    showMeta?: boolean
   }>(),
   {
     loading: false,
@@ -39,6 +43,10 @@ const props = withDefaults(
     selectable: false,
     rowClickable: false,
     tableMaxHeight: undefined,
+    compact: false,
+    metaTitle: '',
+    metaDescription: '',
+    showMeta: false,
   },
 )
 
@@ -131,6 +139,7 @@ const table = useVueTable({
 })
 
 const selectedIdsInternal = computed(() => table.getSelectedRowModel().rows.map((r) => r.id))
+const pageCount = computed(() => Math.max(table.getPageCount(), 1))
 
 watch(
   selectedIdsInternal,
@@ -142,18 +151,36 @@ watch(
 </script>
 
 <template>
-  <div :class="cn('overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm')">
+  <div :class="cn('flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm')">
     <div
-      class="overflow-x-auto"
+      v-if="showMeta"
+      class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-3"
+    >
+      <div>
+        <p class="text-sm font-black text-slate-950">{{ metaTitle }}</p>
+        <p v-if="metaDescription" class="mt-1 text-xs text-slate-500">{{ metaDescription }}</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="inline-flex h-6 items-center rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600">
+          {{ table.getRowModel().rows.length }} rows
+        </span>
+        <span class="inline-flex h-6 items-center rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600">
+          Page {{ table.getState().pagination.pageIndex + 1 }} of {{ pageCount }}
+        </span>
+      </div>
+    </div>
+
+    <div
+      class="min-h-0 overflow-x-auto"
       :style="props.tableMaxHeight ? { maxHeight: props.tableMaxHeight, overflowY: 'auto' } : undefined"
     >
       <table class="min-w-full text-left text-sm">
-        <thead class="bg-slate-50 text-xs font-bold text-slate-600">
+        <thead class="sticky top-0 z-10 bg-slate-50 text-xs font-bold text-slate-600">
           <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
             <th
               v-for="header in headerGroup.headers"
               :key="header.id"
-              class="whitespace-nowrap px-4 py-3"
+              :class="cn('whitespace-nowrap px-4', compact ? 'py-2' : 'py-3')"
             >
               <FlexRender
                 v-if="!header.isPlaceholder"
@@ -187,7 +214,11 @@ watch(
             :class="cn('hover:bg-slate-50/70', rowClickable && 'cursor-pointer')"
             @click="rowClickable ? emit('rowClick', row.original) : undefined"
           >
-            <td v-for="cell in row.getVisibleCells()" :key="cell.id" class="whitespace-nowrap px-4 py-3">
+            <td
+              v-for="cell in row.getVisibleCells()"
+              :key="cell.id"
+              :class="cn('whitespace-nowrap px-4', compact ? 'py-2' : 'py-3')"
+            >
               <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
             </td>
           </tr>

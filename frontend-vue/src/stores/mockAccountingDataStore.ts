@@ -69,7 +69,9 @@ type CoaFilters = {
 
 type JournalFilters = {
   search: string
-  status: MockJournalStatus | 'All'
+  startDate: string
+  endDate: string
+  statuses: MockJournalStatus[]
 }
 
 type LedgerFilters = {
@@ -86,6 +88,7 @@ type MockAccountingState = {
   ledgerLines: MockLedgerLine[]
   coaFilters: CoaFilters
   journalFilters: JournalFilters
+  journalFiltersDraft: JournalFilters
   ledgerFilters: LedgerFilters
   selectedCoaId: string | null
   selectedJournalId: string | null
@@ -168,6 +171,15 @@ function getFilteredLedgerLinesFromState(state: MockAccountingState): MockLedger
     }
     return true
   })
+}
+
+function defaultJournalFilters(): JournalFilters {
+  return {
+    search: '',
+    startDate: '',
+    endDate: '',
+    statuses: ['Draft', 'Posted', 'Void'],
+  }
 }
 
 function makeMockCoa(): MockChartOfAccount[] {
@@ -405,8 +417,10 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
       active: 'active' as CoaFilters['active'],
     },
     journalFilters: {
-      search: '',
-      status: 'All' as JournalFilters['status'],
+      ...defaultJournalFilters(),
+    },
+    journalFiltersDraft: {
+      ...defaultJournalFilters(),
     },
     ledgerFilters: {
       search: '',
@@ -473,13 +487,15 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
     },
     filteredJournals(state): MockJournal[] {
       const search = normalizeText(state.journalFilters.search)
-      const status = state.journalFilters.status
+      const statuses = state.journalFilters.statuses
 
       return state.journals.filter((row) => {
         const matchesText =
           containsText(`${row.journalNo} ${row.description} ${row.source}`, search)
-        const matchesStatus = status === 'All' ? true : row.status === status
-        return matchesText && matchesStatus
+        const matchesStatus = statuses.length > 0 && statuses.includes(row.status)
+        const matchesStart = state.journalFilters.startDate ? row.date >= state.journalFilters.startDate : true
+        const matchesEnd = state.journalFilters.endDate ? row.date <= state.journalFilters.endDate : true
+        return matchesText && matchesStatus && matchesStart && matchesEnd
       })
     },
     postedJournals(state): MockJournal[] {
@@ -711,10 +727,30 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
     },
 
     setJournalSearch(keyword: string) {
-      this.journalFilters.search = keyword
+      this.journalFiltersDraft.search = keyword
     },
-    setJournalStatusFilter(status: JournalFilters['status']) {
-      this.journalFilters.status = status
+    setJournalDateRange(startDate: string, endDate: string) {
+      this.journalFiltersDraft.startDate = startDate
+      this.journalFiltersDraft.endDate = endDate
+    },
+    setJournalStatuses(statuses: MockJournalStatus[]) {
+      this.journalFiltersDraft.statuses = statuses
+    },
+    setJournalStatusFilter(status: MockJournalStatus | 'All') {
+      this.journalFiltersDraft.statuses = status === 'All' ? ['Draft', 'Posted', 'Void'] : [status]
+    },
+    applyJournalFilters() {
+      this.journalFilters = {
+        search: this.journalFiltersDraft.search,
+        startDate: this.journalFiltersDraft.startDate,
+        endDate: this.journalFiltersDraft.endDate,
+        statuses: [...this.journalFiltersDraft.statuses],
+      }
+    },
+    resetJournalFilters() {
+      const next = defaultJournalFilters()
+      this.journalFiltersDraft = { ...next, statuses: [...next.statuses] }
+      this.journalFilters = { ...next, statuses: [...next.statuses] }
     },
     selectJournal(id: string) {
       this.selectedJournalId = id
