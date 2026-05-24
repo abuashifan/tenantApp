@@ -118,19 +118,6 @@ function openGeneralLedger(row: TrialBalanceRow) {
         </label>
 
         <label class="block space-y-1.5 lg:w-[160px]">
-          <span class="text-xs font-bold text-slate-500">Period</span>
-          <select
-            :value="filters?.period"
-            class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
-            @change="store.setTrialBalancePeriod(($event.target as HTMLSelectElement).value as any)"
-          >
-            <option>May 2026</option>
-            <option>April 2026</option>
-            <option>March 2026</option>
-          </select>
-        </label>
-
-        <label class="block space-y-1.5 lg:w-[160px]">
           <span class="text-xs font-bold text-slate-500">As of Date</span>
           <input
             :value="filters?.asOfDate ?? ''"

@@ -102,7 +102,6 @@ export type TrialBalanceBalanceView = 'hide_zero' | 'show_all' | 'only_with_bala
 
 export type TrialBalanceFilters = {
   search: string
-  period: 'May 2026' | 'April 2026' | 'March 2026'
   asOfDate: string
   accountType: TrialBalanceAccountType
   balanceView: TrialBalanceBalanceView
@@ -124,12 +123,6 @@ function mapCoaTypeToTrialBalanceType(type: MockChartOfAccountType): Exclude<Tri
   if (type === 'Pendapatan') return 'Revenue'
   if (type === 'Beban') return 'Expense'
   return 'Asset'
-}
-
-function periodStart(period: TrialBalanceFilters['period']) {
-  if (period === 'March 2026') return '2026-03-01'
-  if (period === 'April 2026') return '2026-04-01'
-  return '2026-05-01'
 }
 
 function normalizeText(value: string) {
@@ -434,14 +427,12 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
     selectedLedgerAccountCode: '111.102-01' as string | null,
     trialBalanceFiltersDraft: {
       search: '',
-      period: 'May 2026' as TrialBalanceFilters['period'],
       asOfDate: '2026-05-31',
       accountType: 'All' as TrialBalanceAccountType,
       balanceView: 'hide_zero' as TrialBalanceBalanceView,
     },
     trialBalanceFilters: {
       search: '',
-      period: 'May 2026' as TrialBalanceFilters['period'],
       asOfDate: '2026-05-31',
       accountType: 'All' as TrialBalanceAccountType,
       balanceView: 'hide_zero' as TrialBalanceBalanceView,
@@ -598,7 +589,6 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
       const filters = state.trialBalanceFilters ?? state.trialBalanceFiltersDraft
       if (!filters) return []
 
-      const start = periodStart(filters.period)
       const end = filters.asOfDate
       const query = normalizeText(filters.search)
 
@@ -608,7 +598,7 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
       const totals = new Map<string, { debit: number; credit: number }>()
       for (const line of state.ledgerLines) {
         if (line.status !== 'Posted') continue
-        if (line.date < start || line.date > end) continue
+        if (line.date > end) continue
         const bucket = totals.get(line.accountCode) ?? { debit: 0, credit: 0 }
         bucket.debit += line.debit
         bucket.credit += line.credit
@@ -810,10 +800,6 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
       if (!this.trialBalanceFiltersDraft) return
       this.trialBalanceFiltersDraft.search = keyword
     },
-    setTrialBalancePeriod(period: TrialBalanceFilters['period']) {
-      if (!this.trialBalanceFiltersDraft) return
-      this.trialBalanceFiltersDraft.period = period
-    },
     setTrialBalanceAsOfDate(asOfDate: string) {
       if (!this.trialBalanceFiltersDraft) return
       this.trialBalanceFiltersDraft.asOfDate = asOfDate
@@ -829,7 +815,6 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
     resetTrialBalanceFilters() {
       this.trialBalanceFiltersDraft = {
         search: '',
-        period: 'May 2026',
         asOfDate: '2026-05-31',
         accountType: 'All',
         balanceView: 'hide_zero',
