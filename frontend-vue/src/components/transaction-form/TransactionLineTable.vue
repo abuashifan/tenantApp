@@ -19,7 +19,7 @@ export type TransactionLine = Record<string, unknown> & {
   line_total?: number | null
 }
 
-type Product = { id: number; sku?: string | null; code?: string | null; name: string }
+type BackendProduct = { id: number | string; product_code?: string | null; product_name?: string | null }
 
 const props = withDefaults(
   defineProps<{
@@ -33,15 +33,19 @@ const props = withDefaults(
 
 const { fields, push, remove } = useFieldArray<TransactionLine>(() => props.name)
 
-const products = ref<Product[]>([])
+const products = ref<BackendProduct[]>([])
 const loadingProducts = ref(false)
 const productError = ref<string | null>(null)
 
 const productOptions = computed(() =>
-  products.value.map((p) => ({
-    value: String(p.id),
-    label: p.code ?? p.sku ? `${p.code ?? p.sku} - ${p.name}` : p.name,
-  })),
+  products.value
+    .map((p) => {
+      const code = (p.product_code ?? '').trim()
+      const name = (p.product_name ?? '').trim()
+      const label = code ? (name ? `${code} - ${name}` : code) : name
+      return { value: String(p.id), label: label || '(Unnamed product)' }
+    })
+    .filter((o) => o.value !== ''),
 )
 
 const hasLines = computed(() => fields.value.length > 0)
@@ -62,7 +66,7 @@ onMounted(async () => {
   loadingProducts.value = true
   try {
     const res = await productsService.list({ is_active: true })
-    const payload = res.data as ApiResponse<Product[]>
+    const payload = res.data as ApiResponse<BackendProduct[]>
     products.value = Array.isArray(payload.data) ? payload.data : []
   } catch (cause) {
     productError.value = cause instanceof Error ? cause.message : 'Unable to load products.'
