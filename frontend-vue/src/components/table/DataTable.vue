@@ -154,11 +154,11 @@ watch(
   <div :class="cn('flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm')">
     <div
       v-if="showMeta"
-      class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-3"
+      :class="cn('flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4', compact ? 'py-2' : 'py-3')"
     >
       <div>
-        <p class="text-sm font-black text-slate-950">{{ metaTitle }}</p>
-        <p v-if="metaDescription" class="mt-1 text-xs text-slate-500">{{ metaDescription }}</p>
+        <p :class="cn('font-black text-slate-950', compact ? 'text-xs' : 'text-sm')">{{ metaTitle }}</p>
+        <p v-if="metaDescription" :class="cn('text-xs text-slate-500', compact ? 'mt-0.5' : 'mt-1')">{{ metaDescription }}</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <span class="inline-flex h-6 items-center rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600">
@@ -174,13 +174,13 @@ watch(
       class="min-h-0 overflow-x-auto"
       :style="props.tableMaxHeight ? { maxHeight: props.tableMaxHeight, overflowY: 'auto' } : undefined"
     >
-      <table class="min-w-full text-left text-sm">
+      <table :class="cn('min-w-full text-left', compact ? 'text-xs' : 'text-sm')">
         <thead class="sticky top-0 z-10 bg-slate-50 text-xs font-bold text-slate-600">
           <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
             <th
               v-for="header in headerGroup.headers"
               :key="header.id"
-              :class="cn('whitespace-nowrap px-4', compact ? 'py-2' : 'py-3')"
+              :class="cn('whitespace-nowrap px-4', compact ? 'py-1.5' : 'py-3')"
             >
               <FlexRender
                 v-if="!header.isPlaceholder"
@@ -217,7 +217,7 @@ watch(
             <td
               v-for="cell in row.getVisibleCells()"
               :key="cell.id"
-              :class="cn('whitespace-nowrap px-4', compact ? 'py-2' : 'py-3')"
+              :class="cn('whitespace-nowrap px-4', compact ? 'py-1.5' : 'py-3')"
             >
               <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
             </td>
@@ -226,6 +226,6 @@ watch(
       </table>
     </div>
 
-    <DataTablePagination :table="table as any" />
+    <DataTablePagination :table="table as any" :compact="compact" />
   </div>
 </template>

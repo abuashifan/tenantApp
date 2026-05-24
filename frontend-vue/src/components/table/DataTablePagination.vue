@@ -7,13 +7,17 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 
 const props = defineProps<{
   table: Table<unknown>
+  compact?: boolean
 }>()
 
 const pageCount = computed(() => Math.max(props.table.getPageCount(), 1))
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3">
+  <div
+    class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4"
+    :class="compact ? 'py-2' : 'py-3'"
+  >
     <p class="text-xs font-semibold text-slate-500">
       Page <span class="font-bold text-slate-800">{{ table.getState().pagination.pageIndex + 1 }}</span>
       of <span class="font-bold text-slate-800">{{ pageCount }}</span>
