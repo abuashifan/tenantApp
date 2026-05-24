@@ -262,7 +262,6 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
       :fill-available="true"
       :show-meta="true"
       meta-title="Journal List"
-      meta-description="Showing journals from current company. Posted journals can only be voided, not edited."
       empty-title="No journals"
       empty-description="No journal entries match your filter."
     />
