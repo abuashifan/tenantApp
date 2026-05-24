@@ -133,12 +133,14 @@ groups them under Inventory.
 ## Virtual Tabs And Actions
 
 - List resources with backend create permission expose Create and open a create
-  secondary tab; the form itself is still marked as not implemented.
-- Detail/edit secondary tabs are exposed only where capability configuration maps
+  secondary tab backed by the shared transaction form renderer when the endpoint
+  has create/update/detail support.
+- Detail/edit secondary tabs are exposed where capability configuration maps
   existing backend resource operations and permissions.
+- Form coverage is documented in `docs/frontend-transaction-form-map.md`.
 - Read-only report resources do not expose Create.
-- Actual posting, approval, cancellation, reconciliation and finalization UI remains
-  out of scope until module-specific workflow design is approved.
+- Posting, approval, cancellation, reconciliation refresh and finalization actions
+  are wired only where the backend route already exists.
 
 ## Intentionally Skipped
 

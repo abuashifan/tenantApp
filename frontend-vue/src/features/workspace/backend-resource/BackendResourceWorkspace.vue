@@ -3,8 +3,10 @@ import { computed, ref, watch } from 'vue'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import WorkspaceListPage from '@/components/workspace/WorkspaceListPage.vue'
+import BackendResourceForm from './BackendResourceForm.vue'
 import { listBackendResource, type BackendResourceRow } from './backendResource.service'
 import { makeBackendResourceConfig, resourceCapability } from './backendResource.config'
+import { backendResourceFormConfigs } from './backendResource.form.config'
 import { findSidebarMenuItem } from '@/navigation/sidebar'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
@@ -12,6 +14,7 @@ const tabs = useWorkspaceTabsStore()
 const menuItem = computed(() => findSidebarMenuItem(tabs.activePrimaryTabId))
 const config = computed(() => (menuItem.value ? makeBackendResourceConfig(menuItem.value) : null))
 const capability = computed(() => (menuItem.value ? resourceCapability(menuItem.value) : null))
+const formConfig = computed(() => (menuItem.value ? backendResourceFormConfigs[menuItem.value.href] : null))
 
 const rows = ref<BackendResourceRow[]>([])
 const loading = ref(false)
@@ -102,12 +105,22 @@ function openCreate() {
 function openRowTab(key: string, row?: BackendResourceRow) {
   if (!config.value || !row) return
   const entity = { id: row.id, number: String(row.document_number ?? row.number ?? row.code ?? row.id) }
-  if (key === 'edit') tabs.openEditSecondaryTab(config.value.primaryTabId, entity)
-  if (key === 'detail' || key === 'open') tabs.openDetailSecondaryTab(config.value.primaryTabId, entity)
+  const tab = key === 'edit'
+    ? tabs.openEditSecondaryTab(config.value.primaryTabId, entity)
+    : key === 'detail' || key === 'open'
+      ? tabs.openDetailSecondaryTab(config.value.primaryTabId, entity)
+      : null
+  if (tab) tabs.updateDraftState(tab.id, row)
 }
 
 function closeSecondary(tabId?: string) {
   if (!config.value || !tabId) return
+  tabs.closeSecondaryTab(config.value.primaryTabId, tabId)
+}
+
+function closeSecondaryAfterSave(tabId?: string) {
+  if (!config.value || !tabId) return
+  tabs.clearDraftState(tabId)
   tabs.closeSecondaryTab(config.value.primaryTabId, tabId)
 }
 
@@ -154,14 +167,22 @@ watch(
     </template>
 
     <template #secondary="{ tab }">
-      <div class="space-y-4">
+      <BackendResourceForm
+        v-if="formConfig && tab && !formConfig.skippedReason"
+        :config="formConfig"
+        :primary-tab-id="config.primaryTabId"
+        :tab="tab"
+        @saved="load"
+        @close="closeSecondaryAfterSave(tab?.id)"
+      />
+      <div v-else class="space-y-4">
         <div>
           <p class="text-sm font-semibold text-[#1d81af]">{{ menuItem.module }}</p>
           <h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-950">
             {{ tab?.mode === 'create' ? `Create ${menuItem.label}` : `${menuItem.label} ${tab?.entityNumber ?? ''}` }}
           </h1>
           <p class="mt-2 text-sm leading-6 text-slate-500">
-            Form belum diimplementasikan. Workspace tab sudah terhubung untuk melanjutkan desain form pada fase modul ini.
+            {{ formConfig?.skippedReason ?? 'Endpoint belum tersedia untuk form input modul ini.' }}
           </p>
         </div>
         <BaseButton variant="secondary" size="md" @click="closeSecondary(tab?.id)">
