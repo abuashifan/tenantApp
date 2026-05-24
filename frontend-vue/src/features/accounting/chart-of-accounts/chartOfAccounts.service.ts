@@ -26,11 +26,20 @@ export type ChartOfAccountRow = {
   id: string
   code: string
   name: string
-  type: string
+  type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
   balance: number
   parentId: string | null
   isActive: boolean
   normalBalance: 'debit' | 'credit'
+}
+
+export type SaveChartOfAccountPayload = {
+  account_code: string
+  account_name: string
+  account_type: string
+  parent_account_id?: number | null
+  normal_balance: 'debit' | 'credit'
+  is_active: boolean
 }
 
 type BackendListPayload<T> = T[] | { data?: T[]; items?: T[] }
@@ -46,12 +55,16 @@ function normalizeNormalBalance(value?: string | null): 'debit' | 'credit' {
   return value === 'credit' ? 'credit' : 'debit'
 }
 
+function normalizeAccountType(value: string): ChartOfAccountRow['type'] {
+  return value === 'liability' || value === 'equity' || value === 'revenue' || value === 'expense' ? value : 'asset'
+}
+
 export function mapChartOfAccount(row: BackendChartOfAccount): ChartOfAccountRow {
   return {
     id: String(row.id),
     code: row.account_code,
     name: row.account_name,
-    type: row.account_type,
+    type: normalizeAccountType(row.account_type),
     balance: 0,
     parentId: row.parent_account_id == null ? null : String(row.parent_account_id),
     isActive: Boolean(row.is_active),
@@ -65,4 +78,14 @@ export async function listChartOfAccounts(params: ChartOfAccountsListParams = {}
     { params },
   )
   return normalizeList(unwrap(response.data)).map(mapChartOfAccount)
+}
+
+export async function createChartOfAccount(payload: SaveChartOfAccountPayload) {
+  const response = await api.post<ApiResponse<BackendChartOfAccount>>('/master-data/chart-of-accounts', payload)
+  return mapChartOfAccount(unwrap(response.data))
+}
+
+export async function updateChartOfAccount(id: string | number, payload: SaveChartOfAccountPayload) {
+  const response = await api.patch<ApiResponse<BackendChartOfAccount>>(`/master-data/chart-of-accounts/${id}`, payload)
+  return mapChartOfAccount(unwrap(response.data))
 }

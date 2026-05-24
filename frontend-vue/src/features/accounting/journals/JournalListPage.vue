@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, h, onMounted, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 import { Plus, RefreshCw } from 'lucide-vue-next'
 
@@ -9,16 +9,15 @@ import DataTable from '@/components/table/DataTable.vue'
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
 import JournalEntryFormPanel from '@/pages/accounting/journals/JournalEntryFormPanel.vue'
 import { journalListConfig, type JournalListRow } from '@/features/accounting/journals/journal-list.config'
+import { listJournals, voidJournal as voidJournalApi } from '@/features/accounting/journals/journal.service'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
-import { useMockAccountingDataStore, type MockJournalStatus } from '@/stores/mockAccountingDataStore'
 
 const statusOptions = [
-  { label: 'Draft', value: 'Draft' },
-  { label: 'Posted', value: 'Posted' },
-  { label: 'Void', value: 'Void' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'Posted', value: 'posted' },
+  { label: 'Void', value: 'void' },
 ]
 
-const mock = useMockAccountingDataStore()
 const tabs = useWorkspaceTabsStore()
 tabs.ensureListSecondaryTab(journalListConfig.primaryTabId, {
   label: journalListConfig.listTabLabel,
@@ -26,48 +25,19 @@ tabs.ensureListSecondaryTab(journalListConfig.primaryTabId, {
 
 const selectedIds = ref<string[]>([])
 const statusSelect = ref<InstanceType<typeof BaseMultiSelect> | null>(null)
+const rows = ref<JournalListRow[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
+const search = ref('')
+const startDate = ref('2026-01-01')
+const endDate = ref('2026-01-31')
+const statuses = ref<string[]>(['posted'])
 
 const activeSecondaryId = computed(
   () => tabs.activeSecondaryTabIdByPrimaryId[journalListConfig.primaryTabId] ?? `${journalListConfig.primaryTabId}::list`,
 )
 const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[journalListConfig.primaryTabId] ?? [])
 const activeSecondary = computed(() => secondaryTabs.value.find((tab) => tab.id === activeSecondaryId.value) ?? null)
-
-const rows = computed<JournalListRow[]>(() =>
-  mock.filteredJournals.map((j) => ({
-    id: j.id,
-    journal_number: j.journalNo,
-    journal_date: j.date,
-    memo: j.description,
-    total_debit: j.totalDebit,
-    total_credit: j.totalCredit,
-    status: j.status,
-    is_balanced: j.isBalanced,
-    source: j.source,
-    created_by: j.createdBy,
-    updated_at: j.updatedAt,
-  })),
-)
-
-const search = computed({
-  get: () => mock.journalFiltersDraft.search,
-  set: (value: string) => mock.setJournalSearch(value),
-})
-
-const startDate = computed({
-  get: () => mock.journalFiltersDraft.startDate,
-  set: (value: string) => mock.setJournalDateRange(value, mock.journalFiltersDraft.endDate),
-})
-
-const endDate = computed({
-  get: () => mock.journalFiltersDraft.endDate,
-  set: (value: string) => mock.setJournalDateRange(mock.journalFiltersDraft.startDate, value),
-})
-
-const statuses = computed({
-  get: () => mock.journalFiltersDraft.statuses,
-  set: (value: string[]) => mock.setJournalStatuses(value as MockJournalStatus[]),
-})
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('id-ID').format(value)
@@ -85,24 +55,52 @@ function openEdit(row: JournalListRow) {
   tabs.openEditSecondaryTab(journalListConfig.primaryTabId, { id: row.id, number: row.journal_number })
 }
 
-function voidJournal(row: JournalListRow) {
+async function voidJournal(row: JournalListRow) {
   const reason = window.prompt('Reason for voiding selected journal')
   if (!reason) return
-  mock.voidJournal(row.id)
+  try {
+    await voidJournalApi(row.id, reason)
+    await load()
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Unable to void journal.'
+  }
+}
+
+async function load() {
+  loading.value = true
+  error.value = null
+  try {
+    const status = statuses.value.length === 1 ? statuses.value[0] : undefined
+    rows.value = await listJournals({
+      search: search.value || undefined,
+      date_from: startDate.value || undefined,
+      date_to: endDate.value || undefined,
+      status,
+      include_void: statuses.value.includes('void'),
+    })
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Endpoint belum tersedia'
+  } finally {
+    loading.value = false
+  }
 }
 
 function applyFilters() {
-  mock.applyJournalFilters()
   statusSelect.value?.close()
+  void load()
 }
 
 function resetFilters() {
-  mock.resetJournalFilters()
+  search.value = ''
+  startDate.value = '2026-01-01'
+  endDate.value = '2026-01-31'
+  statuses.value = ['posted']
   statusSelect.value?.close()
+  void load()
 }
 
 function refresh() {
-  mock.applyJournalFilters()
+  void load()
 }
 
 const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
@@ -153,7 +151,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
           },
           () => 'Open',
         ),
-        row.original.status === 'Draft'
+        row.original.status === 'draft'
           ? h(
               BaseButton,
               {
@@ -167,7 +165,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
               () => 'Edit',
             )
           : null,
-        row.original.status === 'Posted'
+        row.original.status === 'posted'
           ? h(
               BaseButton,
               {
@@ -185,6 +183,8 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
     enableSorting: false,
   },
 ])
+
+onMounted(load)
 </script>
 
 <template>
@@ -256,7 +256,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
       class="min-h-0"
       :columns="columns"
       :data="rows"
-      :loading="false"
+      :loading="loading"
       :selectable="false"
       :compact="true"
       :fill-available="true"
@@ -265,6 +265,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
       empty-title="No journals"
       empty-description="No journal entries match your filter."
     />
+    <p v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{{ error }}</p>
   </div>
 
   <div v-else class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

@@ -1,163 +1,128 @@
 <script setup lang="ts">
-import { computed, h, onMounted } from 'vue'
+import { computed, h, onMounted, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
-import BaseMultiSelect from '@/components/ui/BaseMultiSelect.vue'
 import DataTable from '@/components/table/DataTable.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
-import { useMockAccountingDataStore, type MockJournalStatus, type MockLedgerLine } from '@/stores/mockAccountingDataStore'
+import { getGeneralLedger, listLedgerAccounts, type LedgerAccountOption, type LedgerDetail, type LedgerLine } from './generalLedger.service'
 
-type LedgerRow = MockLedgerLine & { runningBalance: number }
+const accounts = ref<LedgerAccountOption[]>([])
+const selectedAccountId = ref<number | null>(null)
+const startDate = ref('2026-01-01')
+const endDate = ref('2026-01-31')
+const search = ref('')
+const detail = ref<LedgerDetail | null>(null)
+const loading = ref(false)
+const error = ref<string | null>(null)
 
-const statusOptions = [
-  { label: 'Draft', value: 'Draft' },
-  { label: 'Posted', value: 'Posted' },
-  { label: 'Void', value: 'Void' },
-]
-
-const store = useMockAccountingDataStore()
-
-onMounted(() => store.initLedgerLines())
-
-const ledgerAccounts = computed(() => store.ledgerAccounts)
-const selectedAccountCode = computed({
-  get: () => store.ledgerFilters.accountCode ?? store.selectedLedgerAccountCode,
-  set: (value: string | null) => store.setLedgerAccountCode(value),
-})
-const statuses = computed({
-  get: () => store.ledgerFilters.statuses,
-  set: (value: string[]) => store.setLedgerStatuses(value as MockJournalStatus[]),
-})
-const search = computed({
-  get: () => store.ledgerFilters.search,
-  set: (value: string) => store.setLedgerSearch(value),
-})
-
-const summary = computed(() => store.ledgerSummary)
-const rows = computed<LedgerRow[]>(() => store.ledgerRunningLines)
+const rows = computed(() => (detail.value?.lines ?? []).filter((line) => {
+  const term = search.value.trim().toLowerCase()
+  return !term || `${line.journal_number} ${line.description ?? ''}`.toLowerCase().includes(term)
+}))
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('id-ID').format(value)
 }
 
-const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
-  { accessorKey: 'date', header: 'Date', cell: ({ row }) => row.original.date },
-  { accessorKey: 'journalNo', header: 'Journal No', cell: ({ row }) => row.original.journalNo },
-  { accessorKey: 'description', header: 'Description', cell: ({ row }) => row.original.description },
-  { accessorKey: 'source', header: 'Source', cell: ({ row }) => row.original.source },
-  {
-    accessorKey: 'debit',
-    header: 'Debit',
-    cell: ({ row }) => formatMoney(row.original.debit),
-  },
-  {
-    accessorKey: 'credit',
-    header: 'Credit',
-    cell: ({ row }) => formatMoney(row.original.credit),
-  },
-  {
-    accessorKey: 'runningBalance',
-    header: 'Balance',
-    cell: ({ row }) => formatMoney(row.original.runningBalance),
-  },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ row }) => h(WorkspaceStatusBadge, { status: row.original.status }),
-  },
+async function loadAccountOptions() {
+  accounts.value = await listLedgerAccounts({
+    start_date: startDate.value,
+    end_date: endDate.value,
+    include_opening_balance: true,
+    include_zero_balance: false,
+  })
+  if (!selectedAccountId.value && accounts.value.length) selectedAccountId.value = accounts.value[0]!.account_id
+}
+
+async function load() {
+  loading.value = true
+  error.value = null
+  try {
+    await loadAccountOptions()
+    detail.value = selectedAccountId.value
+      ? await getGeneralLedger(selectedAccountId.value, {
+          start_date: startDate.value,
+          end_date: endDate.value,
+          include_opening_balance: true,
+          include_zero_balance: false,
+        })
+      : null
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Endpoint belum tersedia'
+    detail.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+const columns = computed<ColumnDef<LedgerLine, unknown>[]>(() => [
+  { accessorKey: 'journal_date', header: 'Date', cell: ({ row }) => row.original.journal_date },
+  { accessorKey: 'journal_number', header: 'Journal No', cell: ({ row }) => row.original.journal_number },
+  { accessorKey: 'description', header: 'Description', cell: ({ row }) => row.original.description ?? '-' },
+  { accessorKey: 'source_type', header: 'Source', cell: ({ row }) => row.original.source_type ?? '-' },
+  { accessorKey: 'debit', header: 'Debit', cell: ({ row }) => formatMoney(row.original.debit) },
+  { accessorKey: 'credit', header: 'Credit', cell: ({ row }) => formatMoney(row.original.credit) },
+  { accessorKey: 'running_balance', header: 'Balance', cell: ({ row }) => formatMoney(row.original.running_balance) },
+  { id: 'status', header: 'Status', cell: () => h(WorkspaceStatusBadge, { status: 'posted' }) },
 ])
+
+onMounted(load)
 </script>
 
 <template>
   <div class="space-y-4">
-    <div>
-      <h1 class="text-2xl font-black text-slate-950">General Ledger</h1>
-    </div>
-
+    <h1 class="text-2xl font-black text-slate-950">General Ledger</h1>
     <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
-        <label class="block space-y-1.5 lg:min-w-[380px] lg:flex-1">
+        <label class="block space-y-1.5 lg:min-w-[320px] lg:flex-1">
           <span class="text-xs font-bold text-slate-500">Account</span>
-          <select
-            v-model="selectedAccountCode"
-            class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
-          >
-            <option :value="null">Select account…</option>
-            <option v-for="acc in ledgerAccounts" :key="acc.code" :value="acc.code">
-              {{ acc.code }} — {{ acc.name }}
+          <select v-model="selectedAccountId" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700">
+            <option :value="null">Select account...</option>
+            <option v-for="account in accounts" :key="account.account_id" :value="account.account_id">
+              {{ account.account_code }} - {{ account.account_name }}
             </option>
           </select>
         </label>
-
-        <div class="space-y-1.5 lg:w-[220px]">
-          <p class="text-xs font-bold text-slate-500">Status</p>
-          <BaseMultiSelect
-            v-model="statuses"
-            :options="statusOptions"
-            all-label="All status"
-            none-label="No status"
-            aria-label="Status filter options"
-          />
-        </div>
-
-        <label class="block space-y-1.5 lg:min-w-[260px] lg:flex-1">
-          <span class="text-xs font-bold text-slate-500">Search</span>
-          <input
-            v-model="search"
-            class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
-            placeholder="Search journal no or description…"
-          />
+        <label class="block space-y-1.5 lg:w-[165px]">
+          <span class="text-xs font-bold text-slate-500">Start Date</span>
+          <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
         </label>
-
-        <BaseButton class="lg:shrink-0" variant="secondary" size="md" @click="store.resetLedgerFilters()">Reset</BaseButton>
+        <label class="block space-y-1.5 lg:w-[165px]">
+          <span class="text-xs font-bold text-slate-500">End Date</span>
+          <input v-model="endDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
+        </label>
+        <label class="block space-y-1.5 lg:min-w-[220px] lg:flex-1">
+          <span class="text-xs font-bold text-slate-500">Search</span>
+          <input v-model="search" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" placeholder="Search journal no or description..." />
+        </label>
+        <BaseButton variant="primary" size="md" @click="load">Apply</BaseButton>
       </div>
     </div>
 
-    <div v-if="summary" class="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-6">
+    <p v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{{ error }}</p>
+    <div v-if="detail" class="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-6">
       <div class="lg:col-span-2">
         <p class="text-xs font-bold text-slate-500">Account</p>
-        <p class="mt-1 text-sm font-extrabold text-slate-900">{{ summary.accountCode }}</p>
-        <p class="text-sm text-slate-600">{{ summary.accountName }}</p>
+        <p class="mt-1 text-sm font-extrabold text-slate-900">{{ detail.account.account_code }}</p>
+        <p class="text-sm text-slate-600">{{ detail.account.account_name }}</p>
       </div>
-      <div>
-        <p class="text-xs font-bold text-slate-500">Opening</p>
-        <p class="mt-1 text-sm font-extrabold tabular-nums text-slate-900">{{ formatMoney(summary.openingBalance) }}</p>
-      </div>
-      <div>
-        <p class="text-xs font-bold text-slate-500">Period Debit</p>
-        <p class="mt-1 text-sm font-extrabold tabular-nums text-slate-900">{{ formatMoney(summary.periodDebit) }}</p>
-      </div>
-      <div>
-        <p class="text-xs font-bold text-slate-500">Period Credit</p>
-        <p class="mt-1 text-sm font-extrabold tabular-nums text-slate-900">{{ formatMoney(summary.periodCredit) }}</p>
-      </div>
-      <div>
-        <p class="text-xs font-bold text-slate-500">Ending</p>
-        <p class="mt-1 text-sm font-extrabold tabular-nums text-slate-900">{{ formatMoney(summary.endingBalance) }}</p>
-      </div>
+      <div><p class="text-xs font-bold text-slate-500">Opening</p><p class="mt-1 font-extrabold tabular-nums">{{ formatMoney(detail.opening_balance.balance) }}</p></div>
+      <div><p class="text-xs font-bold text-slate-500">Period Debit</p><p class="mt-1 font-extrabold tabular-nums">{{ formatMoney(detail.period_totals.debit) }}</p></div>
+      <div><p class="text-xs font-bold text-slate-500">Period Credit</p><p class="mt-1 font-extrabold tabular-nums">{{ formatMoney(detail.period_totals.credit) }}</p></div>
+      <div><p class="text-xs font-bold text-slate-500">Ending</p><p class="mt-1 font-extrabold tabular-nums">{{ formatMoney(detail.ending_balance) }}</p></div>
     </div>
-
-    <WorkspaceEmptyState
-      v-if="!selectedAccountCode"
-      title="Select an account"
-      description="Choose an account to view ledger lines."
-    />
-    <WorkspaceEmptyState
-      v-else-if="rows.length === 0"
-      title="No ledger lines"
-      description="No ledger lines match your filters."
-    />
+    <WorkspaceEmptyState v-if="!loading && !detail" title="Select an account" description="Choose an account and load ledger lines." />
     <DataTable
-      v-else
+      v-else-if="detail"
       :columns="columns"
       :data="rows"
-      :loading="false"
+      :loading="loading"
       :selectable="false"
       table-max-height="calc(100vh - 520px)"
       empty-title="No ledger lines"
-      empty-description="No ledger lines match your filters."
+      empty-description="No posted journal lines match your filters."
     />
   </div>
 </template>

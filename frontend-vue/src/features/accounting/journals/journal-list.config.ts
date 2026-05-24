@@ -3,7 +3,6 @@ import type { ColumnDef } from '@tanstack/vue-table'
 
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
 import type { WorkspaceListConfig } from '@/types/workspace'
-import type { MockJournalStatus } from '@/stores/mockAccountingDataStore'
 
 export type JournalListRow = {
   id: string
@@ -12,11 +11,7 @@ export type JournalListRow = {
   memo: string
   total_debit: number
   total_credit: number
-  status: MockJournalStatus
-  is_balanced: boolean
-  source: string
-  created_by: string
-  updated_at: string
+  status: string
 }
 
 function formatMoney(value: number) {
@@ -74,9 +69,9 @@ export const journalListConfig: WorkspaceListConfig<JournalListRow> = {
     label: 'Start Date',
   },
   statusOptions: [
-    { label: 'Draft', value: 'Draft', tone: 'draft' },
-    { label: 'Posted', value: 'Posted', tone: 'success' },
-    { label: 'Void', value: 'Void', tone: 'danger' },
+    { label: 'Draft', value: 'draft', tone: 'draft' },
+    { label: 'Posted', value: 'posted', tone: 'success' },
+    { label: 'Void', value: 'void', tone: 'danger' },
   ],
   columns: journalListColumns,
   rowKey: 'id',
@@ -99,14 +94,14 @@ export const journalListConfig: WorkspaceListConfig<JournalListRow> = {
       label: 'Edit',
       permission: 'journal.edit',
       variant: 'secondary',
-      visibleWhen: (row) => row.status === 'Draft',
+      visibleWhen: (row) => row.status === 'draft',
     },
     {
       key: 'void',
       label: 'Void',
       permission: 'journal.void',
       variant: 'danger',
-      visibleWhen: (row) => row.status === 'Posted',
+      visibleWhen: (row) => row.status === 'posted',
       confirm: {
         title: 'Void journal?',
         message: 'This action will void the selected journal after you provide a reason.',

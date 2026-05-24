@@ -13,21 +13,21 @@ import FormSection from '@/components/form/FormSection.vue'
 import FormSelect from '@/components/form/FormSelect.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { useWorkspaceDraft } from '@/composables/useWorkspaceDraft'
-import type { MockChartOfAccount, MockChartOfAccountType, MockNormalBalance } from '@/stores/mockAccountingDataStore'
+import type { ChartOfAccountRow } from '@/features/accounting/chart-of-accounts/chartOfAccounts.service'
 
 type ChartOfAccountDraft = {
   accountCode: string
   accountName: string
-  accountType: MockChartOfAccountType
+  accountType: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
   parentCode: string
-  normalBalance: MockNormalBalance
+  normalBalance: 'debit' | 'credit'
   isActive: boolean
 }
 
 const props = defineProps<{
   mode: 'create' | 'edit'
-  account?: MockChartOfAccount | null
-  accounts: MockChartOfAccount[]
+  account?: ChartOfAccountRow | null
+  accounts: ChartOfAccountRow[]
 }>()
 
 const emit = defineEmits<{
@@ -36,19 +36,16 @@ const emit = defineEmits<{
 }>()
 
 const accountTypeOptions = [
-  { label: 'Kas & Bank', value: 'Kas & Bank' },
-  { label: 'Piutang', value: 'Piutang' },
-  { label: 'Persediaan', value: 'Persediaan' },
-  { label: 'Aset Tetap', value: 'Aset Tetap' },
-  { label: 'Hutang', value: 'Hutang' },
-  { label: 'Modal', value: 'Modal' },
-  { label: 'Pendapatan', value: 'Pendapatan' },
-  { label: 'Beban', value: 'Beban' },
+  { label: 'Asset', value: 'asset' },
+  { label: 'Liability', value: 'liability' },
+  { label: 'Equity', value: 'equity' },
+  { label: 'Revenue', value: 'revenue' },
+  { label: 'Expense', value: 'expense' },
 ]
 
 const normalBalanceOptions = [
-  { label: 'Debit', value: 'Debit' },
-  { label: 'Credit', value: 'Credit' },
+  { label: 'Debit', value: 'debit' },
+  { label: 'Credit', value: 'credit' },
 ]
 
 const parentOptions = computed(() => [
@@ -62,9 +59,9 @@ function defaultDraft(): ChartOfAccountDraft {
   return {
     accountCode: props.account?.code ?? '',
     accountName: props.account?.name ?? '',
-    accountType: props.account?.type ?? 'Kas & Bank',
-    parentCode: props.account?.parentCode ?? '',
-    normalBalance: props.account?.normalBalance ?? 'Debit',
+    accountType: props.account?.type ?? 'asset',
+    parentCode: props.account?.parentId ?? '',
+    normalBalance: props.account?.normalBalance ?? 'debit',
     isActive: props.account?.isActive ?? true,
   }
 }
@@ -77,9 +74,9 @@ const schema = toTypedSchema(
   z.object({
     accountCode: z.string().trim().min(1, 'Account code is required'),
     accountName: z.string().trim().min(1, 'Account name is required'),
-    accountType: z.enum(['Kas & Bank', 'Piutang', 'Persediaan', 'Aset Tetap', 'Hutang', 'Modal', 'Pendapatan', 'Beban']),
+    accountType: z.enum(['asset', 'liability', 'equity', 'revenue', 'expense']),
     parentCode: z.string(),
-    normalBalance: z.enum(['Debit', 'Credit']),
+    normalBalance: z.enum(['debit', 'credit']),
     isActive: z.boolean(),
   }),
 )
@@ -132,7 +129,7 @@ const onSubmit = form.handleSubmit((values) => {
     account_code: values.accountCode,
     account_name: values.accountName,
     account_type: values.accountType,
-    parent_code: values.parentCode || null,
+    parent_account_id: values.parentCode ? Number(values.parentCode) : null,
     normal_balance: values.normalBalance,
     is_active: values.isActive,
   })
