@@ -188,7 +188,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
 </script>
 
 <template>
-  <div v-if="activeSecondary?.mode === 'list'" class="flex min-h-0 flex-col gap-2 overflow-hidden">
+  <div v-if="activeSecondary?.mode === 'list'" class="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
     <div class="flex flex-col gap-2 rounded-3xl border border-slate-200 bg-white px-4 py-1.5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
       <div>
         <h1 class="text-xl font-black leading-tight text-slate-950">Journal Entries</h1>
@@ -259,6 +259,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
       :loading="false"
       :selectable="true"
       :compact="true"
+      :fill-available="true"
       :show-meta="true"
       meta-title="Journal List"
       meta-description="Showing journals from current company. Posted journals can only be voided, not edited."

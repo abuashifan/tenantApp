@@ -34,6 +34,7 @@ const props = withDefaults(
     metaTitle?: string
     metaDescription?: string
     showMeta?: boolean
+    fillAvailable?: boolean
   }>(),
   {
     loading: false,
@@ -47,6 +48,7 @@ const props = withDefaults(
     metaTitle: '',
     metaDescription: '',
     showMeta: false,
+    fillAvailable: false,
   },
 )
 
@@ -151,7 +153,14 @@ watch(
 </script>
 
 <template>
-  <div :class="cn('flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm')">
+  <div
+    :class="
+      cn(
+        'flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm',
+        fillAvailable && 'h-full',
+      )
+    "
+  >
     <div
       v-if="showMeta"
       :class="cn('flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4', compact ? 'py-2' : 'py-3')"
@@ -171,7 +180,7 @@ watch(
     </div>
 
     <div
-      class="min-h-0 overflow-x-auto"
+      :class="cn('min-h-0 overflow-x-auto', fillAvailable && 'flex-1 overflow-y-auto')"
       :style="props.tableMaxHeight ? { maxHeight: props.tableMaxHeight, overflowY: 'auto' } : undefined"
     >
       <table class="min-w-full text-left text-sm">

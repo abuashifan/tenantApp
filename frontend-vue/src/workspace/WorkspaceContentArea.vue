@@ -11,7 +11,9 @@ const activeKey = computed(() => `primary:${tabs.activePrimaryTabId}`)
 </script>
 
 <template>
-  <KeepAlive>
-    <component :is="activeComponent" :key="activeKey" />
-  </KeepAlive>
+  <div class="h-full min-h-0">
+    <KeepAlive>
+      <component :is="activeComponent" :key="activeKey" />
+    </KeepAlive>
+  </div>
 </template>
