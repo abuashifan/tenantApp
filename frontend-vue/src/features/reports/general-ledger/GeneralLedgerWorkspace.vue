@@ -142,7 +142,6 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
         <p class="text-xs font-bold text-slate-500">Account</p>
         <p class="mt-1 text-sm font-extrabold text-slate-900">{{ summary.accountCode }}</p>
         <p class="text-sm text-slate-600">{{ summary.accountName }}</p>
-        <p class="mt-1 text-xs font-bold text-slate-500">{{ summary.accountType }} • Normal {{ summary.normalBalance }}</p>
       </div>
       <div>
         <p class="text-xs font-bold text-slate-500">Opening</p>
