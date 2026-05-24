@@ -257,7 +257,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
       :columns="columns"
       :data="rows"
       :loading="false"
-      :selectable="true"
+      :selectable="false"
       :compact="true"
       :fill-available="true"
       :show-meta="true"

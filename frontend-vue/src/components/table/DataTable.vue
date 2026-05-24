@@ -10,6 +10,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
 } from '@tanstack/vue-table'
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-vue-next'
 import { computed, h, ref, watch } from 'vue'
 
 import { useVueTable } from '@tanstack/vue-table'
@@ -191,8 +192,19 @@ watch(
               :key="header.id"
               :class="cn('whitespace-nowrap px-4', compact ? 'py-1.5' : 'py-3')"
             >
+              <button
+                v-if="!header.isPlaceholder && header.column.getCanSort()"
+                type="button"
+                class="inline-flex w-full items-center gap-1.5 text-left font-bold hover:text-slate-900"
+                @click="header.column.toggleSorting(header.column.getIsSorted() === 'asc')"
+              >
+                <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
+                <ArrowUp v-if="header.column.getIsSorted() === 'asc'" class="h-3.5 w-3.5 shrink-0" />
+                <ArrowDown v-else-if="header.column.getIsSorted() === 'desc'" class="h-3.5 w-3.5 shrink-0" />
+                <ChevronsUpDown v-else class="h-3.5 w-3.5 shrink-0 text-slate-400" />
+              </button>
               <FlexRender
-                v-if="!header.isPlaceholder"
+                v-else-if="!header.isPlaceholder"
                 :render="header.column.columnDef.header"
                 :props="header.getContext()"
               />
