@@ -74,7 +74,6 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
   <div class="space-y-4">
     <div>
       <h1 class="text-2xl font-black text-slate-950">General Ledger</h1>
-      <p class="mt-1 text-sm text-slate-500">Buku besar per akun berdasarkan transaksi jurnal</p>
     </div>
 
     <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
