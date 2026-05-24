@@ -188,11 +188,10 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
 </script>
 
 <template>
-  <div v-if="activeSecondary?.mode === 'list'" class="flex h-[calc(100vh-7rem)] min-h-0 flex-col gap-2 overflow-hidden">
-    <div class="flex flex-col gap-2 rounded-3xl border border-slate-200 bg-white px-4 py-2 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+  <div v-if="activeSecondary?.mode === 'list'" class="flex min-h-0 flex-col gap-2 overflow-hidden">
+    <div class="flex flex-col gap-2 rounded-3xl border border-slate-200 bg-white px-4 py-1.5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
       <div>
         <h1 class="text-xl font-black leading-tight text-slate-950">Journal Entries</h1>
-        <p class="text-sm text-slate-500">Kelola jurnal umum, approval, posting, dan void dalam satu workspace.</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <BaseButton variant="secondary" size="sm" @click="refresh">
@@ -206,9 +205,9 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
       </div>
     </div>
 
-    <div class="relative z-20 rounded-3xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-      <div class="grid gap-2 xl:grid-cols-[minmax(250px,1.4fr)_150px_150px_190px_auto_auto] xl:items-end">
-        <label class="space-y-0.5">
+    <div class="relative z-20 rounded-3xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+      <div class="grid gap-3 xl:grid-cols-[minmax(250px,1.4fr)_150px_150px_190px_auto_auto] xl:items-end">
+        <label class="space-y-1">
           <span class="block text-xs font-extrabold text-slate-600">Search</span>
           <input
             v-model="search"
@@ -217,7 +216,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
           />
         </label>
 
-        <label class="space-y-0.5">
+        <label class="space-y-1">
           <span class="block text-xs font-extrabold text-slate-600">Start Date</span>
           <input
             v-model="startDate"
@@ -226,7 +225,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
           />
         </label>
 
-        <label class="space-y-0.5">
+        <label class="space-y-1">
           <span class="block text-xs font-extrabold text-slate-600">End Date</span>
           <input
             v-model="endDate"
@@ -235,7 +234,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
           />
         </label>
 
-        <div class="space-y-0.5">
+        <div class="space-y-1">
           <span class="block text-xs font-extrabold text-slate-600">Status</span>
           <BaseMultiSelect
             ref="statusSelect"
