@@ -77,7 +77,7 @@ type LedgerFilters = {
   accountCode: string | null
   dateFrom: string | null
   dateTo: string | null
-  status: 'All' | MockJournalStatus
+  statuses: MockJournalStatus[]
 }
 
 type MockAccountingState = {
@@ -155,15 +155,11 @@ function getFilteredLedgerLinesFromState(state: MockAccountingState): MockLedger
   const search = normalizeText(state.ledgerFilters.search)
   const dateFrom = state.ledgerFilters.dateFrom
   const dateTo = state.ledgerFilters.dateTo
-  const status = state.ledgerFilters.status
+  const statuses = state.ledgerFilters.statuses
 
   return state.ledgerLines.filter((row) => {
     if (row.accountCode !== accountCode) return false
-    if (status === 'All') {
-      if (row.status === 'Void') return false
-    } else if (row.status !== status) {
-      return false
-    }
+    if (statuses.length > 0 && !statuses.includes(row.status)) return false
     if (dateFrom && row.date < dateFrom) return false
     if (dateTo && row.date > dateTo) return false
     if (search) {
@@ -417,7 +413,7 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
       accountCode: '111.102-01' as string | null,
       dateFrom: '2026-05-01' as string | null,
       dateTo: '2026-05-31' as string | null,
-      status: 'Posted' as LedgerFilters['status'],
+      statuses: ['Posted'] as LedgerFilters['statuses'],
     },
     selectedCoaId: null as string | null,
     selectedJournalId: null as string | null,
@@ -748,8 +744,8 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
       this.ledgerFilters.dateFrom = from
       this.ledgerFilters.dateTo = to
     },
-    setLedgerStatus(status: LedgerFilters['status']) {
-      this.ledgerFilters.status = status
+    setLedgerStatuses(statuses: LedgerFilters['statuses']) {
+      this.ledgerFilters.statuses = statuses
     },
     resetLedgerFilters() {
       this.ledgerFilters = {
@@ -757,7 +753,7 @@ export const useMockAccountingDataStore = defineStore('mockAccountingData', {
         accountCode: '111.102-01',
         dateFrom: '2026-05-01',
         dateTo: '2026-05-31',
-        status: 'Posted',
+        statuses: ['Posted'],
       }
       this.selectedLedgerAccountCode = '111.102-01'
     },

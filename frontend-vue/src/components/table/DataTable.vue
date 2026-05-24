@@ -29,6 +29,7 @@ const props = withDefaults(
     selectedIds?: string[]
     selectable?: boolean
     rowClickable?: boolean
+    tableMaxHeight?: string
   }>(),
   {
     loading: false,
@@ -37,6 +38,7 @@ const props = withDefaults(
     selectedIds: () => [],
     selectable: false,
     rowClickable: false,
+    tableMaxHeight: undefined,
   },
 )
 
@@ -141,7 +143,10 @@ watch(
 
 <template>
   <div :class="cn('overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm')">
-    <div class="overflow-x-auto">
+    <div
+      class="overflow-x-auto"
+      :style="props.tableMaxHeight ? { maxHeight: props.tableMaxHeight, overflowY: 'auto' } : undefined"
+    >
       <table class="min-w-full text-left text-sm">
         <thead class="bg-slate-50 text-xs font-bold text-slate-600">
           <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">

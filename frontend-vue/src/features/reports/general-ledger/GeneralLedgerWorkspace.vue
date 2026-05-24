@@ -19,17 +19,9 @@ const selectedAccountCode = computed({
   get: () => store.ledgerFilters.accountCode ?? store.selectedLedgerAccountCode,
   set: (value: string | null) => store.setLedgerAccountCode(value),
 })
-const dateFrom = computed({
-  get: () => store.ledgerFilters.dateFrom,
-  set: (value: string | null) => store.setLedgerDateRange(value, store.ledgerFilters.dateTo),
-})
-const dateTo = computed({
-  get: () => store.ledgerFilters.dateTo,
-  set: (value: string | null) => store.setLedgerDateRange(store.ledgerFilters.dateFrom, value),
-})
-const status = computed({
-  get: () => store.ledgerFilters.status,
-  set: (value: 'All' | MockJournalStatus) => store.setLedgerStatus(value),
+const statuses = computed({
+  get: () => store.ledgerFilters.statuses,
+  set: (value: MockJournalStatus[]) => store.setLedgerStatuses(value),
 })
 const search = computed({
   get: () => store.ledgerFilters.search,
@@ -41,6 +33,13 @@ const rows = computed<LedgerRow[]>(() => store.ledgerRunningLines)
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('id-ID').format(value)
+}
+
+function toggleStatus(next: MockJournalStatus) {
+  const current = new Set(statuses.value)
+  if (current.has(next)) current.delete(next)
+  else current.add(next)
+  statuses.value = Array.from(current)
 }
 
 const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
@@ -93,38 +92,38 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
           </select>
         </label>
 
-        <label class="block space-y-1.5 lg:w-[160px]">
-          <span class="text-xs font-bold text-slate-500">Date From</span>
-          <input
-            :value="dateFrom ?? ''"
-            type="date"
-            class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
-            @input="dateFrom = ($event.target as HTMLInputElement).value || null"
-          />
-        </label>
-
-        <label class="block space-y-1.5 lg:w-[160px]">
-          <span class="text-xs font-bold text-slate-500">Date To</span>
-          <input
-            :value="dateTo ?? ''"
-            type="date"
-            class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
-            @input="dateTo = ($event.target as HTMLInputElement).value || null"
-          />
-        </label>
-
-        <label class="block space-y-1.5 lg:w-[140px]">
-          <span class="text-xs font-bold text-slate-500">Status</span>
-          <select
-            v-model="status"
-            class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
-          >
-            <option value="All">All</option>
-            <option value="Posted">Posted</option>
-            <option value="Draft">Draft</option>
-            <option value="Void">Void</option>
-          </select>
-        </label>
+        <div class="space-y-1.5 lg:w-[220px]">
+          <p class="text-xs font-bold text-slate-500">Status</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                class="h-4 w-4 accent-[#24a1db]"
+                :checked="statuses.includes('Posted')"
+                @change="toggleStatus('Posted')"
+              />
+              Posted
+            </label>
+            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                class="h-4 w-4 accent-[#24a1db]"
+                :checked="statuses.includes('Draft')"
+                @change="toggleStatus('Draft')"
+              />
+              Draft
+            </label>
+            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                class="h-4 w-4 accent-[#24a1db]"
+                :checked="statuses.includes('Void')"
+                @change="toggleStatus('Void')"
+              />
+              Void
+            </label>
+          </div>
+        </div>
 
         <label class="block space-y-1.5 lg:min-w-[260px] lg:flex-1">
           <span class="text-xs font-bold text-slate-500">Search</span>
@@ -180,6 +179,7 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
       :data="rows"
       :loading="false"
       :selectable="false"
+      table-max-height="calc(100vh - 520px)"
       empty-title="No ledger lines"
       empty-description="No ledger lines match your filters."
     />
