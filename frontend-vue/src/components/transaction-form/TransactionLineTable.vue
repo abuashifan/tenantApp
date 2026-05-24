@@ -5,6 +5,7 @@ import { Minus, Plus } from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import IconButton from '@/components/ui/IconButton.vue'
+import TransactionSearchableSelect from '@/components/transaction-form/TransactionSearchableSelect.vue'
 import { productsService } from '@/services/master-data/products.service'
 import type { ApiResponse } from '@/types/api'
 
@@ -35,6 +36,13 @@ const { fields, push, remove } = useFieldArray<TransactionLine>(() => props.name
 const products = ref<Product[]>([])
 const loadingProducts = ref(false)
 const productError = ref<string | null>(null)
+
+const productOptions = computed(() =>
+  products.value.map((p) => ({
+    value: String(p.id),
+    label: p.code ?? p.sku ? `${p.code ?? p.sku} - ${p.name}` : p.name,
+  })),
+)
 
 const hasLines = computed(() => fields.value.length > 0)
 
@@ -102,17 +110,13 @@ onMounted(async () => {
 
           <tr v-for="(row, index) in fields" :key="row.key" class="align-top">
             <td class="px-4 py-3">
-              <Field
+              <TransactionSearchableSelect
                 :name="`${name}[${index}].product_id`"
-                as="select"
-                :disabled="readonly || loadingProducts"
-                class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:bg-slate-50"
-              >
-                <option value="" disabled>Select…</option>
-                <option v-for="p in products" :key="p.id" :value="String(p.id)">
-                  {{ p.code ?? p.sku ? `${p.code ?? p.sku} - ${p.name}` : p.name }}
-                </option>
-              </Field>
+                placeholder="Search product…"
+                :options="productOptions"
+                :readonly="readonly || loadingProducts"
+                :loading="loadingProducts"
+              />
             </td>
             <td class="px-4 py-3">
               <Field

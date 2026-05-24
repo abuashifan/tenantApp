@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Field, useField } from 'vee-validate'
+import { useField } from 'vee-validate'
 
 import { contactsService } from '@/services/master-data/contacts.service'
 import type { ApiResponse } from '@/types/api'
+import TransactionSearchableSelect from '@/components/transaction-form/TransactionSearchableSelect.vue'
 
 type Contact = {
   id: number
@@ -37,6 +38,13 @@ const filtered = computed(() => {
   return contacts.value.filter((c) => (isCustomer ? c.is_customer : c.is_supplier))
 })
 
+const options = computed(() =>
+  filtered.value.map((c) => ({
+    value: String(c.id),
+    label: c.contact_code ? `${c.contact_code} - ${c.name}` : c.name,
+  })),
+)
+
 onMounted(async () => {
   loading.value = true
   error.value = null
@@ -53,20 +61,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <label class="block space-y-1.5">
-    <span class="text-xs font-bold text-slate-500">{{ label }}</span>
-    <Field
-      :name="name"
-      as="select"
-      :disabled="readonly || loading"
-      class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:bg-slate-50"
-    >
-      <option value="" disabled>Select…</option>
-      <option v-for="c in filtered" :key="c.id" :value="String(c.id)">
-        {{ c.contact_code ? `${c.contact_code} - ${c.name}` : c.name }}
-      </option>
-    </Field>
-    <p v-if="error" class="text-xs font-semibold text-rose-700">{{ error }}</p>
-    <p v-else-if="!readonly && value && loading" class="text-xs font-semibold text-slate-500">Loading…</p>
-  </label>
+  <TransactionSearchableSelect
+    :name="name"
+    :label="label"
+    :readonly="readonly"
+    :loading="loading"
+    :error="error"
+    placeholder="Search partner…"
+    :options="options"
+  />
 </template>
