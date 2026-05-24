@@ -67,7 +67,7 @@ const selectionColumn = computed<ColumnDef<TRow, unknown>>(() => ({
       checked: table.getIsAllPageRowsSelected(),
       indeterminate: table.getIsSomePageRowsSelected(),
       ariaLabel: 'Select all rows',
-      onChange: table.getToggleAllPageRowsSelectedHandler(),
+      onChange: (checked: boolean) => table.toggleAllPageRowsSelected(checked),
     }),
   cell: ({ row }) =>
     h(DataTableCheckbox, {

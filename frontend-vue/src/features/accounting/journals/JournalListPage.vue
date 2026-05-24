@@ -254,7 +254,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
 
     <DataTable
       v-model:selected-ids="selectedIds"
-      class="min-h-0 flex-1"
+      class="min-h-0 shrink-0"
       :columns="columns"
       :data="rows"
       :loading="false"
