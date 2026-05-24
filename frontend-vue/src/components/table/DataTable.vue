@@ -174,7 +174,7 @@ watch(
       class="min-h-0 overflow-x-auto"
       :style="props.tableMaxHeight ? { maxHeight: props.tableMaxHeight, overflowY: 'auto' } : undefined"
     >
-      <table :class="cn('min-w-full text-left', compact ? 'text-xs' : 'text-sm')">
+      <table class="min-w-full text-left text-sm">
         <thead class="sticky top-0 z-10 bg-slate-50 text-xs font-bold text-slate-600">
           <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
             <th
