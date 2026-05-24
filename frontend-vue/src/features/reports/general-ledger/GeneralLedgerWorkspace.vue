@@ -79,8 +79,8 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
     </div>
 
     <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="grid gap-3 lg:grid-cols-6 lg:items-end">
-        <label class="block space-y-1.5 lg:col-span-2">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+        <label class="block space-y-1.5 lg:min-w-[380px] lg:flex-1">
           <span class="text-xs font-bold text-slate-500">Account</span>
           <select
             v-model="selectedAccountCode"
@@ -93,7 +93,7 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
           </select>
         </label>
 
-        <label class="block space-y-1.5">
+        <label class="block space-y-1.5 lg:w-[160px]">
           <span class="text-xs font-bold text-slate-500">Date From</span>
           <input
             :value="dateFrom ?? ''"
@@ -103,7 +103,7 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
           />
         </label>
 
-        <label class="block space-y-1.5">
+        <label class="block space-y-1.5 lg:w-[160px]">
           <span class="text-xs font-bold text-slate-500">Date To</span>
           <input
             :value="dateTo ?? ''"
@@ -113,7 +113,7 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
           />
         </label>
 
-        <label class="block space-y-1.5">
+        <label class="block space-y-1.5 lg:w-[140px]">
           <span class="text-xs font-bold text-slate-500">Status</span>
           <select
             v-model="status"
@@ -126,7 +126,7 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
           </select>
         </label>
 
-        <label class="block space-y-1.5 lg:col-span-2">
+        <label class="block space-y-1.5 lg:min-w-[260px] lg:flex-1">
           <span class="text-xs font-bold text-slate-500">Search</span>
           <input
             v-model="search"
@@ -135,9 +135,7 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
           />
         </label>
 
-        <div class="flex flex-wrap items-center justify-start gap-2 lg:col-span-2 lg:justify-end">
-          <BaseButton variant="secondary" size="md" @click="store.resetLedgerFilters()">Reset</BaseButton>
-        </div>
+        <BaseButton class="lg:shrink-0" variant="secondary" size="md" @click="store.resetLedgerFilters()">Reset</BaseButton>
       </div>
     </div>
 
