@@ -81,7 +81,7 @@ defineExpose({ close })
       type="button"
       :aria-expanded="open"
       :aria-label="ariaLabel"
-      class="flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-bold text-slate-900 outline-none transition focus:border-slate-300 focus:ring-4 focus:ring-slate-900/5"
+      class="flex h-8 w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-bold text-slate-900 outline-none transition focus:border-slate-300 focus:ring-4 focus:ring-slate-900/5"
       @click.stop="toggleOpen"
     >
       <span>{{ triggerLabel }}</span>
