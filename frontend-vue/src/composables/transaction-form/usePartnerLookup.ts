@@ -3,6 +3,13 @@ import { contactsService } from '@/services/master-data/contacts.service'
 import type { ApiResponse } from '@/types/api'
 
 export type PartnerLookupItem = { id: number; label: string }
+type PartnerResponse = {
+  id: string | number
+  contact_code?: string | null
+  name?: string | null
+  is_customer?: boolean
+  is_supplier?: boolean
+}
 
 export function usePartnerLookup() {
   const loading = ref(false)
@@ -13,13 +20,13 @@ export function usePartnerLookup() {
     error.value = null
     try {
       const res = await contactsService.list({ is_active: true })
-      const payload = res.data as ApiResponse<Array<Record<string, unknown>>>
+      const payload = res.data as ApiResponse<PartnerResponse[]>
       const items = Array.isArray(payload.data) ? payload.data : []
       return items
-        .filter((c) => (partnerType === 'customer' ? Boolean((c as any)?.is_customer) : Boolean((c as any)?.is_supplier)))
-        .map((c) => ({
-          id: Number((c as any).id),
-          label: (c as any).contact_code ? `${(c as any).contact_code} - ${(c as any).name}` : String((c as any).name),
+        .filter((contact) => (partnerType === 'customer' ? Boolean(contact.is_customer) : Boolean(contact.is_supplier)))
+        .map((contact) => ({
+          id: Number(contact.id),
+          label: contact.contact_code ? `${contact.contact_code} - ${contact.name ?? ''}` : String(contact.name ?? ''),
         }))
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : 'Unable to load partners.'

@@ -13,6 +13,8 @@ export type SalesReturnValues = {
   reason?: string | null
   notes?: string | null
   lines: Array<{
+    product_id?: string | null
+    product_code?: string | null
     description: string
     quantity: number
     unit_price: number
@@ -47,6 +49,7 @@ export const salesReturnFormConfig: TransactionFormConfig<SalesReturnValues> = {
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({
     return_date: z.string().min(1),
     customer_id: z.string().min(1),
@@ -61,7 +64,7 @@ export const salesReturnFormConfig: TransactionFormConfig<SalesReturnValues> = {
       delivery_order_id: null,
       reason: '',
       notes: '',
-      lines: [{ description: '', quantity: 1, unit_price: 0, discount_amount: 0, tax_amount: 0, line_total: 0 }],
+      lines: [{ product_id: '', product_code: '', description: '', quantity: 1, unit_price: 0, discount_amount: 0, tax_amount: 0, line_total: 0 }],
       subtotal: 0,
       discount_amount: 0,
       tax_amount: 0,
@@ -69,4 +72,3 @@ export const salesReturnFormConfig: TransactionFormConfig<SalesReturnValues> = {
     }
   },
 }
-

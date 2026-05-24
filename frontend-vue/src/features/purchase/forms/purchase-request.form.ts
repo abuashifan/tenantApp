@@ -39,6 +39,7 @@ export const purchaseRequestFormConfig: TransactionFormConfig<PurchaseRequestVal
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'purchase', priceField: 'estimated_unit_price', priceLabel: 'Estimated Unit Price' },
   validationSchema: z.object({
     request_date: z.string().min(1),
     lines: z.array(z.object({ description: z.string().min(1), quantity: z.coerce.number().gt(0) })).min(1),
@@ -58,4 +59,3 @@ export const purchaseRequestFormConfig: TransactionFormConfig<PurchaseRequestVal
     }
   },
 }
-

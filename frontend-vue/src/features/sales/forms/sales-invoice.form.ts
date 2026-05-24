@@ -58,6 +58,7 @@ export const salesInvoiceFormConfig: TransactionFormConfig<SalesInvoiceValues> =
   ],
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({
     customer_id: z.string().min(1),
     invoice_date: z.string().min(1),
@@ -84,4 +85,3 @@ export const salesInvoiceFormConfig: TransactionFormConfig<SalesInvoiceValues> =
     }
   },
 }
-

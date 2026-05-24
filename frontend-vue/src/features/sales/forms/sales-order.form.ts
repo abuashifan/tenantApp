@@ -51,6 +51,7 @@ export const salesOrderFormConfig: TransactionFormConfig<SalesOrderValues> = {
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({
     customer_id: z.string().min(1),
     order_date: z.string().min(1),
@@ -86,4 +87,3 @@ export const salesOrderFormConfig: TransactionFormConfig<SalesOrderValues> = {
     }
   },
 }
-

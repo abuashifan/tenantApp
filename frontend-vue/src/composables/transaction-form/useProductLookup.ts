@@ -1,34 +1,50 @@
-import { ref } from 'vue'
-import { productsService } from '@/services/master-data/products.service'
-import type { ApiResponse } from '@/types/api'
+import { computed, ref } from 'vue'
+import { listProducts } from '@/services/master-data/products.service'
+import { normalizeProductList, type NormalizedProduct } from '@/utils/normalizeProduct'
 
-export type ProductLookupItem = { id: number; label: string }
+type ProductLookupParams = {
+  is_active?: boolean
+  product_type?: string
+}
 
 export function useProductLookup() {
+  const allProducts = ref<NormalizedProduct[]>([])
+  const keyword = ref('')
   const loading = ref(false)
   const error = ref<string | null>(null)
+  let loaded = false
 
-  async function listProducts() {
+  const products = computed(() => {
+    const query = keyword.value.trim().toLowerCase()
+    if (!query) return allProducts.value
+    return allProducts.value.filter((product) => product.label.toLowerCase().includes(query))
+  })
+
+  async function loadProducts(params: ProductLookupParams = { is_active: true }) {
     loading.value = true
     error.value = null
     try {
-      const res = await productsService.list({ is_active: true })
-      const payload = res.data as ApiResponse<Array<Record<string, unknown>>>
-      const items = Array.isArray(payload.data) ? payload.data : []
-      return items.map((p) => ({
-        id: Number((p as any).id),
-        label:
-          (p as any).code || (p as any).sku
-            ? `${(p as any).code || (p as any).sku} - ${(p as any).name}`
-            : String((p as any).name),
-      }))
+      const response = await listProducts(params)
+      allProducts.value = normalizeProductList(response)
+      loaded = true
     } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : 'Unable to load products.'
-      return []
+      const message = (cause as { message?: unknown } | null)?.message
+      error.value = typeof message === 'string' ? message : 'Unable to load products.'
+      allProducts.value = []
     } finally {
       loading.value = false
     }
   }
 
-  return { loading, error, listProducts }
+  async function searchProducts(searchKeyword: string) {
+    keyword.value = searchKeyword
+    if (!loaded && !loading.value) await loadProducts()
+  }
+
+  async function resetProducts() {
+    keyword.value = ''
+    if (!loaded && !loading.value) await loadProducts()
+  }
+
+  return { products, loading, error, searchProducts, resetProducts }
 }

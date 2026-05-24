@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useFormContext, useFormErrors } from 'vee-validate'
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     title?: string
   }>(),

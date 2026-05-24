@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useField } from 'vee-validate'
 
 import { contactsService } from '@/services/master-data/contacts.service'
 import type { ApiResponse } from '@/types/api'
@@ -28,7 +27,6 @@ const props = withDefaults(
   },
 )
 
-const { value } = useField<string | number>(() => props.name)
 const loading = ref(false)
 const contacts = ref<Contact[]>([])
 const error = ref<string | null>(null)

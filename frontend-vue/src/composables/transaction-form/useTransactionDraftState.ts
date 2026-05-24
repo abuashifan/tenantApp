@@ -3,13 +3,13 @@ import type { FormContext } from 'vee-validate'
 
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
-export function useTransactionDraftState(secondaryTabId: string, form: FormContext<any>) {
+export function useTransactionDraftState(secondaryTabId: string, form: FormContext<Record<string, unknown>>) {
   const tabs = useWorkspaceTabsStore()
 
   onMounted(() => {
     const draft = tabs.draftStateBySecondaryTabId[secondaryTabId] as Record<string, unknown> | undefined
     if (draft && typeof draft === 'object') {
-      form.setValues(draft as any, false)
+      form.setValues(draft, false)
     }
   })
 

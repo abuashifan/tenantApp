@@ -57,6 +57,7 @@ export const vendorBillFormConfig: TransactionFormConfig<VendorBillValues> = {
   ],
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'purchase', priceField: 'unit_price' },
   validationSchema: z.object({
     vendor_id: z.string().min(1),
     bill_date: z.string().min(1),
@@ -83,4 +84,3 @@ export const vendorBillFormConfig: TransactionFormConfig<VendorBillValues> = {
     }
   },
 }
-

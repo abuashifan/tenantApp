@@ -9,7 +9,7 @@ import WorkspaceModule from '@/components/workspace/WorkspaceModule.vue'
 import TransactionFormPanel from '@/features/transaction-form/TransactionFormPanel.vue'
 
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
-import type { TransactionFormConfig } from '@/composables/transaction-form/types'
+import type { RuntimeTransactionFormConfig } from '@/composables/transaction-form/types'
 
 type TransactionListRow = {
   id: string
@@ -21,13 +21,15 @@ type TransactionListRow = {
 }
 
 const props = defineProps<{
-  config: TransactionFormConfig<any>
+  config: RuntimeTransactionFormConfig
 }>()
 
 const tabs = useWorkspaceTabsStore()
 
 function mapRow(row: unknown): TransactionListRow {
-  const r = (row ?? {}) as Record<string, any>
+  const r = (row ?? {}) as Record<string, unknown>
+  const customer = (r.customer ?? {}) as Record<string, unknown>
+  const vendor = (r.vendor ?? {}) as Record<string, unknown>
   const number =
     r.document_number ??
     r.invoice_number ??
@@ -60,10 +62,10 @@ function mapRow(row: unknown): TransactionListRow {
   const partner =
     r.customer_name ??
     r.vendor_name ??
-    r.customer?.name ??
-    r.vendor?.name ??
-    r.customer?.contact_name ??
-    r.vendor?.contact_name ??
+    customer.name ??
+    vendor.name ??
+    customer.contact_name ??
+    vendor.contact_name ??
     ''
 
   const status = String(r.status ?? r.state ?? '')

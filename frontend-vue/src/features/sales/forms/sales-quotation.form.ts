@@ -44,6 +44,7 @@ export const salesQuotationFormConfig: TransactionFormConfig<SalesQuotationValue
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({
     customer_id: z.string().min(1, 'Customer is required'),
     quotation_date: z.string().min(1, 'Date is required'),
@@ -86,4 +87,3 @@ export const salesQuotationFormConfig: TransactionFormConfig<SalesQuotationValue
     }
   },
 }
-

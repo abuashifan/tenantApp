@@ -21,13 +21,19 @@ export type TransactionActionConfig = {
   whenStatusIn?: string[]
 }
 
+export type TransactionLineProductConfig = {
+  priceMode: 'sales' | 'purchase' | 'none'
+  priceField?: 'unit_price' | 'estimated_unit_price' | 'amount'
+  priceLabel?: string
+}
+
 export type TransactionApiService = {
   endpoint: string
   list(params?: Record<string, unknown>): Promise<unknown>
   get(id: string | number): Promise<unknown>
   create(payload: unknown): Promise<unknown>
   update(id: string | number, payload: unknown): Promise<unknown>
-  action?<T = unknown>(key: string, id: string | number, payload?: unknown): Promise<T>
+  action?(key: string, id: string | number, payload?: unknown): Promise<unknown>
 }
 
 export type TransactionFormConfig<TValues extends Record<string, unknown> = Record<string, unknown>> = {
@@ -57,5 +63,16 @@ export type TransactionFormConfig<TValues extends Record<string, unknown> = Reco
   actions: TransactionActionConfig[]
   validationSchema: ZodTypeAny
   hasLines?: boolean
+  lineProduct?: TransactionLineProductConfig
   makeEmptyValues(): TValues
+}
+
+export type RuntimeTransactionFormConfig = Omit<
+  TransactionFormConfig<Record<string, unknown>>,
+  'numberField' | 'dateField' | 'partnerField' | 'makeEmptyValues'
+> & {
+  numberField: string
+  dateField: string
+  partnerField?: string
+  makeEmptyValues(): Record<string, unknown>
 }

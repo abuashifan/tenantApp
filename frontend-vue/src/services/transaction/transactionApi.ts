@@ -1,4 +1,12 @@
-export function wrapResourceService<T extends Record<string, any>>(endpoint: string, service: T) {
+type ResourceService = {
+  list(params?: Record<string, unknown>): Promise<unknown>
+  get(id: string | number): Promise<unknown>
+  create(payload: unknown): Promise<unknown>
+  update(id: string | number, payload: unknown): Promise<unknown>
+  action?(key: string, id: string | number, payload?: unknown): Promise<unknown>
+}
+
+export function wrapResourceService<T extends ResourceService>(endpoint: string, service: T) {
   return {
     endpoint,
     list: service.list.bind(service),
@@ -8,4 +16,3 @@ export function wrapResourceService<T extends Record<string, any>>(endpoint: str
     action: typeof service.action === 'function' ? service.action.bind(service) : undefined,
   }
 }
-

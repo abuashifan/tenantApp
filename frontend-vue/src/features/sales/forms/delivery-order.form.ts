@@ -47,6 +47,7 @@ export const deliveryOrderFormConfig: TransactionFormConfig<DeliveryOrderValues>
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'none', priceField: 'unit_price' },
   validationSchema: z.object({
     customer_id: z.string().min(1),
     delivery_date: z.string().min(1),
@@ -77,4 +78,3 @@ export const deliveryOrderFormConfig: TransactionFormConfig<DeliveryOrderValues>
     }
   },
 }
-

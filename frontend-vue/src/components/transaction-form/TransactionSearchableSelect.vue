@@ -1,129 +1,290 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ChevronDown, Search } from 'lucide-vue-next'
 import { useField } from 'vee-validate'
 
 import { cn } from '@/utils/cn'
 
-export type SearchableSelectOption = {
-  label: string
-  value: string
-}
+type SelectValue = string | number | null
 
 const props = withDefaults(
   defineProps<{
-    name: string
+    name?: string
+    modelValue?: SelectValue
+    options: unknown[]
+    optionValue?: string
+    optionLabel?: string
+    displayValue?: string
     label?: string
     placeholder?: string
-    options: SearchableSelectOption[]
+    disabled?: boolean
     readonly?: boolean
     loading?: boolean
     error?: string | null
+    emptyText?: string
+    loadingText?: string
+    teleport?: boolean
+    minSearchLength?: number
   }>(),
   {
+    name: '',
+    optionValue: 'value',
+    optionLabel: 'label',
+    displayValue: '',
     label: '',
-    placeholder: 'Select…',
+    placeholder: 'Select...',
+    disabled: false,
     readonly: false,
     loading: false,
     error: null,
+    emptyText: 'No options found.',
+    loadingText: 'Loading...',
+    teleport: true,
+    minSearchLength: 0,
   },
 )
 
+const emit = defineEmits<{
+  'update:modelValue': [value: SelectValue]
+  select: [option: unknown]
+  search: [keyword: string]
+  open: []
+  close: []
+}>()
+
+const field = useField<SelectValue>(() => props.name || '__standalone_searchable_select')
 const root = ref<HTMLElement | null>(null)
+const trigger = ref<HTMLButtonElement | null>(null)
+const dropdown = ref<HTMLElement | null>(null)
+const searchInput = ref<HTMLInputElement | null>(null)
 const open = ref(false)
 const search = ref('')
+const highlightedIndex = ref(-1)
+const dropdownStyle = ref<Record<string, string>>({})
 
-const { value, setValue, handleBlur } = useField<string>(() => props.name)
+function asRecord(option: unknown) {
+  return option !== null && typeof option === 'object' ? (option as Record<string, unknown>) : {}
+}
 
-const selectedLabel = computed(() => props.options.find((o) => o.value === (value.value ?? ''))?.label ?? '')
+function getOptionValue(option: unknown): SelectValue {
+  const record = asRecord(option)
+  const value = record[props.optionValue] ?? record.value ?? record.id
+  return typeof value === 'string' || typeof value === 'number' ? value : null
+}
+
+function getOptionLabel(option: unknown) {
+  const record = asRecord(option)
+  const value = record[props.optionLabel] ?? record.label ?? record.name
+  return value == null ? '' : String(value)
+}
+
+const selectedValue = computed<SelectValue>(() => (props.modelValue !== undefined ? props.modelValue : field.value.value))
+const selectedLabel = computed(() => {
+  const selected = props.options.find((option) => String(getOptionValue(option) ?? '') === String(selectedValue.value ?? ''))
+  return selected ? getOptionLabel(selected) : props.displayValue
+})
 const filteredOptions = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  if (!q) return props.options
-  return props.options.filter((o) => o.label.toLowerCase().includes(q))
+  const keyword = search.value.trim().toLowerCase()
+  if (keyword.length < props.minSearchLength) return []
+  if (!keyword) return props.options
+  return props.options.filter((option) => getOptionLabel(option).toLowerCase().includes(keyword))
 })
+const isDisabled = computed(() => props.disabled || props.readonly)
 
-function toggleOpen() {
-  if (props.readonly) return
-  open.value = !open.value
+function updatePosition() {
+  const rect = trigger.value?.getBoundingClientRect()
+  if (!rect) return
+  const gutter = 8
+  const gap = 6
+  const availableWidth = window.innerWidth - gutter * 2
+  const width = Math.min(Math.max(rect.width, 280), availableWidth)
+  const left = Math.min(Math.max(rect.left, gutter), window.innerWidth - width - gutter)
+  const below = window.innerHeight - rect.bottom - gap - gutter
+  const above = rect.top - gap - gutter
+  const opensAbove = below < 180 && above > below
+  const maxHeight = Math.max(120, Math.min(288, opensAbove ? above : below))
+
+  dropdownStyle.value = {
+    left: `${left}px`,
+    width: `${width}px`,
+    maxHeight: `${maxHeight}px`,
+    ...(opensAbove ? { bottom: `${window.innerHeight - rect.top + gap}px` } : { top: `${rect.bottom + gap}px` }),
+  }
 }
 
-function close() {
+async function showDropdown() {
+  if (isDisabled.value || open.value) return
+  open.value = true
+  search.value = ''
+  highlightedIndex.value = -1
+  emit('open')
+  emit('search', '')
+  await nextTick()
+  updatePosition()
+  searchInput.value?.focus()
+}
+
+function closeDropdown() {
+  if (!open.value) return
   open.value = false
+  highlightedIndex.value = -1
+  field.handleBlur()
+  emit('close')
 }
 
-function choose(opt: SearchableSelectOption) {
-  setValue(opt.value)
-  close()
+function selectOption(option: unknown) {
+  const value = getOptionValue(option)
+  if (props.name) field.setValue(value)
+  emit('update:modelValue', value)
+  emit('select', option)
+  closeDropdown()
 }
 
-function onDocumentClick(event: MouseEvent) {
-  if (!root.value) return
-  if (!root.value.contains(event.target as Node)) close()
+function moveHighlight(offset: number) {
+  if (!filteredOptions.value.length) return
+  const next = highlightedIndex.value + offset
+  highlightedIndex.value = next < 0 ? filteredOptions.value.length - 1 : next % filteredOptions.value.length
 }
 
-function onDocumentKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') close()
+function onTriggerKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+    event.preventDefault()
+    void showDropdown()
+  }
 }
 
-onMounted(() => {
-  document.addEventListener('click', onDocumentClick)
-  document.addEventListener('keydown', onDocumentKeydown)
+function onSearchKeydown(event: KeyboardEvent) {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    moveHighlight(1)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    moveHighlight(-1)
+  } else if (event.key === 'Enter' && highlightedIndex.value >= 0) {
+    event.preventDefault()
+    const option = filteredOptions.value[highlightedIndex.value]
+    if (option) selectOption(option)
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    closeDropdown()
+    trigger.value?.focus()
+  }
+}
+
+function onPointerDown(event: PointerEvent) {
+  const target = event.target as Node
+  if (root.value?.contains(target) || dropdown.value?.contains(target)) return
+  closeDropdown()
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeDropdown()
+}
+
+function attachFloatingListeners() {
+  document.addEventListener('pointerdown', onPointerDown)
+  document.addEventListener('keydown', onKeydown)
+  window.addEventListener('resize', updatePosition)
+  window.addEventListener('scroll', updatePosition, true)
+}
+
+function removeFloatingListeners() {
+  document.removeEventListener('pointerdown', onPointerDown)
+  document.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('resize', updatePosition)
+  window.removeEventListener('scroll', updatePosition, true)
+}
+
+watch(open, (isOpen) => {
+  if (isOpen) attachFloatingListeners()
+  else removeFloatingListeners()
 })
 
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick)
-  document.removeEventListener('keydown', onDocumentKeydown)
+watch(search, (keyword) => {
+  highlightedIndex.value = -1
+  emit('search', keyword)
 })
+
+onBeforeUnmount(removeFloatingListeners)
 </script>
 
 <template>
   <div ref="root" class="relative space-y-1.5">
     <span v-if="label" class="block text-xs font-bold text-slate-500">{{ label }}</span>
-
     <button
+      ref="trigger"
       type="button"
-      :disabled="readonly"
+      :disabled="isDisabled"
       class="flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-bold text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-      @click.stop="toggleOpen"
-      @blur="handleBlur"
+      @click.stop="open ? closeDropdown() : showDropdown()"
+      @keydown="onTriggerKeydown"
     >
-      <span :class="cn(!value ? 'text-slate-400' : '')">
-        {{ value ? selectedLabel : placeholder }}
+      <span :class="cn(!selectedValue ? 'text-slate-400' : '')">
+        {{ selectedValue ? selectedLabel || placeholder : placeholder }}
       </span>
-      <ChevronDown class="h-4 w-4 text-slate-500" />
+      <ChevronDown class="h-4 w-4 shrink-0 text-slate-500" />
     </button>
-
     <p v-if="error" class="text-xs font-semibold text-rose-700">{{ error }}</p>
 
+    <Teleport v-if="teleport" to="body">
+      <div
+        v-if="open"
+        ref="dropdown"
+        :style="dropdownStyle"
+        class="fixed z-[9999] flex flex-col rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/15"
+        @pointerdown.stop
+      >
+        <div class="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+          <Search class="h-4 w-4 text-slate-500" />
+          <input
+            ref="searchInput"
+            v-model="search"
+            type="text"
+            class="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+            placeholder="Search..."
+            @keydown="onSearchKeydown"
+          />
+        </div>
+        <div class="mt-2 min-h-0 overflow-auto">
+          <div v-if="loading" class="px-2 py-3 text-sm font-semibold text-slate-500">{{ loadingText }}</div>
+          <button
+            v-for="(option, index) in filteredOptions"
+            v-else
+            :key="String(getOptionValue(option) ?? index)"
+            type="button"
+            :class="cn('flex w-full items-center rounded-xl px-2 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50', highlightedIndex === index && 'bg-slate-50')"
+            @pointerdown.prevent="selectOption(option)"
+          >
+            {{ getOptionLabel(option) }}
+          </button>
+          <div v-if="!loading && !error && filteredOptions.length === 0" class="px-2 py-3 text-sm font-semibold text-slate-500">
+            {{ emptyText }}
+          </div>
+          <div v-if="!loading && error" class="px-2 py-3 text-sm font-semibold text-rose-700">{{ error }}</div>
+        </div>
+      </div>
+    </Teleport>
+
     <div
-      v-if="open"
-      class="absolute left-0 top-[calc(100%+6px)] z-50 w-[min(520px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/15"
-      @click.stop
+      v-else-if="open"
+      ref="dropdown"
+      class="absolute left-0 top-[calc(100%+6px)] z-50 w-full min-w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/15"
+      @pointerdown.stop
     >
       <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
         <Search class="h-4 w-4 text-slate-500" />
-        <input
-          v-model="search"
-          type="text"
-          class="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
-          placeholder="Search…"
-        />
+        <input ref="searchInput" v-model="search" type="text" class="w-full bg-transparent text-sm outline-none" placeholder="Search..." @keydown="onSearchKeydown" />
       </div>
-
       <div class="mt-2 max-h-72 overflow-auto">
-        <div v-if="loading" class="px-2 py-3 text-sm font-semibold text-slate-500">Loading…</div>
         <button
-          v-for="opt in filteredOptions"
-          :key="opt.value"
+          v-for="(option, index) in filteredOptions"
+          :key="String(getOptionValue(option) ?? index)"
           type="button"
-          class="flex w-full items-center rounded-xl px-2 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          @click="choose(opt)"
+          class="flex w-full rounded-xl px-2 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          @pointerdown.prevent="selectOption(option)"
         >
-          {{ opt.label }}
+          {{ getOptionLabel(option) }}
         </button>
-        <div v-if="!loading && filteredOptions.length === 0" class="px-2 py-3 text-sm font-semibold text-slate-500">
-          No options found.
-        </div>
       </div>
     </div>
   </div>

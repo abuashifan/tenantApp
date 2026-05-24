@@ -14,11 +14,11 @@ import TransactionValidationSummary from '@/components/transaction-form/Transact
 
 import { useTransactionForm } from '@/composables/transaction-form/useTransactionForm'
 import { useTransactionTotals } from '@/composables/transaction-form/useTransactionTotals'
-import type { TransactionFormConfig } from '@/composables/transaction-form/types'
+import type { RuntimeTransactionFormConfig } from '@/composables/transaction-form/types'
 import type { SecondaryTab } from '@/stores/workspaceTabsStore'
 
 const props = defineProps<{
-  config: TransactionFormConfig<any>
+  config: RuntimeTransactionFormConfig
   tab: SecondaryTab | null
 }>()
 
@@ -31,7 +31,7 @@ const entityId = props.tab?.entityId
 const secondaryTabId = props.tab?.id ?? ''
 
 const tx = useTransactionForm({ config: props.config, mode, entityId, secondaryTabId })
-useTransactionTotals(tx.form as any)
+useTransactionTotals(tx.form, { priceField: props.config.lineProduct?.priceField })
 
 const partnerName =
   props.config.partnerField ?? (props.config.partnerType === 'vendor' ? 'vendor_id' : props.config.partnerType === 'customer' ? 'customer_id' : '')
@@ -78,7 +78,12 @@ async function onSubmit() {
         <TransactionCashBankAmountFields :readonly="tx.isReadonly.value" />
       </TransactionFormSection>
 
-      <TransactionLineTable v-if="config.hasLines" name="lines" :readonly="tx.isReadonly.value" />
+      <TransactionLineTable
+        v-if="config.hasLines"
+        name="lines"
+        :readonly="tx.isReadonly.value"
+        :product-config="config.lineProduct"
+      />
 
       <TransactionFormSection v-if="config.hasLines" title="Totals">
         <TransactionTotalsPanel />

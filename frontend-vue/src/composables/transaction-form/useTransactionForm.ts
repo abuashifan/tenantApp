@@ -5,10 +5,10 @@ import { toTypedSchema } from '@vee-validate/zod'
 import type { ApiResponse } from '@/types/api'
 import { applyLaravelValidationErrors, toErrorMessage } from '@/composables/transaction-form/useTransactionValidation'
 import { useTransactionDraftState } from '@/composables/transaction-form/useTransactionDraftState'
-import type { TransactionFormConfig, TransactionFormMode } from '@/composables/transaction-form/types'
+import type { RuntimeTransactionFormConfig, TransactionFormMode } from '@/composables/transaction-form/types'
 
 export function useTransactionForm(options: {
-  config: TransactionFormConfig<any>
+  config: RuntimeTransactionFormConfig
   mode: TransactionFormMode
   secondaryTabId: string
   entityId?: string | number
@@ -17,14 +17,14 @@ export function useTransactionForm(options: {
   const error = ref<string | null>(null)
   const status = ref<string | null>(null)
 
-  const form = useForm<Record<string, any>>({
+  const form = useForm<Record<string, unknown>>({
     validationSchema: toTypedSchema(options.config.validationSchema),
-    initialValues: options.config.makeEmptyValues() as any,
+    initialValues: options.config.makeEmptyValues(),
   })
 
   const isReadonly = computed(() => options.mode === 'detail')
 
-  const draft = useTransactionDraftState(options.secondaryTabId, form as any)
+  const draft = useTransactionDraftState(options.secondaryTabId, form)
 
   async function load() {
     if (options.mode === 'create') return
@@ -33,10 +33,10 @@ export function useTransactionForm(options: {
     error.value = null
     try {
       const raw = await options.config.apiService.get(options.entityId)
-      const res = raw as { data?: ApiResponse<Record<string, any>> }
+      const res = raw as { data?: ApiResponse<Record<string, unknown>> }
       const data = res.data?.data
       if (data && typeof data === 'object') {
-        form.setValues(data as any, false)
+        form.setValues(data, false)
         status.value = String((data as Record<string, unknown>).status ?? '')
       }
     } catch (cause) {
@@ -64,7 +64,7 @@ export function useTransactionForm(options: {
       draft.clearDraft()
       return true
     } catch (cause) {
-      applyLaravelValidationErrors(form as any, (cause as any)?.errors)
+      applyLaravelValidationErrors(form, (cause as { errors?: Record<string, string[]> } | null)?.errors)
       error.value = toErrorMessage(cause)
       return false
     } finally {

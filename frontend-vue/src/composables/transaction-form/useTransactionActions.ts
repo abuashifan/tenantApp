@@ -1,10 +1,10 @@
 import { ref } from 'vue'
 
-import type { TransactionFormConfig } from '@/composables/transaction-form/types'
+import type { RuntimeTransactionFormConfig } from '@/composables/transaction-form/types'
 import { toErrorMessage } from '@/composables/transaction-form/useTransactionValidation'
 
 export function useTransactionActions(options: {
-  config: TransactionFormConfig
+  config: RuntimeTransactionFormConfig
   entityId?: string | number
 }) {
   const actionLoading = ref(false)
@@ -28,4 +28,3 @@ export function useTransactionActions(options: {
 
   return { actionLoading, actionError, runAction }
 }
-

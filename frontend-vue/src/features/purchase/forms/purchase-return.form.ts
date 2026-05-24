@@ -49,6 +49,7 @@ export const purchaseReturnFormConfig: TransactionFormConfig<PurchaseReturnValue
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'purchase', priceField: 'unit_price' },
   validationSchema: z.object({
     return_date: z.string().min(1),
     vendor_id: z.string().min(1),
@@ -72,4 +73,3 @@ export const purchaseReturnFormConfig: TransactionFormConfig<PurchaseReturnValue
     }
   },
 }
-

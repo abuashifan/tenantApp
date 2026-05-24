@@ -1,2 +1,1 @@
-export { goodsReceiptsService as goodsReceiptsService } from './documents.service'
-
+export { goodsReceiptsService } from './documents.service'

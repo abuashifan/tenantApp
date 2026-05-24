@@ -21,7 +21,7 @@ export type BillingInvoiceValues = {
   sales_invoice_id?: string | null
   notes?: string | null
   internal_notes?: string | null
-  lines: Array<{ description: string; amount: number; line_total?: number }>
+  lines: Array<{ product_id?: string | null; product_code?: string | null; description: string; amount: number; line_total?: number }>
   subtotal?: number
   discount_amount?: number
   tax_amount?: number
@@ -46,6 +46,7 @@ export const billingInvoiceFormConfig: TransactionFormConfig<BillingInvoiceValue
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'sales', priceField: 'amount', priceLabel: 'Amount' },
   validationSchema: z.object({
     customer_id: z.string().min(1),
     billing_date: z.string().min(1),
@@ -60,7 +61,7 @@ export const billingInvoiceFormConfig: TransactionFormConfig<BillingInvoiceValue
       sales_invoice_id: null,
       notes: '',
       internal_notes: '',
-      lines: [{ description: '', amount: 0, line_total: 0 }],
+      lines: [{ product_id: '', product_code: '', description: '', amount: 0, line_total: 0 }],
       subtotal: 0,
       discount_amount: 0,
       tax_amount: 0,
@@ -68,4 +69,3 @@ export const billingInvoiceFormConfig: TransactionFormConfig<BillingInvoiceValue
     }
   },
 }
-

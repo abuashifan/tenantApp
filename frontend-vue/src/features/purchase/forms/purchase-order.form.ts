@@ -46,6 +46,7 @@ export const purchaseOrderFormConfig: TransactionFormConfig<PurchaseOrderValues>
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'purchase', priceField: 'unit_price' },
   validationSchema: z.object({
     vendor_id: z.string().min(1),
     order_date: z.string().min(1),
@@ -68,4 +69,3 @@ export const purchaseOrderFormConfig: TransactionFormConfig<PurchaseOrderValues>
     }
   },
 }
-

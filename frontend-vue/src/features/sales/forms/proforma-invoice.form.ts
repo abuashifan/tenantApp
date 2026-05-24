@@ -44,6 +44,7 @@ export const proformaInvoiceFormConfig: TransactionFormConfig<ProformaInvoiceVal
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({
     customer_id: z.string().min(1),
     proforma_date: z.string().min(1),
@@ -65,4 +66,3 @@ export const proformaInvoiceFormConfig: TransactionFormConfig<ProformaInvoiceVal
     }
   },
 }
-

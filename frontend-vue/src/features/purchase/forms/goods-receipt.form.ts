@@ -38,6 +38,7 @@ export const goodsReceiptFormConfig: TransactionFormConfig<GoodsReceiptValues> =
   },
   actions: [{ key: 'save', label: 'Save' }],
   hasLines: true,
+  lineProduct: { priceMode: 'none', priceField: 'unit_price' },
   validationSchema: z.object({
     receipt_date: z.string().min(1),
     vendor_id: z.string().min(1).optional().nullable(),
@@ -56,4 +57,3 @@ export const goodsReceiptFormConfig: TransactionFormConfig<GoodsReceiptValues> =
     }
   },
 }
-
