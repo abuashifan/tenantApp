@@ -90,7 +90,7 @@ onMounted(async () => {
       </BaseButton>
     </div>
 
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto overflow-y-visible">
       <table class="min-w-[1050px] w-full text-left text-sm">
         <thead class="bg-slate-50 text-xs font-bold text-slate-600">
           <tr>

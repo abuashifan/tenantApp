@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ChevronDown, Search } from 'lucide-vue-next'
 import { useField } from 'vee-validate'
 
@@ -65,8 +65,10 @@ function onDocumentKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') close()
 }
 
-document.addEventListener('click', onDocumentClick)
-document.addEventListener('keydown', onDocumentKeydown)
+onMounted(() => {
+  document.addEventListener('click', onDocumentClick)
+  document.addEventListener('keydown', onDocumentKeydown)
+})
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick)
@@ -126,4 +128,3 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
-
