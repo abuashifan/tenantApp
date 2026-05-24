@@ -1,0 +1,10 @@
+export { salesQuotationFormConfig } from './sales-quotation.form'
+export { salesOrderFormConfig } from './sales-order.form'
+export { deliveryOrderFormConfig } from './delivery-order.form'
+export { proformaInvoiceFormConfig } from './proforma-invoice.form'
+export { salesInvoiceFormConfig } from './sales-invoice.form'
+export { billingInvoiceFormConfig } from './billing-invoice.form'
+export { customerDepositFormConfig } from './customer-deposit.form'
+export { salesReceiptFormConfig } from './sales-receipt.form'
+export { salesReturnFormConfig } from './sales-return.form'
+
