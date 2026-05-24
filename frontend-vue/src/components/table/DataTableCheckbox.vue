@@ -21,6 +21,7 @@ function syncIndeterminate() {
 
 onMounted(syncIndeterminate)
 watch(() => props.indeterminate, syncIndeterminate)
+watch(() => props.checked, syncIndeterminate)
 </script>
 
 <template>
@@ -31,6 +32,7 @@ watch(() => props.indeterminate, syncIndeterminate)
     :disabled="disabled"
     :aria-label="ariaLabel"
     class="h-4 w-4 rounded border-slate-300 text-[#24a1db] focus:ring-[#e9f6fb]"
-    @change="emit('change', ($event.target as HTMLInputElement).checked)"
+    @click.stop
+    @change.stop="emit('change', ($event.target as HTMLInputElement).checked)"
   />
 </template>
