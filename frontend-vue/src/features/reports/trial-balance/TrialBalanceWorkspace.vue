@@ -19,7 +19,6 @@ const store = useMockAccountingDataStore()
 onMounted(() => store.initLedgerLines())
 
 const filters = computed(() => store.trialBalanceFiltersDraft)
-const applied = computed(() => store.trialBalanceFilters)
 const rows = computed(() => store.trialBalanceRows)
 const totals = computed(() => store.trialBalanceTotals)
 
@@ -86,11 +85,7 @@ function openGeneralLedger(row: TrialBalanceRow) {
     <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p class="text-xs font-extrabold text-slate-500">Accounting / Trial Balance</p>
-          <h1 class="mt-2 text-2xl font-black tracking-tight text-slate-950">Trial Balance</h1>
-          <p class="mt-2 text-sm leading-6 text-slate-500">
-            Ringkasan saldo debit dan kredit seluruh akun untuk validasi keseimbangan pembukuan.
-          </p>
+          <h1 class="text-2xl font-black tracking-tight text-slate-950">Trial Balance</h1>
         </div>
 
         <div class="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
@@ -180,9 +175,6 @@ function openGeneralLedger(row: TrialBalanceRow) {
         </div>
       </div>
 
-      <p class="mt-3 text-xs text-slate-500">
-        Applied: {{ applied?.period }} • As of {{ applied?.asOfDate }}
-      </p>
     </div>
 
     <div class="grid gap-3 lg:grid-cols-4">
