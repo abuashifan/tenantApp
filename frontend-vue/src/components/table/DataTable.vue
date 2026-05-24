@@ -157,7 +157,7 @@ watch(
     :class="
       cn(
         'flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm',
-        fillAvailable && 'h-full',
+        fillAvailable && 'flex-1',
       )
     "
   >
