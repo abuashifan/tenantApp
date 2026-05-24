@@ -3,12 +3,19 @@ import { computed, h, onMounted } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseMultiSelect from '@/components/ui/BaseMultiSelect.vue'
 import DataTable from '@/components/table/DataTable.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
 import { useMockAccountingDataStore, type MockJournalStatus, type MockLedgerLine } from '@/stores/mockAccountingDataStore'
 
 type LedgerRow = MockLedgerLine & { runningBalance: number }
+
+const statusOptions = [
+  { label: 'Draft', value: 'Draft' },
+  { label: 'Posted', value: 'Posted' },
+  { label: 'Void', value: 'Void' },
+]
 
 const store = useMockAccountingDataStore()
 
@@ -21,7 +28,7 @@ const selectedAccountCode = computed({
 })
 const statuses = computed({
   get: () => store.ledgerFilters.statuses,
-  set: (value: MockJournalStatus[]) => store.setLedgerStatuses(value),
+  set: (value: string[]) => store.setLedgerStatuses(value as MockJournalStatus[]),
 })
 const search = computed({
   get: () => store.ledgerFilters.search,
@@ -33,13 +40,6 @@ const rows = computed<LedgerRow[]>(() => store.ledgerRunningLines)
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('id-ID').format(value)
-}
-
-function toggleStatus(next: MockJournalStatus) {
-  const current = new Set(statuses.value)
-  if (current.has(next)) current.delete(next)
-  else current.add(next)
-  statuses.value = Array.from(current)
 }
 
 const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
@@ -93,35 +93,13 @@ const columns = computed<ColumnDef<LedgerRow, unknown>[]>(() => [
 
         <div class="space-y-1.5 lg:w-[220px]">
           <p class="text-xs font-bold text-slate-500">Status</p>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                class="h-4 w-4 accent-[#24a1db]"
-                :checked="statuses.includes('Posted')"
-                @change="toggleStatus('Posted')"
-              />
-              Posted
-            </label>
-            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                class="h-4 w-4 accent-[#24a1db]"
-                :checked="statuses.includes('Draft')"
-                @change="toggleStatus('Draft')"
-              />
-              Draft
-            </label>
-            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                class="h-4 w-4 accent-[#24a1db]"
-                :checked="statuses.includes('Void')"
-                @change="toggleStatus('Void')"
-              />
-              Void
-            </label>
-          </div>
+          <BaseMultiSelect
+            v-model="statuses"
+            :options="statusOptions"
+            all-label="All status"
+            none-label="No status"
+            aria-label="Status filter options"
+          />
         </div>
 
         <label class="block space-y-1.5 lg:min-w-[260px] lg:flex-1">
