@@ -114,15 +114,12 @@ const journalDifference = computed(() => totalDebit.value - totalCredit.value)
 const journalBalanced = computed(() => Math.abs(journalDifference.value) < 0.01)
 const isJournal = computed(() => props.config.endpoint === '/journals')
 const internalTab = ref<'detail' | 'history'>('detail')
-const isInventoryDetail = computed(() =>
+const isProductDetail = computed(() =>
   props.tab.mode === 'detail'
-  && ['/master-data/product-categories', '/master-data/products'].includes(props.config.endpoint),
+  && props.config.endpoint === '/master-data/products',
 )
-const isProductDetail = computed(() => props.config.endpoint === '/master-data/products')
-const inventoryHistoryEnabled = computed(() => !isProductDetail.value || Boolean(form.values.is_stock_item))
-const inventoryEntityName = computed(() => String(
-  isProductDetail.value ? form.values.product_name ?? numberText.value : form.values.name ?? numberText.value,
-))
+const inventoryHistoryEnabled = computed(() => Boolean(form.values.is_stock_item))
+const inventoryEntityName = computed(() => String(form.values.product_name ?? numberText.value))
 const canViewInventoryHistory = computed(() => can('inventory.reports.view'))
 
 function can(permission: string) {
@@ -315,7 +312,7 @@ function close() {
     <form v-else class="space-y-5" @submit.prevent="save(false)">
       <FormHeader :title="title" :subtitle="`Document ${numberText}`">
         <template #meta>
-          <div v-if="!isInventoryDetail" class="mt-3 flex flex-wrap items-center gap-2">
+          <div v-if="!isProductDetail" class="mt-3 flex flex-wrap items-center gap-2">
             <FormStatusBadge :status="status" />
             <span class="rounded-xl bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{{ tab.mode }}</span>
             <FormDirtyIndicator :dirty="dirty" />
@@ -330,7 +327,7 @@ function close() {
 
       <FormValidationSummary :errors="serverErrors" />
 
-      <nav v-if="isInventoryDetail" class="flex items-end gap-1 border-b border-slate-200 pt-1">
+      <nav v-if="isProductDetail" class="flex items-end gap-1 border-b border-slate-200 pt-1">
         <button
           type="button"
           class="h-11 rounded-t-xl border px-5 text-sm font-semibold transition"
@@ -351,7 +348,7 @@ function close() {
         </button>
       </nav>
 
-      <div v-show="!isInventoryDetail || internalTab === 'detail'" class="space-y-5">
+      <div v-show="!isProductDetail || internalTab === 'detail'" class="space-y-5">
         <FormSection
           v-for="section in config.sections"
           :key="section.title"
@@ -427,7 +424,7 @@ function close() {
           />
         </FormSection>
 
-        <FormSection v-if="!isInventoryDetail" title="Summary">
+        <FormSection v-if="!isProductDetail" title="Summary">
           <div class="grid gap-3 sm:grid-cols-3">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p class="text-xs font-black uppercase text-slate-500">Line Total</p>
@@ -446,7 +443,7 @@ function close() {
           </div>
         </FormSection>
 
-        <FormSection v-if="tab.mode !== 'create' && !isInventoryDetail" title="Audit / Status">
+        <FormSection v-if="tab.mode !== 'create' && !isProductDetail" title="Audit / Status">
           <div class="grid gap-3 text-sm sm:grid-cols-3">
             <div v-for="key in ['created_at', 'updated_at', 'approved_at', 'posted_at', 'voided_at']" :key="key" class="rounded-2xl bg-slate-50 p-3">
               <p class="text-xs font-black uppercase text-slate-500">{{ key.replaceAll('_', ' ') }}</p>
@@ -455,7 +452,7 @@ function close() {
           </div>
         </FormSection>
 
-        <FormActionBar v-if="!isInventoryDetail">
+        <FormActionBar v-if="!isProductDetail">
           <BaseButton variant="secondary" type="button" @click="close">Cancel</BaseButton>
           <BaseButton
             v-for="action in config.actions.filter(visibleAction)"
@@ -473,10 +470,9 @@ function close() {
       </div>
 
       <InventoryHistoryPanel
-        v-if="isInventoryDetail && internalTab === 'history' && inventoryHistoryEnabled && canViewInventoryHistory && tab.entityId"
+        v-if="isProductDetail && internalTab === 'history' && inventoryHistoryEnabled && canViewInventoryHistory && tab.entityId"
         :entity-id="tab.entityId"
         :entity-name="inventoryEntityName"
-        :entity-type="isProductDetail ? 'product' : 'category'"
       />
     </form>
   </FormPageShell>

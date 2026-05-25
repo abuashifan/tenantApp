@@ -32,7 +32,6 @@ type HistoryRow = {
 const props = defineProps<{
   entityId: string | number
   entityName: string
-  entityType: 'product' | 'category'
 }>()
 
 const today = new Date().toISOString().slice(0, 10)
@@ -123,7 +122,7 @@ async function load() {
   error.value = null
   try {
     result.value = await getInventoryHistory({
-      [props.entityType === 'product' ? 'product_id' : 'category_id']: props.entityId,
+      product_id: props.entityId,
       warehouse_id: warehouseId.value || undefined,
       start_date: startDate.value,
       end_date: endDate.value,

@@ -3,8 +3,7 @@ import type { ApiResponse } from '@/services/apiResponse'
 import { unwrap } from '@/services/apiResponse'
 
 export type InventoryHistoryParams = {
-  product_id?: string | number
-  category_id?: string | number
+  product_id: string | number
   warehouse_id?: string | number
   start_date: string
   end_date: string
