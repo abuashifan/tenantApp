@@ -128,7 +128,7 @@ watch(
   () => menuItem.value?.href,
   () => {
     if (!menuItem.value) return
-    tabs.ensureListSecondaryTab(menuItem.value.href, { label: menuItem.value.label })
+    tabs.ensureListSecondaryTab(menuItem.value.href)
     resetFilters()
     void load()
   },

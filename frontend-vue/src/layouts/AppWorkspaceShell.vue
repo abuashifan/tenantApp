@@ -46,6 +46,7 @@ const primaryTabs = computed(() => tabs.primaryTabs)
 watch(
   activePrimaryId,
   (path) => {
+    tabs.ensureListSecondaryTab(path)
     const module = modules.value.find((item) => item.href === path || item.items.some((child) => child.href === path))
     if (module) activeModuleKey.value = module.key
   },
@@ -82,13 +83,10 @@ async function onOpenItem(item: SidebarMenuItem) {
 }
 
 const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[activePrimaryId.value] ?? [])
-const visibleSecondaryTabs = computed(() =>
-  secondaryTabs.value.filter((t) => t.mode !== 'list' || t.label.trim().length > 0),
-)
 const activeSecondaryId = computed(
   () => tabs.activeSecondaryTabIdByPrimaryId[activePrimaryId.value] ?? `${activePrimaryId.value}::list`,
 )
-const showSecondary = computed(() => activePrimaryId.value !== '/dashboard' && visibleSecondaryTabs.value.length > 0)
+const showSecondary = computed(() => activePrimaryId.value !== '/dashboard' && secondaryTabs.value.length > 0)
 const closePendingSecondaryId = ref<string | null>(null)
 const unsavedOpen = computed(() => closePendingSecondaryId.value != null)
 
@@ -167,7 +165,7 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
 
       <div v-if="showSecondary" class="border-b border-slate-200 bg-white px-4 py-2 lg:px-6">
         <SecondaryTabsBar
-          :tabs="visibleSecondaryTabs"
+          :tabs="secondaryTabs"
           :active-id="activeSecondaryId"
           @activate="(id) => tabs.activateSecondaryTab(activePrimaryId, id)"
           @close="closeSecondary"

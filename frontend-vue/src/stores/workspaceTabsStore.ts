@@ -40,6 +40,19 @@ function listSecondaryId(primaryTabId: string) {
   return `${primaryTabId}::list`
 }
 
+function createListSecondaryTab(primaryTabId: string, label = 'Daftar'): SecondaryTab {
+  return {
+    id: listSecondaryId(primaryTabId),
+    primaryTabId,
+    label,
+    mode: 'list',
+    closable: false,
+    dirty: false,
+    createdAt: now(),
+    updatedAt: now(),
+  }
+}
+
 function createSecondaryId(primaryTabId: string) {
   return `${primaryTabId}::create::${now()}`
 }
@@ -67,22 +80,9 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
     ],
     activePrimaryTabId: DASHBOARD_PRIMARY_ID,
     secondaryTabsByPrimaryId: {
-      [DASHBOARD_PRIMARY_ID]: [
-        {
-          id: listSecondaryId(DASHBOARD_PRIMARY_ID),
-          primaryTabId: DASHBOARD_PRIMARY_ID,
-          label: '',
-          mode: 'list',
-          closable: false,
-          dirty: false,
-          createdAt: now(),
-          updatedAt: now(),
-        },
-      ],
+      [DASHBOARD_PRIMARY_ID]: [],
     },
-    activeSecondaryTabIdByPrimaryId: {
-      [DASHBOARD_PRIMARY_ID]: listSecondaryId(DASHBOARD_PRIMARY_ID),
-    },
+    activeSecondaryTabIdByPrimaryId: {},
     draftStateBySecondaryTabId: {},
     listStateByPrimaryTabId: {},
   }),
@@ -107,13 +107,17 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
       const existing = this.primaryTabs.find((t) => t.id === tab.id)
       if (!existing) this.primaryTabs.push(tab)
       this.activatePrimaryTab(tab.id)
-      this.ensureListSecondaryTab(tab.id)
+      this.ensureListSecondaryTab(tab.id, { label: 'Daftar' })
     },
 
     activatePrimaryTab(primaryTabId: string) {
       this.activePrimaryTabId = primaryTabId
       this.ensureListSecondaryTab(primaryTabId)
-      if (!this.activeSecondaryTabIdByPrimaryId[primaryTabId]) {
+      if (primaryTabId === DASHBOARD_PRIMARY_ID) return
+
+      const activeSecondaryId = this.activeSecondaryTabIdByPrimaryId[primaryTabId]
+      const activeStillExists = (this.secondaryTabsByPrimaryId[primaryTabId] ?? []).some((tab) => tab.id === activeSecondaryId)
+      if (!activeSecondaryId || !activeStillExists) {
         this.activeSecondaryTabIdByPrimaryId[primaryTabId] = listSecondaryId(primaryTabId)
       }
     },
@@ -138,29 +142,33 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
     },
 
     ensureListSecondaryTab(primaryTabId: string, options?: { label?: string }) {
+      if (primaryTabId === DASHBOARD_PRIMARY_ID) return
+
       const listId = listSecondaryId(primaryTabId)
       const existing = this.secondaryTabsByPrimaryId[primaryTabId] ?? []
+      const label = options?.label ?? 'Daftar'
       const existingList = existing.find((t) => t.id === listId)
+
       if (!existingList) {
-        this.secondaryTabsByPrimaryId[primaryTabId] = [
-          {
-            id: listId,
-            primaryTabId,
-            label: options?.label ?? '',
-            mode: 'list',
-            closable: false,
-            dirty: false,
-            createdAt: now(),
-            updatedAt: now(),
-          },
-          ...existing,
-        ]
-      } else if (options?.label && existingList.label !== options.label) {
+        this.secondaryTabsByPrimaryId[primaryTabId] = [createListSecondaryTab(primaryTabId, label), ...existing]
+      } else if (existingList.label !== label || existingList.closable || existingList.mode !== 'list') {
         this.secondaryTabsByPrimaryId[primaryTabId] = existing.map((tab) =>
-          tab.id === listId ? { ...tab, label: options.label ?? tab.label, updatedAt: now() } : tab,
+          tab.id === listId
+            ? {
+                ...tab,
+                label,
+                mode: 'list',
+                closable: false,
+                dirty: false,
+                updatedAt: now(),
+              }
+            : tab,
         )
       }
-      if (!this.activeSecondaryTabIdByPrimaryId[primaryTabId]) {
+
+      const activeSecondaryId = this.activeSecondaryTabIdByPrimaryId[primaryTabId]
+      const activeStillExists = (this.secondaryTabsByPrimaryId[primaryTabId] ?? []).some((tab) => tab.id === activeSecondaryId)
+      if (!activeSecondaryId || !activeStillExists) {
         this.activeSecondaryTabIdByPrimaryId[primaryTabId] = listId
       }
     },
@@ -243,10 +251,19 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
 
     activateSecondaryTab(primaryTabId: string, secondaryTabId: string) {
       this.activePrimaryTabId = primaryTabId
+      this.ensureListSecondaryTab(primaryTabId)
+      const exists = (this.secondaryTabsByPrimaryId[primaryTabId] ?? []).some((tab) => tab.id === secondaryTabId)
+      if (!exists) {
+        this.activeSecondaryTabIdByPrimaryId[primaryTabId] = listSecondaryId(primaryTabId)
+        return
+      }
       this.activeSecondaryTabIdByPrimaryId[primaryTabId] = secondaryTabId
     },
 
     closeSecondaryTab(primaryTabId: string, secondaryTabId: string) {
+      this.ensureListSecondaryTab(primaryTabId)
+      if (secondaryTabId === listSecondaryId(primaryTabId)) return
+
       const tabs = this.secondaryTabsByPrimaryId[primaryTabId] ?? []
       const tab = tabs.find((t) => t.id === secondaryTabId)
       if (!tab || !tab.closable) return
@@ -295,22 +312,9 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
       this.primaryTabs = keep ? [keep] : []
       this.activePrimaryTabId = DASHBOARD_PRIMARY_ID
       this.secondaryTabsByPrimaryId = {
-        [DASHBOARD_PRIMARY_ID]: [
-          {
-            id: listSecondaryId(DASHBOARD_PRIMARY_ID),
-            primaryTabId: DASHBOARD_PRIMARY_ID,
-            label: '',
-            mode: 'list',
-            closable: false,
-            dirty: false,
-            createdAt: now(),
-            updatedAt: now(),
-          },
-        ],
+        [DASHBOARD_PRIMARY_ID]: [],
       }
-      this.activeSecondaryTabIdByPrimaryId = {
-        [DASHBOARD_PRIMARY_ID]: listSecondaryId(DASHBOARD_PRIMARY_ID),
-      }
+      this.activeSecondaryTabIdByPrimaryId = {}
       this.draftStateBySecondaryTabId = {}
       this.listStateByPrimaryTabId = {}
     },
