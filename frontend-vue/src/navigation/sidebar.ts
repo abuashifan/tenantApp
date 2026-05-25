@@ -80,10 +80,10 @@ export const sidebarMenuGroups: SidebarMenuGroup[] = [
     items: [
       item('reports', 'general-ledger', 'General Ledger', '/reports/general-ledger', '/reports/general-ledger', 'reports.view', true),
       item('reports', 'trial-balance', 'Trial Balance', '/accounting/trial-balance', '/reports/trial-balance', 'reports.view', true),
-      item('reports', 'profit-loss', 'Profit & Loss', '/reports/profit-loss', '/reports/profit-loss', 'reports.view'),
-      item('reports', 'balance-sheet', 'Balance Sheet', '/reports/balance-sheet', '/reports/balance-sheet', 'reports.view'),
-      item('reports', 'cash-flow', 'Cash Flow', '/reports/cash-flow', '/reports/cash-flow', 'reports.view'),
-      item('reports', 'financial-summary', 'Financial Summary', '/reports/financial-summary', '/reports/financial-summary', 'reports.view'),
+      item('reports', 'profit-loss', 'Profit & Loss', '/reports/profit-loss', '/reports/profit-loss', 'reports.view', true),
+      item('reports', 'balance-sheet', 'Balance Sheet', '/reports/balance-sheet', '/reports/balance-sheet', 'reports.view', true),
+      item('reports', 'cash-flow', 'Cash Flow', '/reports/cash-flow', '/reports/cash-flow', 'reports.view', true),
+      item('reports', 'financial-summary', 'Financial Summary', '/reports/financial-summary', '/reports/financial-summary', 'reports.view', true),
     ],
   },
   {

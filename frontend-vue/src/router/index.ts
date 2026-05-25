@@ -104,6 +104,54 @@ const router = createRouter({
             primaryTabClosable: true,
           },
         },
+        {
+          path: 'reports/profit-loss',
+          name: 'profit-loss',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['reports.view'],
+            apiEndpoint: '/reports/profit-loss',
+            primaryTabId: '/reports/profit-loss',
+            primaryTabLabel: 'Profit & Loss',
+            primaryTabClosable: true,
+          },
+        },
+        {
+          path: 'reports/balance-sheet',
+          name: 'balance-sheet',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['reports.view'],
+            apiEndpoint: '/reports/balance-sheet',
+            primaryTabId: '/reports/balance-sheet',
+            primaryTabLabel: 'Balance Sheet',
+            primaryTabClosable: true,
+          },
+        },
+        {
+          path: 'reports/cash-flow',
+          name: 'cash-flow',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['reports.view'],
+            apiEndpoint: '/reports/cash-flow',
+            primaryTabId: '/reports/cash-flow',
+            primaryTabLabel: 'Cash Flow',
+            primaryTabClosable: true,
+          },
+        },
+        {
+          path: 'reports/financial-summary',
+          name: 'financial-summary',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['reports.view'],
+            apiEndpoint: '/reports/financial-summary',
+            primaryTabId: '/reports/financial-summary',
+            primaryTabLabel: 'Financial Summary',
+            primaryTabClosable: true,
+          },
+        },
         ...placeholderWorkspaceRoutes,
         // Design/demo routes (restricted)
         {

@@ -6,7 +6,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import DataTable from '@/components/table/DataTable.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
-import { getGeneralLedger, listLedgerAccounts, type LedgerAccountOption, type LedgerDetail, type LedgerLine } from './generalLedger.service'
+import { getGeneralLedger, listLedgerAccounts, reportErrorMessage, type LedgerAccountOption, type LedgerDetail, type LedgerLine } from './generalLedger.service'
 
 const accounts = ref<LedgerAccountOption[]>([])
 const selectedAccountId = ref<number | null>(null)
@@ -50,7 +50,7 @@ async function load() {
         })
       : null
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : 'Endpoint belum tersedia'
+    error.value = reportErrorMessage(cause, 'Unable to load general ledger.')
     detail.value = null
   } finally {
     loading.value = false

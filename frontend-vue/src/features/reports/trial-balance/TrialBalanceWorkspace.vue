@@ -8,7 +8,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import DataTable from '@/components/table/DataTable.vue'
 import ToneBadge from '@/components/ui/ToneBadge.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
-import { getTrialBalance, type TrialBalanceRow, type TrialBalanceResult } from './trialBalance.service'
+import { getTrialBalance, reportErrorMessage, type TrialBalanceRow, type TrialBalanceResult } from './trialBalance.service'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 type AccountTypeFilter = '' | TrialBalanceRow['account_type']
@@ -55,7 +55,7 @@ async function load() {
       include_zero_balance: includeZero.value,
     })
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : 'Endpoint belum tersedia'
+    error.value = reportErrorMessage(cause, 'Unable to load trial balance.')
     result.value = null
   } finally {
     loading.value = false
