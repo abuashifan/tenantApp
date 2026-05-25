@@ -328,6 +328,7 @@ onMounted(load)
       :loading="loading"
       :selectable="true"
       :is-row-selectable="canVoidJournal"
+      :clear-selection-on-page-change="true"
       :compact="true"
       :fill-available="true"
       :show-meta="true"

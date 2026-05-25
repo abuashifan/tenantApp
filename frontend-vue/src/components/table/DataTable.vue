@@ -30,6 +30,7 @@ const props = withDefaults(
     selectedIds?: string[]
     selectable?: boolean
     isRowSelectable?: (row: TRow) => boolean
+    clearSelectionOnPageChange?: boolean
     rowClickable?: boolean
     tableMaxHeight?: string
     compact?: boolean
@@ -44,6 +45,7 @@ const props = withDefaults(
     emptyDescription: 'Try adjusting your filters or date range.',
     selectedIds: () => [],
     selectable: false,
+    clearSelectionOnPageChange: false,
     rowClickable: false,
     tableMaxHeight: undefined,
     compact: false,
@@ -64,22 +66,67 @@ const sorting = ref<SortingState>([])
 const pagination = ref<PaginationState>({ pageIndex: 0, pageSize: 10 })
 const rowSelection = ref<RowSelectionState>({})
 
+function selectedIdsFromState(state: RowSelectionState) {
+  return Object.entries(state)
+    .filter(([, selected]) => selected)
+    .map(([id]) => id)
+}
+
+function setRowSelectionState(next: RowSelectionState) {
+  rowSelection.value = next
+  emit('update:selectedIds', selectedIdsFromState(next))
+}
+
+function isRowSelected(rowId: string) {
+  return Boolean(rowSelection.value[rowId])
+}
+
+function toggleRow(rowId: string, checked: boolean) {
+  const next = { ...rowSelection.value }
+  if (checked) next[rowId] = true
+  else delete next[rowId]
+  setRowSelectionState(next)
+}
+
+function pageSelectableRows() {
+  return table.getRowModel().rows.filter((row) => row.getCanSelect())
+}
+
+function isAllPageRowsSelected() {
+  const rows = pageSelectableRows()
+  return rows.length > 0 && rows.every((row) => isRowSelected(row.id))
+}
+
+function isSomePageRowsSelected() {
+  const rows = pageSelectableRows()
+  return rows.some((row) => isRowSelected(row.id)) && !isAllPageRowsSelected()
+}
+
+function toggleAllPageRows(checked: boolean) {
+  const next = { ...rowSelection.value }
+  for (const row of pageSelectableRows()) {
+    if (checked) next[row.id] = true
+    else delete next[row.id]
+  }
+  setRowSelectionState(next)
+}
+
 const selectionColumn = computed<ColumnDef<TRow, unknown>>(() => ({
   id: 'select',
   header: ({ table }) =>
     h(DataTableCheckbox, {
-      checked: table.getIsAllPageRowsSelected(),
-      indeterminate: table.getIsSomePageRowsSelected(),
+      checked: isAllPageRowsSelected(),
+      indeterminate: isSomePageRowsSelected(),
       disabled: !table.getRowModel().rows.some((row) => row.getCanSelect()),
       ariaLabel: 'Select all rows',
-      onChange: (checked: boolean) => table.toggleAllPageRowsSelected(checked),
+      onChange: toggleAllPageRows,
     }),
   cell: ({ row }) =>
     h(DataTableCheckbox, {
-      checked: row.getIsSelected(),
+      checked: isRowSelected(row.id),
       disabled: !row.getCanSelect(),
       ariaLabel: 'Select row',
-      onChange: (checked: boolean) => row.toggleSelected(checked),
+      onChange: (checked: boolean) => toggleRow(row.id, checked),
     }),
   enableSorting: false,
   enableHiding: false,
@@ -128,10 +175,15 @@ const table = useVueTable({
     sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
   },
   onPaginationChange: (updater) => {
-    pagination.value = typeof updater === 'function' ? updater(pagination.value) : updater
+    const next = typeof updater === 'function' ? updater(pagination.value) : updater
+    const pageChanged = next.pageIndex !== pagination.value.pageIndex || next.pageSize !== pagination.value.pageSize
+    pagination.value = next
+    if (props.clearSelectionOnPageChange && pageChanged) {
+      setRowSelectionState({})
+    }
   },
   onRowSelectionChange: (updater) => {
-    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater
+    setRowSelectionState(typeof updater === 'function' ? updater(rowSelection.value) : updater)
   },
   enableRowSelection: (row) => props.selectable && (props.isRowSelectable ? props.isRowSelectable(row.original) : true),
   getRowId: (row) =>
@@ -146,16 +198,7 @@ const table = useVueTable({
   getPaginationRowModel: getPaginationRowModel(),
 })
 
-const selectedIdsInternal = computed(() => table.getSelectedRowModel().rows.map((r) => r.id))
 const pageCount = computed(() => Math.max(table.getPageCount(), 1))
-
-watch(
-  selectedIdsInternal,
-  (ids) => {
-    emit('update:selectedIds', ids)
-  },
-  { deep: true },
-)
 </script>
 
 <template>
