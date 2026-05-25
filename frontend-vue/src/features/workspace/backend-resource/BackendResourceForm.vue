@@ -317,6 +317,7 @@ function close() {
         :key="section.title"
         :title="section.title"
         :description="section.description"
+        :plain="/header/i.test(section.title)"
       >
         <FormGrid :cols="2">
           <template v-for="field in section.fields" :key="field.key">

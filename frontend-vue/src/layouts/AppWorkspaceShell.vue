@@ -87,6 +87,8 @@ const activeSecondaryId = computed(
   () => tabs.activeSecondaryTabIdByPrimaryId[activePrimaryId.value] ?? `${activePrimaryId.value}::list`,
 )
 const showSecondary = computed(() => activePrimaryId.value !== '/dashboard' && secondaryTabs.value.length > 0)
+const activeSecondary = computed(() => secondaryTabs.value.find((tab) => tab.id === activeSecondaryId.value) ?? null)
+const attachedSecondaryForm = computed(() => showSecondary.value && activeSecondary.value?.mode !== 'list')
 const closePendingSecondaryId = ref<string | null>(null)
 const unsavedOpen = computed(() => closePendingSecondaryId.value != null)
 
@@ -163,16 +165,30 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
         @mobile-menu="ui.openMobileSidebar()"
       />
 
-      <div v-if="showSecondary" class="border-b border-slate-200 bg-white px-4 py-2 lg:px-6">
+      <div
+        v-if="showSecondary"
+        :class="
+          attachedSecondaryForm
+            ? 'bg-transparent px-4 pt-4 lg:px-6 lg:pt-6'
+            : 'border-b border-slate-200 bg-white px-4 py-2 lg:px-6'
+        "
+      >
         <SecondaryTabsBar
           :tabs="secondaryTabs"
           :active-id="activeSecondaryId"
+          :attached="attachedSecondaryForm"
           @activate="(id) => tabs.activateSecondaryTab(activePrimaryId, id)"
           @close="closeSecondary"
         />
       </div>
 
-      <main class="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6">
+      <main
+        :class="
+          attachedSecondaryForm
+            ? 'min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-0 lg:px-6 lg:pb-6'
+            : 'min-h-0 flex-1 overflow-y-auto p-4 lg:p-6'
+        "
+      >
         <WorkspaceContentArea />
       </main>
     </div>

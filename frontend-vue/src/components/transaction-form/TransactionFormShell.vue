@@ -32,7 +32,7 @@ defineEmits<{
       <slot name="validation" />
       <slot />
 
-      <div class="flex flex-wrap items-center justify-between gap-2 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
         <div class="flex flex-wrap gap-2">
           <slot name="actions-left" />
         </div>

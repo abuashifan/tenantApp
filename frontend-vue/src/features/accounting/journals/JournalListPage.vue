@@ -344,7 +344,7 @@ onMounted(load)
     />
   </div>
 
-  <div v-else class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+  <div v-else class="rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
     <JournalEntryFormPanel />
   </div>
 </template>

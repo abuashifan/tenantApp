@@ -4,10 +4,16 @@ import { ListTree, X } from 'lucide-vue-next'
 import type { SecondaryTab } from '@/stores/workspaceTabsStore'
 import { cn } from '@/utils/cn'
 
-defineProps<{
-  tabs: SecondaryTab[]
-  activeId: string
-}>()
+withDefaults(
+  defineProps<{
+    tabs: SecondaryTab[]
+    activeId: string
+    attached?: boolean
+  }>(),
+  {
+    attached: false,
+  },
+)
 
 const emit = defineEmits<{
   activate: [tabId: string]
@@ -16,15 +22,29 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center gap-2 overflow-x-auto rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+  <div
+    :class="
+      cn(
+        'flex overflow-x-auto',
+        attached
+          ? 'items-end gap-1 bg-transparent'
+          : 'items-center gap-2 rounded-3xl border border-slate-200 bg-white p-2 shadow-sm',
+      )
+    "
+  >
     <div v-for="tab in tabs" :key="tab.id" class="shrink-0">
       <div
         :class="
           cn(
-            'group flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition',
+            'group flex items-center gap-2 border text-xs font-extrabold transition',
+            attached ? 'h-10 rounded-t-xl px-4 text-sm font-medium' : 'h-9 rounded-xl px-3',
             tab.id === activeId
-              ? 'border-[#b4db24] bg-[#f7fbe9] text-[#48580e]'
-              : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-white',
+              ? attached
+                ? 'relative z-10 -mb-px border-rose-500 border-b-white bg-white text-slate-950 shadow-[0_-3px_10px_rgba(244,63,94,0.12)]'
+                : 'border-[#b4db24] bg-[#f7fbe9] text-[#48580e]'
+              : attached
+                ? 'border-slate-200/60 bg-white/30 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-white',
           )
         "
         role="button"
@@ -34,7 +54,7 @@ const emit = defineEmits<{
         @keydown.enter="emit('activate', tab.id)"
       >
         <ListTree v-if="tab.mode === 'list'" class="h-4 w-4" />
-        <span v-if="tab.label" class="truncate">{{ tab.label }}</span>
+        <span v-if="tab.label && tab.mode !== 'list'" class="truncate">{{ tab.label }}</span>
         <span v-if="tab.dirty" class="h-2 w-2 rounded-full bg-[#e11d48]" />
         <button
           v-if="tab.closable"
