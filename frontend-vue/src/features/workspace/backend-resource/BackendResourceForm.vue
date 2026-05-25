@@ -23,6 +23,7 @@ import FormTextarea from '@/components/form/FormTextarea.vue'
 import FormTextInput from '@/components/form/FormTextInput.vue'
 import FormValidationSummary from '@/components/form/FormValidationSummary.vue'
 import { useWorkspaceDraft } from '@/composables/useWorkspaceDraft'
+import { calculateTransactionTotals } from '@/composables/useTransactionLineCalculation'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceTabsStore, type SecondaryTab } from '@/stores/workspaceTabsStore'
 import {
@@ -200,7 +201,28 @@ function removeLine(index: number) {
 function payload(values: Record<string, unknown>) {
   const result: Record<string, unknown> = { ...values }
   if (props.config.lineItems) {
-    result[props.config.lineItems.key] = lineItems.value
+    const firstLine = lineItems.value.find((line) => Object.keys(line).length > 0) ?? {}
+    const priceField = 'estimated_unit_price' in firstLine ? 'estimated_unit_price' : 'amount' in firstLine && !('unit_price' in firstLine) ? 'amount' : 'unit_price'
+    const totals = calculateTransactionTotals(lineItems.value, {
+      priceField,
+      headerDiscountType: result.header_discount_type,
+      headerDiscountValue: result.header_discount_value,
+      taxIncluded: result.tax_included,
+    })
+    result[props.config.lineItems.key] = totals.lines.map((line) => ({
+      ...line,
+      product_id: line.product_id === '' ? null : line.product_id,
+      unit_id: line.unit_id === '' ? null : line.unit_id,
+      warehouse_id: line.warehouse_id === '' ? null : line.warehouse_id,
+      department_id: line.department_id === '' ? null : line.department_id,
+      project_id: line.project_id === '' ? null : line.project_id,
+    }))
+    result.subtotal_before_discount = totals.subtotal_before_discount
+    result.line_discount_total = totals.line_discount_total
+    result.header_discount_amount = totals.header_discount_amount
+    result.subtotal_after_discount = totals.subtotal_after_discount
+    result.tax_total = totals.tax_total
+    result.grand_total = totals.grand_total
   }
   return result
 }

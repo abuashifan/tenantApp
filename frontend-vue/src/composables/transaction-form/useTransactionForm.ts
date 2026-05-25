@@ -5,6 +5,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import type { ApiResponse } from '@/types/api'
 import { applyLaravelValidationErrors, toErrorMessage } from '@/composables/transaction-form/useTransactionValidation'
 import { useTransactionDraftState } from '@/composables/transaction-form/useTransactionDraftState'
+import { calculateTransactionTotals } from '@/composables/useTransactionLineCalculation'
 import type { RuntimeTransactionFormConfig, TransactionFormMode } from '@/composables/transaction-form/types'
 
 export function useTransactionForm(options: {
@@ -25,6 +26,45 @@ export function useTransactionForm(options: {
   const isReadonly = computed(() => options.mode === 'detail')
 
   const draft = useTransactionDraftState(options.secondaryTabId, form)
+
+  function normalizeLineValue(value: unknown) {
+    return value === '' || value === undefined ? null : value
+  }
+
+  function makePayload() {
+    const payload = { ...form.values }
+    const priceField = options.config.lineProduct?.priceField ?? 'unit_price'
+
+    if (Array.isArray(payload.lines)) {
+      const totals = calculateTransactionTotals(payload.lines as Record<string, unknown>[], {
+        priceField,
+        headerDiscountType: payload.header_discount_type,
+        headerDiscountValue: payload.header_discount_value,
+        taxIncluded: payload.tax_included,
+      })
+
+      payload.lines = totals.lines.map((line) => ({
+        ...line,
+        product_id: normalizeLineValue(line.product_id),
+        unit_id: normalizeLineValue(line.unit_id),
+        warehouse_id: normalizeLineValue(line.warehouse_id),
+        department_id: normalizeLineValue(line.department_id),
+        project_id: normalizeLineValue(line.project_id),
+        discount_type: line.discount_type || (Number(line.discount_value ?? 0) > 0 ? 'fixed_amount' : null),
+      }))
+      payload.subtotal = totals.subtotal_before_discount
+      payload.subtotal_before_discount = totals.subtotal_before_discount
+      payload.line_discount_total = totals.line_discount_total
+      payload.header_discount_amount = totals.header_discount_amount
+      payload.subtotal_after_discount = totals.subtotal_after_discount
+      payload.discount_amount = totals.line_discount_total + totals.header_discount_amount
+      payload.tax_amount = totals.tax_total
+      payload.tax_total = totals.tax_total
+      payload.grand_total = totals.grand_total
+    }
+
+    return payload
+  }
 
   async function load() {
     if (options.mode === 'create') return
@@ -54,7 +94,7 @@ export function useTransactionForm(options: {
 
     loading.value = true
     try {
-      const payload = { ...form.values }
+      const payload = makePayload()
       if (options.mode === 'edit' && options.entityId != null) {
         await options.config.apiService.update(options.entityId, payload)
       } else {

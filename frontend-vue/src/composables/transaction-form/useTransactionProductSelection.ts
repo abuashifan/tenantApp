@@ -18,6 +18,7 @@ function applyProductToLine(
 ) {
   const priceField = config.priceField ?? 'unit_price'
   const price = config.priceMode === 'sales' ? product.selling_price : config.priceMode === 'purchase' ? product.purchase_price : undefined
+  const isSameProduct = String((line as Record<string, unknown>).product_id ?? '') === String(product.id)
   const next: Record<string, unknown> = {
     ...line,
     product_id: product.id,
@@ -27,7 +28,7 @@ function applyProductToLine(
   }
 
   if (shouldSetDescription(line, previousProductDescription)) next.description = product.name || product.label
-  if (price !== undefined) next[priceField] = price
+  if (price !== undefined && !isSameProduct) next[priceField] = price
 
   return next
 }

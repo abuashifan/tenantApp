@@ -6,6 +6,8 @@ import { useField } from 'vee-validate'
 import { cn } from '@/utils/cn'
 
 type SelectValue = string | number | null
+type SelectedDisplayMode = 'code' | 'code-name' | 'name'
+type SelectedFontWeight = 'normal' | 'medium'
 
 const props = withDefaults(
   defineProps<{
@@ -25,6 +27,11 @@ const props = withDefaults(
     loadingText?: string
     teleport?: boolean
     minSearchLength?: number
+    compact?: boolean
+    selectedDisplayMode?: SelectedDisplayMode
+    selectedMaxOneLine?: boolean
+    selectedFontWeight?: SelectedFontWeight
+    optionTwoLine?: boolean
   }>(),
   {
     name: '',
@@ -41,6 +48,11 @@ const props = withDefaults(
     loadingText: 'Loading...',
     teleport: true,
     minSearchLength: 0,
+    compact: false,
+    selectedDisplayMode: 'code-name',
+    selectedMaxOneLine: true,
+    selectedFontWeight: 'normal',
+    optionTwoLine: false,
   },
 )
 
@@ -78,11 +90,47 @@ function getOptionLabel(option: unknown) {
   return value == null ? '' : String(value)
 }
 
+function getOptionCode(option: unknown) {
+  const record = asRecord(option)
+  const value = record.code ?? record.product_code ?? record.department_code ?? record.project_code
+  return value == null ? '' : String(value)
+}
+
+function getOptionName(option: unknown) {
+  const record = asRecord(option)
+  const value = record.name ?? record.product_name ?? record.department_name ?? record.project_name
+  return value == null ? '' : String(value)
+}
+
+function splitLabel(label: string) {
+  const parts = label.split(/\s+-\s+|\s+·\s+/)
+  const code = parts[0]?.trim() ?? ''
+  const name = parts.slice(1).join(' ').trim()
+  return { code, name }
+}
+
+function displayParts(option: unknown, fallback = '') {
+  const label = getOptionLabel(option) || fallback
+  const fromLabel = splitLabel(label)
+  const code = getOptionCode(option) || fromLabel.code
+  const name = getOptionName(option) || fromLabel.name
+  return { code, name, label }
+}
+
+function formatSelectedLabel(label: string) {
+  const { code, name } = splitLabel(label)
+  if (props.selectedDisplayMode === 'code') return code || label
+  if (props.selectedDisplayMode === 'name') return name || label
+  return code && name ? `${code} · ${name}` : label
+}
+
 const selectedValue = computed<SelectValue>(() => (props.modelValue !== undefined ? props.modelValue : field.value.value))
 const selectedLabel = computed(() => {
   const selected = props.options.find((option) => String(getOptionValue(option) ?? '') === String(selectedValue.value ?? ''))
   return selected ? getOptionLabel(selected) : props.displayValue
 })
+const selectedText = computed(() => (selectedValue.value ? formatSelectedLabel(selectedLabel.value || props.placeholder) : props.placeholder))
+const selectedTitle = computed(() => (selectedValue.value ? selectedLabel.value || selectedText.value : props.placeholder))
 const filteredOptions = computed(() => {
   const keyword = search.value.trim().toLowerCase()
   if (keyword.length < props.minSearchLength) return []
@@ -90,6 +138,22 @@ const filteredOptions = computed(() => {
   return props.options.filter((option) => getOptionLabel(option).toLowerCase().includes(keyword))
 })
 const isDisabled = computed(() => props.disabled || props.readonly)
+const triggerClass = computed(() =>
+  cn(
+    'flex w-full min-w-0 items-center justify-between gap-1.5 overflow-hidden border border-slate-200 bg-white text-left text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400',
+    props.compact ? 'h-8 rounded-lg px-2 text-xs' : 'h-10 rounded-xl px-3 text-sm',
+    props.selectedFontWeight === 'medium' ? 'font-medium' : 'font-normal',
+  ),
+)
+const selectedClass = computed(() =>
+  cn(
+    'block min-w-0 flex-1 overflow-hidden',
+    props.selectedMaxOneLine && 'truncate whitespace-nowrap',
+    props.compact ? 'text-xs leading-none' : 'text-sm leading-5',
+    props.selectedFontWeight === 'medium' ? 'font-medium' : 'font-normal',
+    !selectedValue.value ? 'text-slate-400' : '',
+  ),
+)
 
 function updatePosition() {
   const rect = trigger.value?.getBoundingClientRect()
@@ -215,14 +279,15 @@ onBeforeUnmount(removeFloatingListeners)
       ref="trigger"
       type="button"
       :disabled="isDisabled"
-      class="flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-bold text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+      :class="triggerClass"
+      :title="selectedTitle"
       @click.stop="open ? closeDropdown() : showDropdown()"
       @keydown="onTriggerKeydown"
     >
-      <span :class="cn(!selectedValue ? 'text-slate-400' : '')">
-        {{ selectedValue ? selectedLabel || placeholder : placeholder }}
+      <span :class="selectedClass">
+        {{ selectedText }}
       </span>
-      <ChevronDown class="h-4 w-4 shrink-0 text-slate-500" />
+      <ChevronDown :class="cn('shrink-0 text-slate-500', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')" />
     </button>
     <p v-if="error" class="text-xs font-semibold text-rose-700">{{ error }}</p>
 
@@ -240,7 +305,7 @@ onBeforeUnmount(removeFloatingListeners)
             ref="searchInput"
             v-model="search"
             type="text"
-            class="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+            class="w-full bg-transparent text-sm font-normal text-slate-900 outline-none placeholder:text-slate-400"
             placeholder="Search..."
             @keydown="onSearchKeydown"
           />
@@ -252,10 +317,14 @@ onBeforeUnmount(removeFloatingListeners)
             v-else
             :key="String(getOptionValue(option) ?? index)"
             type="button"
-            :class="cn('flex w-full items-center rounded-xl px-2 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50', highlightedIndex === index && 'bg-slate-50')"
+            :class="cn('flex w-full min-w-0 rounded-xl px-2 py-2 text-left text-sm font-normal text-slate-700 hover:bg-slate-50', highlightedIndex === index && 'bg-slate-50')"
             @pointerdown.prevent="selectOption(option)"
           >
-            {{ getOptionLabel(option) }}
+            <span v-if="optionTwoLine" class="block min-w-0">
+              <span class="block truncate text-xs font-medium text-slate-900">{{ displayParts(option).code || getOptionLabel(option) }}</span>
+              <span class="mt-0.5 block truncate text-xs font-normal text-slate-500">{{ displayParts(option).name || getOptionLabel(option) }}</span>
+            </span>
+            <span v-else class="block min-w-0 truncate">{{ getOptionLabel(option) }}</span>
           </button>
           <div v-if="!loading && !error && filteredOptions.length === 0" class="px-2 py-3 text-sm font-semibold text-slate-500">
             {{ emptyText }}
@@ -280,10 +349,14 @@ onBeforeUnmount(removeFloatingListeners)
           v-for="(option, index) in filteredOptions"
           :key="String(getOptionValue(option) ?? index)"
           type="button"
-          class="flex w-full rounded-xl px-2 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          class="flex w-full min-w-0 rounded-xl px-2 py-2 text-left text-sm font-normal text-slate-700 hover:bg-slate-50"
           @pointerdown.prevent="selectOption(option)"
         >
-          {{ getOptionLabel(option) }}
+          <span v-if="optionTwoLine" class="block min-w-0">
+            <span class="block truncate text-xs font-medium text-slate-900">{{ displayParts(option).code || getOptionLabel(option) }}</span>
+            <span class="mt-0.5 block truncate text-xs font-normal text-slate-500">{{ displayParts(option).name || getOptionLabel(option) }}</span>
+          </span>
+          <span v-else class="block min-w-0 truncate">{{ getOptionLabel(option) }}</span>
         </button>
       </div>
     </div>

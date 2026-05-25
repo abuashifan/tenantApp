@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import BaseButton from '@/components/ui/BaseButton.vue'
 import TransactionDateFields from '@/components/transaction-form/TransactionDateFields.vue'
 import TransactionCashBankAmountFields from '@/components/transaction-form/TransactionCashBankAmountFields.vue'
@@ -41,6 +43,8 @@ const needsCashBankAndAmount =
   props.config.documentType === 'purchase.vendor-deposits' ||
   props.config.documentType === 'sales.receipts' ||
   props.config.documentType === 'purchase.payments'
+
+const supportsInternalNotes = computed(() => Object.prototype.hasOwnProperty.call(tx.form.values, 'internal_notes'))
 
 async function onSubmit() {
   await tx.save()
@@ -85,12 +89,21 @@ async function onSubmit() {
         :product-config="config.lineProduct"
       />
 
-      <TransactionFormSection v-if="config.hasLines" title="Totals">
-        <TransactionTotalsPanel />
-      </TransactionFormSection>
+      <div
+        v-if="config.hasLines"
+        class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]"
+      >
+        <TransactionFormSection title="Notes">
+          <TransactionNotesPanel :readonly="tx.isReadonly.value" :show-internal-notes="supportsInternalNotes" />
+        </TransactionFormSection>
 
-      <TransactionFormSection title="Notes">
-        <TransactionNotesPanel :readonly="tx.isReadonly.value" />
+        <TransactionFormSection title="Totals">
+          <TransactionTotalsPanel />
+        </TransactionFormSection>
+      </div>
+
+      <TransactionFormSection v-else title="Notes">
+        <TransactionNotesPanel :readonly="tx.isReadonly.value" :show-internal-notes="supportsInternalNotes" />
       </TransactionFormSection>
 
       <template #actions-right>
