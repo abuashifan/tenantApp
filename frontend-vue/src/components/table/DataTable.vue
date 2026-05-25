@@ -29,6 +29,7 @@ const props = withDefaults(
     emptyDescription?: string
     selectedIds?: string[]
     selectable?: boolean
+    isRowSelectable?: (row: TRow) => boolean
     rowClickable?: boolean
     tableMaxHeight?: string
     compact?: boolean
@@ -69,6 +70,7 @@ const selectionColumn = computed<ColumnDef<TRow, unknown>>(() => ({
     h(DataTableCheckbox, {
       checked: table.getIsAllPageRowsSelected(),
       indeterminate: table.getIsSomePageRowsSelected(),
+      disabled: !table.getRowModel().rows.some((row) => row.getCanSelect()),
       ariaLabel: 'Select all rows',
       onChange: (checked: boolean) => table.toggleAllPageRowsSelected(checked),
     }),
@@ -131,10 +133,13 @@ const table = useVueTable({
   onRowSelectionChange: (updater) => {
     rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater
   },
-  get enableRowSelection() {
-    return props.selectable
-  },
-  getRowId: (row) => row.id,
+  enableRowSelection: (row) => props.selectable && (props.isRowSelectable ? props.isRowSelectable(row.original) : true),
+  getRowId: (row) =>
+    String(
+      row.id ??
+        (row as Record<string, unknown>).number ??
+        (row as Record<string, unknown>).journal_number,
+    ),
   getCoreRowModel: getCoreRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),

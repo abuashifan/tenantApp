@@ -16,7 +16,7 @@ const el = ref<HTMLInputElement | null>(null)
 
 function syncIndeterminate() {
   if (!el.value) return
-  el.value.indeterminate = Boolean(props.indeterminate)
+  el.value.indeterminate = Boolean(props.indeterminate) && !props.checked
 }
 
 onMounted(syncIndeterminate)

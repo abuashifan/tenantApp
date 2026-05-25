@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
-import { Plus, RefreshCw } from 'lucide-vue-next'
+import { Plus, RefreshCw, Slash, X } from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseMultiSelect from '@/components/ui/BaseMultiSelect.vue'
 import DataTable from '@/components/table/DataTable.vue'
+import WorkspaceConfirmDialog from '@/components/workspace/WorkspaceConfirmDialog.vue'
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
 import JournalEntryFormPanel from '@/pages/accounting/journals/JournalEntryFormPanel.vue'
 import { journalListConfig, type JournalListRow } from '@/features/accounting/journals/journal-list.config'
 import { listJournals, voidJournal as voidJournalApi } from '@/features/accounting/journals/journal.service'
+import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 const statusOptions = [
@@ -19,11 +21,14 @@ const statusOptions = [
 ]
 
 const tabs = useWorkspaceTabsStore()
+const auth = useAuthStore()
 tabs.ensureListSecondaryTab(journalListConfig.primaryTabId, {
   label: journalListConfig.listTabLabel,
 })
 
 const selectedIds = ref<string[]>([])
+const bulkVoidOpen = ref(false)
+const bulkVoidLoading = ref(false)
 const statusSelect = ref<InstanceType<typeof BaseMultiSelect> | null>(null)
 const rows = ref<JournalListRow[]>([])
 const loading = ref(false)
@@ -38,6 +43,11 @@ const activeSecondaryId = computed(
 )
 const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[journalListConfig.primaryTabId] ?? [])
 const activeSecondary = computed(() => secondaryTabs.value.find((tab) => tab.id === activeSecondaryId.value) ?? null)
+const canVoidPermission = computed(
+  () => auth.permissions.includes('*') || auth.permissions.includes(journalListConfig.permissions?.void ?? 'journal.void'),
+)
+const selectedRows = computed(() => rows.value.filter((row) => selectedIds.value.includes(row.id)))
+const selectedVoidRows = computed(() => selectedRows.value.filter(canVoidJournal))
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('id-ID').format(value)
@@ -56,6 +66,7 @@ function openEdit(row: JournalListRow) {
 }
 
 async function voidJournal(row: JournalListRow) {
+  if (!canVoidPermission.value || !canVoidJournal(row)) return
   const reason = window.prompt('Reason for voiding selected journal')
   if (!reason) return
   try {
@@ -63,6 +74,44 @@ async function voidJournal(row: JournalListRow) {
     await load()
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Unable to void journal.'
+  }
+}
+
+function canVoidJournal(row: JournalListRow) {
+  return row.status === 'posted'
+}
+
+function clearSelection() {
+  selectedIds.value = []
+}
+
+function openBulkVoid() {
+  if (!canVoidPermission.value || selectedVoidRows.value.length === 0) return
+  bulkVoidOpen.value = true
+}
+
+async function confirmBulkVoid() {
+  const targets = [...selectedVoidRows.value]
+  if (targets.length === 0) {
+    bulkVoidOpen.value = false
+    return
+  }
+
+  const reason = window.prompt('Reason for voiding selected journals')
+  if (!reason) return
+
+  bulkVoidLoading.value = true
+  try {
+    for (const row of targets) {
+      await voidJournalApi(row.id, reason)
+    }
+    clearSelection()
+    bulkVoidOpen.value = false
+    await load()
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Unable to void selected journals.'
+  } finally {
+    bulkVoidLoading.value = false
   }
 }
 
@@ -78,6 +127,7 @@ async function load() {
       status,
       include_void: statuses.value.includes('void'),
     })
+    selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => row.id === id && canVoidJournal(row)))
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Endpoint belum tersedia'
   } finally {
@@ -87,6 +137,7 @@ async function load() {
 
 function applyFilters() {
   statusSelect.value?.close()
+  clearSelection()
   void load()
 }
 
@@ -96,10 +147,12 @@ function resetFilters() {
   endDate.value = '2026-01-31'
   statuses.value = ['posted']
   statusSelect.value?.close()
+  clearSelection()
   void load()
 }
 
 function refresh() {
+  clearSelection()
   void load()
 }
 
@@ -165,7 +218,7 @@ const columns = computed<ColumnDef<JournalListRow, unknown>[]>(() => [
               () => 'Edit',
             )
           : null,
-        row.original.status === 'posted'
+        row.original.status === 'posted' && canVoidPermission.value
           ? h(
               BaseButton,
               {
@@ -251,13 +304,30 @@ onMounted(load)
       </div>
     </div>
 
+    <div
+      v-if="selectedVoidRows.length > 0"
+      class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm"
+    >
+      <span class="text-xs font-medium text-slate-600">{{ selectedVoidRows.length }} selected</span>
+      <div class="flex flex-wrap items-center gap-2">
+        <BaseButton variant="danger" size="sm" :disabled="!canVoidPermission" :loading="bulkVoidLoading" @click="openBulkVoid">
+          <Slash class="h-4 w-4" />
+          Bulk Void
+        </BaseButton>
+        <BaseButton variant="secondary" size="sm" @click="clearSelection">
+          <X class="h-4 w-4" />
+          Clear Selection
+        </BaseButton>
+      </div>
+    </div>
     <DataTable
       v-model:selected-ids="selectedIds"
       class="min-h-0"
       :columns="columns"
       :data="rows"
       :loading="loading"
-      :selectable="false"
+      :selectable="true"
+      :is-row-selectable="canVoidJournal"
       :compact="true"
       :fill-available="true"
       :show-meta="true"
@@ -266,6 +336,17 @@ onMounted(load)
       empty-description="No journal entries match your filter."
     />
     <p v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{{ error }}</p>
+
+    <WorkspaceConfirmDialog
+      :open="bulkVoidOpen"
+      title="Void selected journals?"
+      :message="`This will void ${selectedVoidRows.length} selected journal${selectedVoidRows.length === 1 ? '' : 's'}.`"
+      confirm-label="Void selected"
+      variant="danger"
+      @close="bulkVoidOpen = false"
+      @cancel="bulkVoidOpen = false"
+      @confirm="confirmBulkVoid"
+    />
   </div>
 
   <div v-else class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
