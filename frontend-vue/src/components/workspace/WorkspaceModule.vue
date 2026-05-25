@@ -98,8 +98,11 @@ watch(
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div v-if="activeSecondary?.mode === 'list'" class="space-y-4">
+  <div>
+    <div
+      v-if="activeSecondary?.mode === 'list'"
+      class="space-y-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5"
+    >
       <DataTableToolbar
         v-model:search="list.filters.value.search"
         v-model:startDate="list.filters.value.startDate"
@@ -113,6 +116,7 @@ watch(
         :show-void="showVoid"
         :show-filter="showFilter"
         :show-date-filters="showDateFilters"
+        embedded
         @filter="applyFilter"
         @create="emit('create')"
         @void="emit('void', selectedIds)"

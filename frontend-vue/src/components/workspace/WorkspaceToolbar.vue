@@ -15,6 +15,7 @@ const props = defineProps<{
   startDate: string
   endDate: string
   selectedCount: number
+  embedded?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -41,7 +42,10 @@ watch(localSearch, (value) => emitDebouncedSearch(value))
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+  <div
+    class="flex flex-col gap-3"
+    :class="embedded ? 'border-b border-slate-100 pb-4' : 'rounded-3xl border border-slate-200 bg-white p-4 shadow-sm'"
+  >
     <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr_auto] lg:items-end">
         <WorkspaceSearchBar

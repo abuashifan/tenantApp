@@ -2,6 +2,7 @@
 import { Filter, Plus, Search, Slash } from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import { cn } from '@/utils/cn'
 
 const props = withDefaults(
   defineProps<{
@@ -17,6 +18,7 @@ const props = withDefaults(
     showVoid?: boolean
     showFilter?: boolean
     showDateFilters?: boolean
+    embedded?: boolean
   }>(),
   {
     selectedCount: 0,
@@ -28,6 +30,7 @@ const props = withDefaults(
     showVoid: true,
     showFilter: true,
     showDateFilters: true,
+    embedded: false,
   },
 )
 
@@ -42,7 +45,14 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+  <div
+    :class="
+      cn(
+        'flex flex-col gap-3',
+        props.embedded ? 'border-b border-slate-100 pb-4' : 'rounded-3xl border border-slate-200 bg-white p-4 shadow-sm',
+      )
+    "
+  >
     <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr] lg:items-end">
         <label class="block space-y-1.5">

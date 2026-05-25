@@ -89,8 +89,8 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+  <div class="space-y-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
+    <div class="border-b border-slate-100 pb-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <h1 class="text-2xl font-black tracking-tight text-slate-950">Trial Balance</h1>
         <div class="flex flex-wrap gap-2">
@@ -100,7 +100,7 @@ onMounted(load)
         </div>
       </div>
     </div>
-    <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
         <label class="block space-y-1.5 lg:flex-1">
           <span class="text-xs font-bold text-slate-500">Search</span>

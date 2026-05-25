@@ -155,7 +155,7 @@ watch(
     @action-click="(payload) => payload.key === 'create' ? openCreate() : openRowTab(payload.key, payload.row)"
   >
     <template #before-table>
-      <div v-if="filterGuidance" class="rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-600 shadow-sm">
+      <div v-if="filterGuidance" class="rounded-2xl border border-slate-200 bg-slate-50/40 px-5 py-4 text-sm font-semibold text-slate-600">
         {{ filterGuidance }}
       </div>
     </template>

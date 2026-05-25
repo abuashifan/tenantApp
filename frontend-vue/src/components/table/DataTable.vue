@@ -205,7 +205,7 @@ const pageCount = computed(() => Math.max(table.getPageCount(), 1))
   <div
     :class="
       cn(
-        'flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm',
+        'flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white',
         fillAvailable && 'flex-1',
       )
     "

@@ -23,7 +23,7 @@ defineEmits<{
 </script>
 
 <template>
-  <div v-if="open" class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+  <div v-if="open" class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
     <slot>
       <label v-if="hasStatus" class="block max-w-xs space-y-1.5">
         <span class="text-xs font-bold text-slate-500">Status</span>

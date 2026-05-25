@@ -72,9 +72,9 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-4">
-    <h1 class="text-2xl font-black text-slate-950">General Ledger</h1>
-    <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+  <div class="space-y-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
+    <h1 class="border-b border-slate-100 pb-4 text-xl font-black text-slate-950">General Ledger</h1>
+    <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
         <label class="block space-y-1.5 lg:min-w-[320px] lg:flex-1">
           <span class="text-xs font-bold text-slate-500">Account</span>
@@ -102,7 +102,7 @@ onMounted(load)
     </div>
 
     <p v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{{ error }}</p>
-    <div v-if="detail" class="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-6">
+    <div v-if="detail" class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 lg:grid-cols-6">
       <div class="lg:col-span-2">
         <p class="text-xs font-bold text-slate-500">Account</p>
         <p class="mt-1 text-sm font-extrabold text-slate-900">{{ detail.account.account_code }}</p>

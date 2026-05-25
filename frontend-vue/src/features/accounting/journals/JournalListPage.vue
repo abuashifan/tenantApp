@@ -241,8 +241,11 @@ onMounted(load)
 </script>
 
 <template>
-  <div v-if="activeSecondary?.mode === 'list'" class="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-    <div class="flex flex-col gap-2 rounded-3xl border border-slate-200 bg-white px-4 py-1.5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+  <div
+    v-if="activeSecondary?.mode === 'list'"
+    class="flex h-full min-h-0 flex-col gap-3 overflow-hidden rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5"
+  >
+    <div class="flex flex-col gap-2 border-b border-slate-100 pb-3 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <h1 class="text-xl font-black leading-tight text-slate-950">Journal Entries</h1>
       </div>
@@ -268,7 +271,7 @@ onMounted(load)
       </div>
     </div>
 
-    <div class="relative z-20 rounded-3xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+    <div class="relative z-20 rounded-2xl border border-slate-200 bg-slate-50/40 px-4 py-2.5">
       <div class="grid gap-3 xl:grid-cols-[minmax(250px,1.4fr)_150px_150px_190px_auto_auto] xl:items-end">
         <label class="space-y-1">
           <span class="block text-xs font-extrabold text-slate-600">Search</span>

@@ -116,11 +116,14 @@ function confirmPendingAction() {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div v-if="activeSecondary?.mode === 'list'" class="space-y-4">
+  <div>
+    <div
+      v-if="activeSecondary?.mode === 'list'"
+      class="space-y-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5"
+    >
       <div>
-        <h1 class="text-2xl font-black text-slate-950">{{ config.title }}</h1>
-        <p v-if="config.subtitle" class="mt-1 text-sm text-slate-500">{{ config.subtitle }}</p>
+        <h1 class="text-xl font-black text-slate-950">{{ config.title }}</h1>
+        <p v-if="config.subtitle" class="mt-1 text-xs text-slate-500">{{ config.subtitle }}</p>
       </div>
 
       <WorkspaceToolbar
@@ -129,6 +132,7 @@ function confirmPendingAction() {
         :start-date="startDate"
         :end-date="endDate"
         :selected-count="selectedIds.length"
+        embedded
         @update:search="emit('search', $event)"
         @update:start-date="emit('dateChange', { startDate: $event, endDate })"
         @update:end-date="emit('dateChange', { startDate, endDate: $event })"
