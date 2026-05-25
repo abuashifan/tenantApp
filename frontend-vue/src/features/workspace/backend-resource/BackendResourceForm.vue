@@ -24,6 +24,7 @@ import FormTextInput from '@/components/form/FormTextInput.vue'
 import FormValidationSummary from '@/components/form/FormValidationSummary.vue'
 import { useWorkspaceDraft } from '@/composables/useWorkspaceDraft'
 import { calculateTransactionTotals } from '@/composables/useTransactionLineCalculation'
+import InventoryHistoryPanel from '@/features/inventory/history/InventoryHistoryPanel.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceTabsStore, type SecondaryTab } from '@/stores/workspaceTabsStore'
 import {
@@ -112,6 +113,17 @@ const lineTotal = computed(() =>
 const journalDifference = computed(() => totalDebit.value - totalCredit.value)
 const journalBalanced = computed(() => Math.abs(journalDifference.value) < 0.01)
 const isJournal = computed(() => props.config.endpoint === '/journals')
+const internalTab = ref<'detail' | 'history'>('detail')
+const isInventoryDetail = computed(() =>
+  props.tab.mode === 'detail'
+  && ['/master-data/product-categories', '/master-data/products'].includes(props.config.endpoint),
+)
+const isProductDetail = computed(() => props.config.endpoint === '/master-data/products')
+const inventoryHistoryEnabled = computed(() => !isProductDetail.value || Boolean(form.values.is_stock_item))
+const inventoryEntityName = computed(() => String(
+  isProductDetail.value ? form.values.product_name ?? numberText.value : form.values.name ?? numberText.value,
+))
+const canViewInventoryHistory = computed(() => can('inventory.reports.view'))
 
 function can(permission: string) {
   return auth.permissions.includes('*') || auth.permissions.includes(permission)
@@ -125,6 +137,11 @@ function visibleAction(action: FormActionConfig) {
 
 function fieldReadonly(field: FormFieldConfig) {
   return readonly.value || Boolean(field.readonly)
+}
+
+function activateInternalTab(tab: 'detail' | 'history') {
+  if (tab === 'history' && (!inventoryHistoryEnabled.value || !canViewInventoryHistory.value)) return
+  internalTab.value = tab
 }
 
 function hydrate(values: Record<string, unknown>, markDirty = false) {
@@ -163,6 +180,7 @@ async function loadEntity() {
 watch(
   () => secondaryTabId.value,
   () => {
+    internalTab.value = 'detail'
     serverErrors.value = []
     loadedEntityId.value = null
     void loadEntity()
@@ -297,7 +315,7 @@ function close() {
     <form v-else class="space-y-5" @submit.prevent="save(false)">
       <FormHeader :title="title" :subtitle="`Document ${numberText}`">
         <template #meta>
-          <div class="mt-3 flex flex-wrap items-center gap-2">
+          <div v-if="!isInventoryDetail" class="mt-3 flex flex-wrap items-center gap-2">
             <FormStatusBadge :status="status" />
             <span class="rounded-xl bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{{ tab.mode }}</span>
             <FormDirtyIndicator :dirty="dirty" />
@@ -312,124 +330,154 @@ function close() {
 
       <FormValidationSummary :errors="serverErrors" />
 
-      <FormSection
-        v-for="section in config.sections"
-        :key="section.title"
-        :title="section.title"
-        :description="section.description"
-        :plain="/header/i.test(section.title)"
-      >
-        <FormGrid :cols="2">
-          <template v-for="field in section.fields" :key="field.key">
-            <FormTextarea
-              v-if="field.kind === 'textarea'"
-              :name="field.key"
-              :label="field.label"
-              :placeholder="field.placeholder"
-              :disabled="fieldReadonly(field)"
-            />
-            <FormDateInput
-              v-else-if="field.kind === 'date'"
-              :name="field.key"
-              :label="field.label"
-              :disabled="fieldReadonly(field)"
-            />
-            <FormNumberInput
-              v-else-if="field.kind === 'number'"
-              :name="field.key"
-              :label="field.label"
-              :placeholder="field.placeholder"
-              :disabled="fieldReadonly(field)"
-            />
-            <FormMoneyInput
-              v-else-if="field.kind === 'money'"
-              :name="field.key"
-              :label="field.label"
-              :placeholder="field.placeholder"
-              :disabled="fieldReadonly(field)"
-            />
-            <FormSelect
-              v-else-if="field.kind === 'select'"
-              :name="field.key"
-              :label="field.label"
-              :options="field.options ?? []"
-              :disabled="fieldReadonly(field)"
-            />
-            <FormCheckbox
-              v-else-if="field.kind === 'checkbox'"
-              :name="field.key"
-              :label="field.label"
-              :disabled="fieldReadonly(field)"
-            />
-            <FormTextInput
-              v-else
-              :name="field.key"
-              :label="field.label"
-              :placeholder="field.placeholder"
-              :readonly="fieldReadonly(field)"
-            />
-          </template>
-        </FormGrid>
-      </FormSection>
-
-      <FormSection
-        v-if="config.lineItems"
-        :title="config.lineItems.title"
-        :description="config.lineItems.description"
-      >
-        <FormLineItemsTable
-          :name="config.lineItems.key"
-          :rows="lineItems"
-          :columns="config.lineItems.columns"
-          :readonly="readonly"
-          @add="addLine"
-          @remove="removeLine"
-        />
-      </FormSection>
-
-      <FormSection title="Summary">
-        <div class="grid gap-3 sm:grid-cols-3">
-          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p class="text-xs font-black uppercase text-slate-500">Line Total</p>
-            <p class="mt-1 text-xl font-black tabular-nums text-slate-950">{{ new Intl.NumberFormat('id-ID').format(lineTotal) }}</p>
-          </div>
-          <div v-if="isJournal" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p class="text-xs font-black uppercase text-slate-500">Debit / Credit</p>
-            <p class="mt-1 text-xl font-black tabular-nums text-slate-950">
-              {{ new Intl.NumberFormat('id-ID').format(totalDebit) }} / {{ new Intl.NumberFormat('id-ID').format(totalCredit) }}
-            </p>
-          </div>
-          <div v-if="isJournal" class="rounded-2xl border p-4" :class="journalBalanced ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'">
-            <p class="text-xs font-black uppercase" :class="journalBalanced ? 'text-emerald-700' : 'text-amber-700'">Difference</p>
-            <p class="mt-1 text-xl font-black tabular-nums text-slate-950">{{ new Intl.NumberFormat('id-ID').format(journalDifference) }}</p>
-          </div>
-        </div>
-      </FormSection>
-
-      <FormSection v-if="tab.mode !== 'create'" title="Audit / Status">
-        <div class="grid gap-3 text-sm sm:grid-cols-3">
-          <div v-for="key in ['created_at', 'updated_at', 'approved_at', 'posted_at', 'voided_at']" :key="key" class="rounded-2xl bg-slate-50 p-3">
-            <p class="text-xs font-black uppercase text-slate-500">{{ key.replaceAll('_', ' ') }}</p>
-            <p class="mt-1 font-bold text-slate-700">{{ form.values[key] || '-' }}</p>
-          </div>
-        </div>
-      </FormSection>
-
-      <FormActionBar>
-        <BaseButton variant="secondary" type="button" @click="close">Cancel</BaseButton>
-        <BaseButton
-          v-for="action in config.actions.filter(visibleAction)"
-          :key="action.key"
-          :variant="action.variant ?? 'secondary'"
+      <nav v-if="isInventoryDetail" class="flex items-end gap-1 border-b border-slate-200 pt-1">
+        <button
           type="button"
-          :loading="actionLoading === action.key"
-          @click="runAction(action)"
+          class="h-11 rounded-t-xl border px-5 text-sm font-semibold transition"
+          :class="internalTab === 'detail' ? 'relative z-10 -mb-px border-rose-400 border-b-white bg-white text-slate-950 shadow-[0_-3px_10px_rgba(244,63,94,0.1)]' : 'border-slate-200/70 bg-white/40 text-slate-500 hover:bg-slate-50'"
+          @click="activateInternalTab('detail')"
         >
-          {{ action.label }}
-        </BaseButton>
-        <BaseButton v-if="canSave" variant="secondary" type="button" :loading="saving" @click="save(true)">Save & Close</BaseButton>
-        <BaseButton v-if="canSave" variant="primary" type="submit" :loading="saving">Save</BaseButton>
-      </FormActionBar>
+          Detail
+        </button>
+        <button
+          type="button"
+          class="h-11 rounded-t-xl border px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+          :class="internalTab === 'history' ? 'relative z-10 -mb-px border-rose-400 border-b-white bg-white text-slate-950 shadow-[0_-3px_10px_rgba(244,63,94,0.1)]' : 'border-slate-200/70 bg-white/40 text-slate-500 hover:bg-slate-50'"
+          :disabled="!inventoryHistoryEnabled || !canViewInventoryHistory"
+          :title="!canViewInventoryHistory ? 'Permission inventory.reports.view diperlukan.' : !inventoryHistoryEnabled ? 'History tersedia untuk stock item.' : ''"
+          @click="activateInternalTab('history')"
+        >
+          History Persediaan
+        </button>
+      </nav>
+
+      <div v-show="!isInventoryDetail || internalTab === 'detail'" class="space-y-5">
+        <FormSection
+          v-for="section in config.sections"
+          :key="section.title"
+          :title="section.title"
+          :description="section.description"
+          :plain="/header/i.test(section.title)"
+        >
+          <FormGrid :cols="2">
+            <template v-for="field in section.fields" :key="field.key">
+              <FormTextarea
+                v-if="field.kind === 'textarea'"
+                :name="field.key"
+                :label="field.label"
+                :placeholder="field.placeholder"
+                :disabled="fieldReadonly(field)"
+              />
+              <FormDateInput
+                v-else-if="field.kind === 'date'"
+                :name="field.key"
+                :label="field.label"
+                :disabled="fieldReadonly(field)"
+              />
+              <FormNumberInput
+                v-else-if="field.kind === 'number'"
+                :name="field.key"
+                :label="field.label"
+                :placeholder="field.placeholder"
+                :disabled="fieldReadonly(field)"
+              />
+              <FormMoneyInput
+                v-else-if="field.kind === 'money'"
+                :name="field.key"
+                :label="field.label"
+                :placeholder="field.placeholder"
+                :disabled="fieldReadonly(field)"
+              />
+              <FormSelect
+                v-else-if="field.kind === 'select'"
+                :name="field.key"
+                :label="field.label"
+                :options="field.options ?? []"
+                :disabled="fieldReadonly(field)"
+              />
+              <FormCheckbox
+                v-else-if="field.kind === 'checkbox'"
+                :name="field.key"
+                :label="field.label"
+                :disabled="fieldReadonly(field)"
+              />
+              <FormTextInput
+                v-else
+                :name="field.key"
+                :label="field.label"
+                :placeholder="field.placeholder"
+                :readonly="fieldReadonly(field)"
+              />
+            </template>
+          </FormGrid>
+        </FormSection>
+
+        <FormSection
+          v-if="config.lineItems"
+          :title="config.lineItems.title"
+          :description="config.lineItems.description"
+        >
+          <FormLineItemsTable
+            :name="config.lineItems.key"
+            :rows="lineItems"
+            :columns="config.lineItems.columns"
+            :readonly="readonly"
+            @add="addLine"
+            @remove="removeLine"
+          />
+        </FormSection>
+
+        <FormSection v-if="!isInventoryDetail" title="Summary">
+          <div class="grid gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs font-black uppercase text-slate-500">Line Total</p>
+              <p class="mt-1 text-xl font-black tabular-nums text-slate-950">{{ new Intl.NumberFormat('id-ID').format(lineTotal) }}</p>
+            </div>
+            <div v-if="isJournal" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs font-black uppercase text-slate-500">Debit / Credit</p>
+              <p class="mt-1 text-xl font-black tabular-nums text-slate-950">
+                {{ new Intl.NumberFormat('id-ID').format(totalDebit) }} / {{ new Intl.NumberFormat('id-ID').format(totalCredit) }}
+              </p>
+            </div>
+            <div v-if="isJournal" class="rounded-2xl border p-4" :class="journalBalanced ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'">
+              <p class="text-xs font-black uppercase" :class="journalBalanced ? 'text-emerald-700' : 'text-amber-700'">Difference</p>
+              <p class="mt-1 text-xl font-black tabular-nums text-slate-950">{{ new Intl.NumberFormat('id-ID').format(journalDifference) }}</p>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection v-if="tab.mode !== 'create' && !isInventoryDetail" title="Audit / Status">
+          <div class="grid gap-3 text-sm sm:grid-cols-3">
+            <div v-for="key in ['created_at', 'updated_at', 'approved_at', 'posted_at', 'voided_at']" :key="key" class="rounded-2xl bg-slate-50 p-3">
+              <p class="text-xs font-black uppercase text-slate-500">{{ key.replaceAll('_', ' ') }}</p>
+              <p class="mt-1 font-bold text-slate-700">{{ form.values[key] || '-' }}</p>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormActionBar v-if="!isInventoryDetail">
+          <BaseButton variant="secondary" type="button" @click="close">Cancel</BaseButton>
+          <BaseButton
+            v-for="action in config.actions.filter(visibleAction)"
+            :key="action.key"
+            :variant="action.variant ?? 'secondary'"
+            type="button"
+            :loading="actionLoading === action.key"
+            @click="runAction(action)"
+          >
+            {{ action.label }}
+          </BaseButton>
+          <BaseButton v-if="canSave" variant="secondary" type="button" :loading="saving" @click="save(true)">Save & Close</BaseButton>
+          <BaseButton v-if="canSave" variant="primary" type="submit" :loading="saving">Save</BaseButton>
+        </FormActionBar>
+      </div>
+
+      <InventoryHistoryPanel
+        v-if="isInventoryDetail && internalTab === 'history' && inventoryHistoryEnabled && canViewInventoryHistory && tab.entityId"
+        :entity-id="tab.entityId"
+        :entity-name="inventoryEntityName"
+        :entity-type="isProductDetail ? 'product' : 'category'"
+      />
     </form>
   </FormPageShell>
 </template>

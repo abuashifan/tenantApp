@@ -5,7 +5,7 @@ namespace Tests\Feature\Inventory;
 use App\Models\Tenant\AccountMapping;
 use App\Models\Tenant\ChartOfAccount;
 use App\Models\Tenant\Product;
-use App\Models\Tenant\StockBalance;
+use App\Models\Tenant\ProductCategory;
 use App\Models\Tenant\StockMovement;
 use App\Models\Tenant\Unit;
 use App\Models\Tenant\Warehouse;
@@ -22,7 +22,8 @@ class InventoryReportTest extends JournalTestCase
 
         $unit = Unit::query()->create(['code' => 'PCS', 'name' => 'Pieces', 'precision' => 0, 'is_active' => true]);
         $wh = Warehouse::query()->create(['code' => 'WH1', 'name' => 'Main', 'is_default' => true, 'is_active' => true]);
-        $p = Product::query()->create(['product_code' => 'SKU1', 'product_name' => 'Item', 'product_type' => 'goods', 'unit_id' => $unit->id, 'is_stock_item' => true, 'is_active' => true]);
+        $category = ProductCategory::query()->create(['name' => 'Parts', 'is_active' => true]);
+        $p = Product::query()->create(['product_code' => 'SKU1', 'product_name' => 'Item', 'product_type' => 'goods', 'product_category_id' => $category->id, 'unit_id' => $unit->id, 'is_stock_item' => true, 'is_active' => true]);
 
         // draft movement excluded
         $this->postJson('/api/inventory/stock-movements', [
@@ -50,6 +51,11 @@ class InventoryReportTest extends JournalTestCase
             ->assertStatus(200);
         $this->assertEquals(10.0, (float) $card->json('data.ending_quantity'));
         $this->assertEquals(10000.0, (float) $card->json('data.ending_value'));
+        $this->assertSame('Main', $card->json('data.movements.0.warehouse_name'));
+
+        $categoryCard = $this->getJson('/api/inventory/reports/stock-card?category_id='.$category->id.'&warehouse_id='.$wh->id.'&start_date=2026-01-01&end_date=2026-01-31', $ctx['headers'])
+            ->assertStatus(200);
+        $this->assertEquals(10.0, (float) $categoryCard->json('data.ending_quantity'));
 
         // Valuation report totals equals stock balance totals
         $val = $this->getJson('/api/inventory/reports/valuation?include_zero=1', $ctx['headers'])->assertStatus(200);

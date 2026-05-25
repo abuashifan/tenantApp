@@ -23,8 +23,7 @@ class InventoryReportController extends Controller
         private readonly StockCardReportService $stockCardReport,
         private readonly InventoryValuationReportService $valuationReport,
         private readonly InventoryAlertReportService $alertReport,
-    ) {
-    }
+    ) {}
 
     public function stockBalances(Request $request): JsonResponse
     {
@@ -38,9 +37,12 @@ class InventoryReportController extends Controller
 
     public function stockCard(Request $request): JsonResponse
     {
-        $productId = (int) ($request->query('product_id') ?? 0);
-        if ($productId <= 0) {
-            throw ApiException::make('VALIDATION_ERROR', 'product_id is required.', 422, ['product_id' => ['The product_id field is required.']]);
+        $productId = $request->query('product_id') !== null ? (int) $request->query('product_id') : null;
+        $categoryId = $request->query('category_id') !== null ? (int) $request->query('category_id') : null;
+        if (($productId ?? 0) <= 0 && ($categoryId ?? 0) <= 0) {
+            throw ApiException::make('VALIDATION_ERROR', 'product_id or category_id is required.', 422, [
+                'product_id' => ['The product_id or category_id field is required.'],
+            ]);
         }
 
         $warehouseId = $request->query('warehouse_id') !== null ? (int) $request->query('warehouse_id') : null;
@@ -71,4 +73,3 @@ class InventoryReportController extends Controller
         return $this->successResponse($this->alertReport->negativeStock($request->query()), 'Negative stock report retrieved successfully');
     }
 }
-
