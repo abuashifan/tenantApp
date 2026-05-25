@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
-import { Plus, RefreshCw, Slash, X } from 'lucide-vue-next'
+import { Plus, RefreshCw, Slash } from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseMultiSelect from '@/components/ui/BaseMultiSelect.vue'
@@ -255,6 +255,16 @@ onMounted(load)
           <Plus class="h-4 w-4" />
           Buat Jurnal
         </BaseButton>
+        <BaseButton
+          variant="danger"
+          size="sm"
+          :disabled="!canVoidPermission || selectedVoidRows.length === 0"
+          :loading="bulkVoidLoading"
+          @click="openBulkVoid"
+        >
+          <Slash class="h-4 w-4" />
+          Void
+        </BaseButton>
       </div>
     </div>
 
@@ -304,22 +314,6 @@ onMounted(load)
       </div>
     </div>
 
-    <div
-      v-if="selectedVoidRows.length > 0"
-      class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm"
-    >
-      <span class="text-xs font-medium text-slate-600">{{ selectedVoidRows.length }} selected</span>
-      <div class="flex flex-wrap items-center gap-2">
-        <BaseButton variant="danger" size="sm" :disabled="!canVoidPermission" :loading="bulkVoidLoading" @click="openBulkVoid">
-          <Slash class="h-4 w-4" />
-          Bulk Void
-        </BaseButton>
-        <BaseButton variant="secondary" size="sm" @click="clearSelection">
-          <X class="h-4 w-4" />
-          Clear Selection
-        </BaseButton>
-      </div>
-    </div>
     <DataTable
       v-model:selected-ids="selectedIds"
       class="min-h-0"
