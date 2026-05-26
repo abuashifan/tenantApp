@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Sales;
 
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSalesQuotationRequest extends FormRequest
@@ -15,8 +16,13 @@ class StoreSalesQuotationRequest extends FormRequest
     {
         return [
             'customer_id' => ['required', 'exists:tenant.contacts,id'],
-            'quotation_date' => ['required', 'date'],
-            'valid_until' => ['nullable', 'date', 'after_or_equal:quotation_date'],
+            'quotation_date' => ['required', 'date_format:Y-m-d'],
+            'valid_until' => ['nullable', 'date_format:Y-m-d', function (string $attribute, mixed $value, Closure $fail): void {
+                $quotationDate = $this->input('quotation_date');
+                if (is_string($quotationDate) && is_string($value) && $value < $quotationDate) {
+                    $fail('The valid until date must be a date after or equal to quotation date.');
+                }
+            }],
             'customer_address' => ['nullable', 'string'],
             'quotation_for' => ['nullable', 'string', 'max:255'],
             'salesperson_id' => ['nullable', 'integer'],

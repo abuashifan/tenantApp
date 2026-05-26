@@ -46,10 +46,14 @@ export const salesOrderFormConfig: TransactionFormConfig<SalesOrderValues> = {
     approve: 'sales.orders.approve',
     confirm: 'sales.orders.confirm',
     cancel: 'sales.orders.cancel',
-    void: 'sales.orders.void',
-    close: 'sales.orders.close',
+    close: 'sales.orders.confirm',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'approve', label: 'Approve', permission: 'sales.orders.approve', whenStatusIn: ['draft'], variant: 'primary' },
+    { key: 'confirm', label: 'Confirm', permission: 'sales.orders.confirm', whenStatusIn: ['approved'], variant: 'primary' },
+    { key: 'close', label: 'Close', permission: 'sales.orders.confirm', whenStatusIn: ['confirmed'] },
+    { key: 'cancel', label: 'Cancel', permission: 'sales.orders.cancel', whenStatusIn: ['draft', 'approved', 'confirmed'], variant: 'danger', requiresConfirm: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({

@@ -47,7 +47,11 @@ export const purchaseReturnFormConfig: TransactionFormConfig<PurchaseReturnValue
     post: 'purchase.returns.post',
     void: 'purchase.returns.void',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'approve', label: 'Approve', permission: 'purchase.returns.approve', whenStatusIn: ['draft'] },
+    { key: 'post', label: 'Post', permission: 'purchase.returns.post', whenStatusIn: ['draft', 'approved'], variant: 'primary', requiresConfirm: true },
+    { key: 'void', label: 'Void', permission: 'purchase.returns.void', whenStatusIn: ['draft', 'approved', 'posted'], variant: 'danger', requiresReason: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'purchase', priceField: 'unit_price' },
   validationSchema: z.object({

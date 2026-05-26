@@ -91,17 +91,17 @@ Ringkas: router Vue eksplisit ±22 entri path; Next.js legacy memiliki 81 file p
 - [ ] Endpoint period-lock update belum punya form final (hanya route placeholder).
 
 ### Sales
-- [ ] Banyak endpoint action status (`approve/post/void/issue/ship/deliver`) belum tervalidasi terhubung di Vue workspace final (Needs verification).
+- [x] Action status (`approve/post/void/issue/ship/deliver`) pada workspace form Sales aktif telah terhubung ke service action dengan permission/status gating; Bulk Void memakai endpoint void per dokumen dengan alasan dan ringkasan hasil.
 - [ ] AR ledger detail by customer/invoice di Vue belum terlihat sebagai halaman detail final dedicated.
 
 ### Purchase
-- [ ] Seluruh workflow AP (request->PO->GR->bill->payment->return) di Vue masih dominan route placeholder/generic.
+- [x] Lifecycle action dan Bulk Void untuk form Purchase aktif telah terhubung ke endpoint backend yang tersedia; penyelesaian page AP lain tetap mengikuti roadmap.
 
 ### Cash Bank
-- [ ] Endpoint cash receipts/payments/transfers/reconciliation ada, namun halaman Vue final belum tersedia (placeholder route).
+- [~] Workspace resource cash receipt/payment/transfer sekarang meminta alasan dan mendukung Bulk Void; bank reconciliation belum memiliki endpoint void backend.
 
 ### Inventory
-- [ ] Endpoint stock movement/adjustment/opname/report lengkap, namun UI Vue final per dokumen belum tersedia.
+- [~] Workspace resource stock movement/adjustment/opname sekarang meminta alasan dan mendukung Bulk Void melalui endpoint existing; report/final dedicated page tetap di luar perbaikan ini.
 
 ## 6. Frontend Pages Missing
 
@@ -127,7 +127,7 @@ Ringkas: router Vue eksplisit ±22 entri path; Next.js legacy memiliki 81 file p
 
 - [ ] Banyak menu sudah tampil tetapi mengarah ke route placeholder generic (bukan page domain final).
 - [ ] Endpoint backend untuk billing lifecycle, fiscal closing, inventory reports ada namun grouping/entry menu belum lengkap final untuk alur user.
-- [ ] Menu permission-aware ada dasar, tetapi validasi granular action (approve/post/void) per tombol halaman masih Needs verification.
+- [x] Tombol lifecycle Sales/Purchase aktif dan aksi void resource Cash/Inventory menggunakan permission endpoint/config yang tersedia.
 - [ ] Ko-eksistensi Vue + Next.js berisiko mismatch URL/menu antar frontend.
 
 ## 9. Workspace List Audit
@@ -182,7 +182,7 @@ Ringkas: router Vue eksplisit ±22 entri path; Next.js legacy memiliki 81 file p
 ### Priority 1 — Fix Critical Integration
 - [ ] Tetapkan satu frontend utama produksi (Vue) dan freeze frontend Next.js legacy.
 - [ ] Standardisasi interceptor tunggal + error contract handling lintas modul.
-- [ ] Audit ulang semua aksi status kritikal (approve/post/void) dengan test matrix permission.
+- [~] Wiring status kritikal dan void integrity telah diperbaiki; perluasan test matrix permission lintas seluruh menu masih lanjutan.
 
 ### Priority 2 — Connect Existing Backend to Existing Frontend
 - [ ] Sambungkan semua menu placeholder ke page/workspace final domain.
@@ -196,10 +196,10 @@ Ringkas: router Vue eksplisit ±22 entri path; Next.js legacy memiliki 81 file p
 
 ### Priority 4 — Build Sales Frontend
 - [ ] Finalisasi seluruh dokumen sales lifecycle + AR ledger/aging/reconciliation.
-- [ ] Tambah action panel permission-aware untuk approve/post/void/issue/ship/deliver.
+- [x] Tambah action panel permission-aware untuk approve/post/void/issue/ship/deliver.
 
 ### Priority 5 — Prepare Purchase/Cash Bank/Inventory Frontend
-- [ ] Implement purchase lifecycle lengkap.
+- [~] Lifecycle action dan void pada form Purchase aktif sudah tersambung; dedicated AP page/report lanjutan tetap diperlukan.
 - [ ] Implement cash-bank docs + reconciliation UI.
 - [ ] Implement inventory docs + stock report pages.
 
@@ -228,4 +228,3 @@ Ringkas: router Vue eksplisit ±22 entri path; Next.js legacy memiliki 81 file p
 - Estimasi endpoint belum terhubung penuh ke UI final: **>= 180** (karena mayoritas modul non-accounting core masih placeholder).
 - Estimasi page/module missing atau belum final di Vue: **>= 40 route/menu kerja**.
 - Temuan dummy/temporary utama: **5 area kunci** (mock store, placeholder routes, sidebar implementation flags, dashboard TODO, appshell TODO).
-

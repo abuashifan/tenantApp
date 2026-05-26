@@ -48,7 +48,12 @@ class SalesReceiptTest extends SalesTestCase
         $cash = $this->seedMappings();
         $invoice = $this->postedInvoice($ctx);
         $receipt = $this->postJson('/api/sales/receipts', $this->receiptPayload($cash, $invoice, 10), $ctx['headers'])->assertStatus(201)->json('data');
+        $this->patchJson('/api/sales/receipts/'.$receipt['id'].'/post', [], $ctx['headers'])->assertStatus(200);
         $this->patchJson('/api/sales/receipts/'.$receipt['id'].'/void', ['reason' => 'Wrong'], $ctx['headers'])->assertStatus(200)->assertJsonPath('data.status', 'void');
+        $this->assertSame('void', JournalEntry::query()->where('source_type', 'sales_receipt')->firstOrFail()->status);
+        $restored = SalesInvoice::query()->findOrFail($invoice['id']);
+        $this->assertSame('posted', $restored->status);
+        $this->assertSame(0.0, (float) $restored->paid_amount);
 
         $viewer = $this->setUpTenant('viewer');
         $this->postJson('/api/sales/receipts', $this->receiptPayload(1, ['id' => 1, 'customer_id' => 1], 1), $viewer['headers'])->assertStatus(403);

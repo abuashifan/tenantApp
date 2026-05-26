@@ -9,6 +9,8 @@ use App\Models\Tenant\PurchaseOrderLine;
 use App\Services\Audit\AuditLogService;
 use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Inventory\InventoryPurchaseIntegrationService;
+use App\Services\Transactions\TransactionDateGuardService;
+use App\Services\Transactions\TransactionVoidEffectService;
 use App\Services\Purchase\Concerns\HandlesPurchaseDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Support\DocumentNumbering\DocumentType;
@@ -24,6 +26,8 @@ class GoodsReceiptService
         private readonly DocumentNumberService $documentNumberService,
         private readonly PurchaseOrderService $purchaseOrderService,
         private readonly InventoryPurchaseIntegrationService $inventoryIntegration,
+        private readonly TransactionDateGuardService $dateGuardService,
+        private readonly TransactionVoidEffectService $voidEffectService,
         private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
@@ -165,9 +169,13 @@ class GoodsReceiptService
     {
         if (! in_array($goodsReceipt->status, ['received'], true)) throw ApiException::make('GOODS_RECEIPT_NOT_VOIDABLE', 'Only received goods receipt can be voided.', 422);
         if ((float) $goodsReceipt->lines()->sum('billed_quantity') > 0) throw ApiException::make('GOODS_RECEIPT_HAS_BILLING', 'Billed goods receipt cannot be voided.', 422);
+        $reason = $this->voidEffectService->requireReason($reason);
+        $check = $this->dateGuardService->check((string) $goodsReceipt->receipt_date, 'void', 'purchase');
+        if ($check->denied()) { $arr = $check->toArray(); throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']); }
 
         return DB::connection('tenant')->transaction(function () use ($goodsReceipt, $reason) {
             $goodsReceipt->load('lines');
+            $movementIds = $this->voidEffectService->voidStockMovementsForSource('goods_receipt', (int) $goodsReceipt->id, $reason);
             foreach ($goodsReceipt->lines as $line) {
                 if (! $line->purchase_order_line_id) continue;
                 $orderLine = PurchaseOrderLine::query()->lockForUpdate()->findOrFail($line->purchase_order_line_id);
@@ -186,7 +194,7 @@ class GoodsReceiptService
             }
 
             $goodsReceipt = $goodsReceipt->refresh()->load('lines', 'vendor', 'purchaseOrder');
-            $this->auditPurchase($this->auditLogService, 'goods_receipt.void', $goodsReceipt, 'receipt_number');
+            $this->auditPurchase($this->auditLogService, 'goods_receipt.void', $goodsReceipt, 'receipt_number', ['reason' => $reason, 'reversed_stock_movement_ids' => $movementIds]);
             return $goodsReceipt;
         });
     }

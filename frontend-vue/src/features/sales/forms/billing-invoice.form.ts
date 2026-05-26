@@ -43,8 +43,13 @@ export const billingInvoiceFormConfig: TransactionFormConfig<BillingInvoiceValue
     view: 'sales.billings.view',
     create: 'sales.billings.create',
     edit: 'sales.billings.edit',
+    issue: 'sales.billings.issue',
+    cancel: 'sales.billings.cancel',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'issue', label: 'Issue', permission: 'sales.billings.issue', whenStatusIn: ['draft'], variant: 'primary' },
+    { key: 'cancel', label: 'Cancel', permission: 'sales.billings.cancel', whenStatusIn: ['draft', 'issued'], variant: 'danger', requiresConfirm: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'sales', priceField: 'amount', priceLabel: 'Amount' },
   validationSchema: z.object({

@@ -8,13 +8,32 @@ export type TransactionSourceOption = {
   label: string
 }
 
-export type TransactionActionKey = 'save' | 'approve' | 'confirm' | 'post' | 'void' | 'cancel' | 'close' | 'print'
+export type TransactionActionKey =
+  | 'save'
+  | 'send'
+  | 'submit'
+  | 'approve'
+  | 'accept'
+  | 'reject'
+  | 'confirm'
+  | 'ready'
+  | 'ship'
+  | 'deliver'
+  | 'receive'
+  | 'issue'
+  | 'post'
+  | 'refund'
+  | 'void'
+  | 'cancel'
+  | 'close'
+  | 'print'
 
 export type TransactionActionConfig = {
   key: TransactionActionKey
   label: string
   variant?: 'primary' | 'secondary' | 'danger'
   requiresConfirm?: boolean
+  requiresReason?: boolean
   confirmTitle?: string
   confirmMessage?: string
   permission?: string
@@ -58,6 +77,16 @@ export type TransactionFormConfig<TValues extends Record<string, unknown> = Reco
     cancel?: string
     close?: string
     print?: string
+    send?: string
+    submit?: string
+    accept?: string
+    reject?: string
+    ready?: string
+    ship?: string
+    deliver?: string
+    receive?: string
+    issue?: string
+    refund?: string
   }
   sourceOptions?: TransactionSourceOption[]
   actions: TransactionActionConfig[]

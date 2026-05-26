@@ -11,6 +11,8 @@ use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Purchase\Concerns\HandlesPurchaseDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
+use App\Services\Transactions\TransactionVoidEffectService;
+use App\Services\Audit\AuditLogService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,8 @@ class VendorPaymentService
         private readonly TenantContext $tenantContext,
         private readonly DocumentNumberService $documentNumberService,
         private readonly TransactionDateGuardService $dateGuardService,
+        private readonly TransactionVoidEffectService $voidEffectService,
+        private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
 
@@ -80,12 +84,24 @@ class VendorPaymentService
 
     public function void(VendorPayment $payment, ?string $reason = null): VendorPayment
     {
-        $payment->status = 'void';
-        $payment->voided_by = auth()->id();
-        $payment->voided_at = now();
-        $payment->void_reason = $reason;
-        $payment->save();
-        return $payment->refresh();
+        if ($payment->status === 'void') throw ApiException::make('VENDOR_PAYMENT_ALREADY_VOID', 'Vendor payment already void.', 422);
+        $reason = $this->voidEffectService->requireReason($reason);
+        $this->guardDate((string) $payment->payment_date, 'void');
+        return DB::connection('tenant')->transaction(function () use ($payment, $reason) {
+            $journalIds = $this->voidEffectService->voidJournalsForSource('vendor_payment', (int) $payment->id, $reason);
+            if ($payment->status === 'posted' && $payment->vendor_bill_id) {
+                $bill = VendorBill::query()->lockForUpdate()->find($payment->vendor_bill_id);
+                if ($bill && $bill->status !== 'void') {
+                    $bill->paid_amount = max(0, (float) $bill->paid_amount - (float) $payment->amount);
+                    $bill->balance_due = min((float) $bill->grand_total, (float) $bill->balance_due + (float) $payment->amount);
+                    $bill->status = $bill->paid_amount > 0 ? 'partially_paid' : 'posted';
+                    $bill->save();
+                }
+            }
+            $payment->status = 'void'; $payment->voided_by = auth()->id(); $payment->voided_at = now(); $payment->void_reason = $reason; $payment->save();
+            $this->auditPurchase($this->auditLogService, 'vendor_payment.voided', $payment, 'payment_number', ['reason' => $reason, 'voided_journal_ids' => $journalIds]);
+            return $payment->refresh();
+        });
     }
 
     public function applyToBill(VendorPayment $payment, VendorBill $bill): void
@@ -137,9 +153,9 @@ class VendorPaymentService
         return (int) $mapping->account_id;
     }
 
-    private function guardDate(string $date): void
+    private function guardDate(string $date, string $action = 'post'): void
     {
-        $check = $this->dateGuardService->check($date, 'post', 'purchase');
+        $check = $this->dateGuardService->check($date, $action, 'purchase');
         if ($check->denied()) {
             $arr = $check->toArray();
             throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']);

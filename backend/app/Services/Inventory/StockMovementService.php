@@ -162,12 +162,32 @@ class StockMovementService
 
     public function void(StockMovement $movement, ?string $reason = null): StockMovement
     {
+        $reason = trim((string) $reason);
+        if ($reason === '') {
+            throw ApiException::make('VALIDATION_ERROR', 'Void reason is required.', 422, ['reason' => ['Void reason is required.']]);
+        }
+        $this->validation->validatePeriodNotLocked((string) $movement->movement_date);
+
+        if ($movement->status === 'void') {
+            return $movement;
+        }
+
         if ($movement->status !== 'posted') {
             $movement->status = 'void';
             $movement->voided_by = auth()->id();
             $movement->voided_at = now();
             $movement->void_reason = $reason;
             $movement->save();
+            $this->auditLogService->logSuccess([
+                'event' => 'inventory.stock_movement_voided',
+                'module' => 'inventory',
+                'action' => 'stock_movement.void',
+                'message' => 'Stock movement voided.',
+                'record_type' => 'stock_movement',
+                'record_id' => $movement->id,
+                'record_number' => $movement->movement_number,
+                'metadata' => ['reason' => $reason],
+            ], tenant: true);
             return $movement->refresh();
         }
 
@@ -188,7 +208,7 @@ class StockMovementService
                 'record_type' => 'stock_movement',
                 'record_id' => $movement->id,
                 'record_number' => $movement->movement_number,
-                'metadata' => ['reversal_id' => $reversal->id],
+                'metadata' => ['reason' => $reason, 'reversal_id' => $reversal->id],
             ], tenant: true);
 
             return $movement->refresh()->load('reversedBy');

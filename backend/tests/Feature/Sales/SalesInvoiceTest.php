@@ -141,6 +141,14 @@ class SalesInvoiceTest extends SalesTestCase
 
         $this->assertSame(1, JournalEntry::query()->count());
         $this->assertSame(3, DB::connection('tenant')->table('journal_entry_lines')->count());
+
+        $this->patchJson('/api/sales/invoices/'.$invoice['id'].'/void', ['reason' => 'Posting corrected'], $ctx['headers'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'void');
+
+        $this->assertSame('void', JournalEntry::query()->firstOrFail()->status);
+        $this->patchJson('/api/sales/invoices/'.$invoice['id'].'/void', ['reason' => 'Again'], $ctx['headers'])
+            ->assertStatus(422);
     }
 
     public function test_post_invoice_creates_deposit_allocation_journal_if_dp_applied(): void
@@ -159,6 +167,12 @@ class SalesInvoiceTest extends SalesTestCase
         $this->assertSame(2, JournalEntry::query()->count());
         $this->assertSame(1, CustomerDepositAllocation::query()->count());
         $this->assertSame(0.0, (float) CustomerDeposit::query()->first()->remaining_amount);
+
+        $this->patchJson('/api/sales/invoices/'.$invoice['id'].'/void', ['reason' => 'Reverse deposit allocation'], $ctx['headers'])
+            ->assertStatus(200);
+        $this->assertSame('void', CustomerDepositAllocation::query()->firstOrFail()->status);
+        $this->assertSame(222.0, (float) CustomerDeposit::query()->firstOrFail()->remaining_amount);
+        $this->assertSame(0, JournalEntry::query()->where('status', 'posted')->count());
     }
 
     public function test_invoice_does_not_create_stock_movement_or_cogs_journal(): void

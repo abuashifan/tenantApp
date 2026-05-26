@@ -216,6 +216,9 @@ class StockOpnameService
     public function void(StockOpname $opname, ?string $reason = null): StockOpname
     {
         if ($opname->status === 'void') return $opname;
+        $reason = trim((string) $reason);
+        if ($reason === '') throw ApiException::make('VALIDATION_ERROR', 'Void reason is required.', 422, ['reason' => ['Void reason is required.']]);
+        $this->movementValidation->validatePeriodNotLocked((string) $opname->opname_date);
 
         return DB::connection('tenant')->transaction(function () use ($opname, $reason) {
             if ($opname->status === 'finalized') {
@@ -240,6 +243,7 @@ class StockOpnameService
                 'record_type' => 'stock_opname',
                 'record_id' => $opname->id,
                 'record_number' => $opname->opname_number,
+                'metadata' => ['reason' => $reason],
             ], tenant: true);
 
             return $opname->refresh();
@@ -325,4 +329,3 @@ class StockOpnameService
         return $opname->stock_movement_id ? [(int) $opname->stock_movement_id] : [];
     }
 }
-

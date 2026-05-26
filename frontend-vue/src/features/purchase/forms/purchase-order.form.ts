@@ -43,8 +43,17 @@ export const purchaseOrderFormConfig: TransactionFormConfig<PurchaseOrderValues>
     view: 'purchase.orders.view',
     create: 'purchase.orders.create',
     edit: 'purchase.orders.edit',
+    approve: 'purchase.orders.approve',
+    confirm: 'purchase.orders.confirm',
+    close: 'purchase.orders.confirm',
+    cancel: 'purchase.orders.cancel',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'approve', label: 'Approve', permission: 'purchase.orders.approve', whenStatusIn: ['draft'] },
+    { key: 'confirm', label: 'Confirm', permission: 'purchase.orders.confirm', whenStatusIn: ['approved'], variant: 'primary' },
+    { key: 'close', label: 'Close', permission: 'purchase.orders.confirm', whenStatusIn: ['confirmed'] },
+    { key: 'cancel', label: 'Cancel', permission: 'purchase.orders.cancel', whenStatusIn: ['draft', 'approved', 'confirmed'], variant: 'danger', requiresConfirm: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'purchase', priceField: 'unit_price' },
   validationSchema: z.object({

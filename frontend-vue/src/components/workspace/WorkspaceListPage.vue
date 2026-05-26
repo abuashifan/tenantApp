@@ -139,7 +139,7 @@ function confirmPendingAction() {
         @toggle-filters="filtersOpen = !filtersOpen"
         @create="openCreateTab"
         @refresh="emit('refresh')"
-        @action-click="emit('actionClick', { key: $event })"
+        @action-click="emit('bulkActionClick', { key: $event, selectedIds })"
       >
         <template #toolbar-bottom>
           <slot name="toolbar-right" />

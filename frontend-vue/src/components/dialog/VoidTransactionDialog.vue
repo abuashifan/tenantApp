@@ -7,6 +7,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 const props = defineProps<{
   open: boolean
   transactionNumber: string
+  loading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -44,8 +45,8 @@ const canConfirm = computed(() => reason.value.trim().length > 0)
     </label>
 
     <div class="mt-6 flex flex-wrap items-center justify-end gap-2">
-      <BaseButton variant="secondary" @click="emit('close')">Cancel</BaseButton>
-      <BaseButton variant="danger" :disabled="!canConfirm" @click="emit('confirm', { reason: reason.trim() })">
+      <BaseButton variant="secondary" :disabled="loading" @click="emit('close')">Cancel</BaseButton>
+      <BaseButton variant="danger" :disabled="!canConfirm" :loading="loading" @click="emit('confirm', { reason: reason.trim() })">
         Confirm Void
       </BaseButton>
     </div>

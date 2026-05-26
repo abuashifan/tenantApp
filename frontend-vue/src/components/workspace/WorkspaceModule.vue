@@ -30,6 +30,7 @@ const props = withDefaults(
     showFilter?: boolean
     showDateFilters?: boolean
     reloadKey?: string | number
+    clearSelectionKey?: string | number
   }>(),
   {
     rows: () => [],
@@ -93,6 +94,13 @@ watch(
   () => props.reloadKey,
   () => {
     void list.fetchRows()
+  },
+)
+
+watch(
+  () => props.clearSelectionKey,
+  () => {
+    selectedIds.value = []
   },
 )
 </script>

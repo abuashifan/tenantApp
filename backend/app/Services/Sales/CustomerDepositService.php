@@ -14,6 +14,7 @@ use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Sales\Concerns\HandlesSalesDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
+use App\Services\Transactions\TransactionVoidEffectService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,7 @@ class CustomerDepositService
         private readonly TenantContext $tenantContext,
         private readonly DocumentNumberService $documentNumberService,
         private readonly TransactionDateGuardService $dateGuardService,
+        private readonly TransactionVoidEffectService $voidEffectService,
         private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
@@ -92,9 +94,28 @@ class CustomerDepositService
 
     public function void(CustomerDeposit $deposit, ?string $reason = null): CustomerDeposit
     {
-        if ((float) $deposit->allocated_amount > 0) throw ApiException::make('CUSTOMER_DEPOSIT_HAS_ALLOCATION', 'Allocated deposit cannot be voided.', 422);
-        $deposit->status = 'void'; $deposit->voided_by = auth()->id(); $deposit->voided_at = now(); $deposit->void_reason = $reason; $deposit->save();
-        return $deposit->refresh();
+        if ($deposit->status === 'void') throw ApiException::make('CUSTOMER_DEPOSIT_ALREADY_VOID', 'Customer deposit already void.', 422);
+        $reason = $this->voidEffectService->requireReason($reason);
+        $this->guardDate((string) $deposit->deposit_date, 'void');
+        return DB::connection('tenant')->transaction(function () use ($deposit, $reason) {
+            $journalIds = $this->voidEffectService->voidJournalsForSource('customer_deposit', (int) $deposit->id, $reason);
+            $allocations = CustomerDepositAllocation::query()->where('customer_deposit_id', $deposit->id)->where('status', 'posted')->get();
+            foreach ($allocations as $allocation) {
+                $invoice = SalesInvoice::query()->lockForUpdate()->find($allocation->sales_invoice_id);
+                if ($invoice && $invoice->status !== 'void') {
+                    $invoice->paid_amount = max(0, (float) $invoice->paid_amount - (float) $allocation->allocated_amount);
+                    $invoice->balance_due = min((float) $invoice->grand_total, (float) $invoice->balance_due + (float) $allocation->allocated_amount);
+                    $invoice->status = $invoice->paid_amount > 0 ? 'partially_paid' : 'posted';
+                    $invoice->save();
+                }
+                $journalId = $this->voidEffectService->voidJournalById((int) $allocation->journal_entry_id, $reason);
+                if ($journalId) $journalIds[] = $journalId;
+                $allocation->status = 'void'; $allocation->voided_by = auth()->id(); $allocation->voided_at = now(); $allocation->void_reason = $reason; $allocation->save();
+            }
+            $deposit->status = 'void'; $deposit->voided_by = auth()->id(); $deposit->voided_at = now(); $deposit->void_reason = $reason; $deposit->save();
+            $this->auditSales($this->auditLogService, 'customer_deposit.voided', 'sales', $deposit, 'deposit_number', ['reason' => $reason, 'voided_journal_ids' => array_values(array_unique($journalIds)), 'voided_allocation_ids' => $allocations->pluck('id')->all()]);
+            return $deposit->refresh();
+        });
     }
 
     public function refund(CustomerDeposit $deposit, float $amount, ?string $reason = null): CustomerDeposit
@@ -136,6 +157,6 @@ class CustomerDepositService
     public function calculateReceivedForSalesOrder(SalesOrder $order): float { return (float) $order->deposits()->where('status', '!=', 'void')->sum('amount'); }
 
     private function mapping(string $key): int { $mapping = AccountMapping::query()->where('mapping_key', $key)->where('is_active', true)->first(); if (! $mapping?->account_id) throw ApiException::make('ACCOUNT_MAPPING_MISSING', 'Required account mapping is missing: '.$key, 422); return (int) $mapping->account_id; }
-    private function guardDate(string $date): void { $check = $this->dateGuardService->check($date, 'post', 'sales'); if ($check->denied()) { $arr = $check->toArray(); throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']); } }
+    private function guardDate(string $date, string $action = 'post'): void { $check = $this->dateGuardService->check($date, $action, 'sales'); if ($check->denied()) { $arr = $check->toArray(); throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']); } }
     private function journal(CustomerDeposit $deposit, string $description, array $lines, ?SalesInvoice $invoice = null): JournalEntry { $company = $this->tenantContext->company(); if (! $company) throw ApiException::make('COMPANY_NOT_FOUND', 'Company context not resolved.', 422); $journal = JournalEntry::query()->create(['journal_number' => $this->documentNumberService->generate($company, DocumentType::JOURNAL_ENTRY, (string) ($invoice?->invoice_date ?? $deposit->deposit_date)), 'journal_date' => $invoice?->invoice_date ?? $deposit->deposit_date, 'description' => $description, 'status' => 'posted', 'revision_no' => 1, 'source_type' => $invoice ? 'sales_invoice' : 'customer_deposit', 'source_id' => $invoice?->id ?? $deposit->id, 'source_number' => $invoice?->invoice_number ?? $deposit->deposit_number, 'source_revision' => $invoice?->revision_no ?? 1, 'source_module' => 'sales', 'is_system_generated' => true, 'created_by' => auth()->id(), 'posted_by' => auth()->id(), 'posted_at' => now()]); $journal->lines()->createMany($lines); return $journal->refresh(); }
 }

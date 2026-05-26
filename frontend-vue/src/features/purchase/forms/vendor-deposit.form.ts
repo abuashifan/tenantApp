@@ -32,7 +32,11 @@ export const vendorDepositFormConfig: TransactionFormConfig<VendorDepositValues>
     post: 'purchase.deposits.post',
     void: 'purchase.deposits.void',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'post', label: 'Post', permission: 'purchase.deposits.post', whenStatusIn: ['draft'], variant: 'primary', requiresConfirm: true },
+    { key: 'void', label: 'Void', permission: 'purchase.deposits.void', whenStatusIn: ['draft', 'posted', 'partially_allocated', 'fully_allocated', 'refunded'], variant: 'danger', requiresReason: true },
+    { key: 'refund', label: 'Refund', permission: 'purchase.deposits.refund', whenStatusIn: ['posted', 'partially_allocated'] },
+  ],
   hasLines: false,
   validationSchema: z.object({
     vendor_id: z.string().min(1),
@@ -52,4 +56,3 @@ export const vendorDepositFormConfig: TransactionFormConfig<VendorDepositValues>
     }
   },
 }
-

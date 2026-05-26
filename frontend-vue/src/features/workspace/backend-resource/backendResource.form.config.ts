@@ -547,7 +547,7 @@ export const journalFormConfig: ResourceFormConfig = {
   actions: [
     { key: 'approve', label: 'Approve', endpointSuffix: 'approve', method: 'post', permission: 'journal.approve', visibleStatuses: ['draft'], variant: 'secondary' },
     { key: 'post', label: 'Post', endpointSuffix: 'post', method: 'post', permission: 'journal.post', visibleStatuses: ['approved', 'draft'], variant: 'primary' },
-    { key: 'void', label: 'Void', endpointSuffix: 'void', method: 'post', permission: 'journal.void', visibleStatuses: ['posted'], variant: 'danger', payload: { reason: 'Voided from workspace form' } },
+    { key: 'void', label: 'Void', endpointSuffix: 'void', method: 'post', permission: 'journal.void', visibleStatuses: ['posted'], variant: 'danger' },
   ],
 }
 

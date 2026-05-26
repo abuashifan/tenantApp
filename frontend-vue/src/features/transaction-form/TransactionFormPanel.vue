@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import VoidTransactionDialog from '@/components/dialog/VoidTransactionDialog.vue'
+import TransactionActionBar from '@/components/transaction-form/TransactionActionBar.vue'
 import TransactionDateFields from '@/components/transaction-form/TransactionDateFields.vue'
 import TransactionCashBankAmountFields from '@/components/transaction-form/TransactionCashBankAmountFields.vue'
 import TransactionFormHeader from '@/components/transaction-form/TransactionFormHeader.vue'
@@ -14,8 +16,10 @@ import TransactionTotalsPanel from '@/components/transaction-form/TransactionTot
 import TransactionValidationSummary from '@/components/transaction-form/TransactionValidationSummary.vue'
 
 import { useTransactionForm } from '@/composables/transaction-form/useTransactionForm'
+import { useTransactionActions } from '@/composables/transaction-form/useTransactionActions'
 import { useTransactionTotals } from '@/composables/transaction-form/useTransactionTotals'
-import type { RuntimeTransactionFormConfig } from '@/composables/transaction-form/types'
+import type { RuntimeTransactionFormConfig, TransactionActionConfig } from '@/composables/transaction-form/types'
+import { usePermission } from '@/composables/usePermission'
 import type { SecondaryTab } from '@/stores/workspaceTabsStore'
 
 const props = defineProps<{
@@ -25,6 +29,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
+  changed: []
 }>()
 
 const mode = (props.tab?.mode ?? 'detail') as 'create' | 'edit' | 'detail'
@@ -32,6 +37,9 @@ const entityId = props.tab?.entityId
 const secondaryTabId = props.tab?.id ?? ''
 
 const tx = useTransactionForm({ config: props.config, mode, entityId, secondaryTabId })
+const actions = useTransactionActions({ config: props.config, entityId })
+const { can } = usePermission()
+const voidDialogOpen = ref(false)
 useTransactionTotals(tx.form, { priceField: props.config.lineProduct?.priceField })
 
 const partnerName =
@@ -47,9 +55,34 @@ const supportsInternalNotes = computed(() => Object.prototype.hasOwnProperty.cal
 const supportsValidUntil = computed(() => Object.prototype.hasOwnProperty.call(tx.form.values, 'valid_until'))
 const formTitle = computed(() => props.tab?.entityNumber ?? props.config.title)
 const displayedStatus = computed(() => tx.status.value || 'Draft')
+const visibleLifecycleActions = computed(() =>
+  props.config.actions.filter((action) => {
+    if (action.key === 'save' || !entityId) return false
+    if (!can(action.permission)) return false
+    return !action.whenStatusIn || action.whenStatusIn.includes((tx.status.value ?? '').toLowerCase())
+  }),
+)
 
 async function onSubmit() {
-  await tx.save()
+  if (await tx.save()) emit('changed')
+}
+
+async function runLifecycleAction(action: TransactionActionConfig, payload?: unknown) {
+  if (action.key === 'void' && !payload) {
+    voidDialogOpen.value = true
+    return
+  }
+  if (action.requiresConfirm && action.key !== 'void' && !window.confirm(action.confirmMessage ?? `Confirm ${action.label}?`)) return
+  if (await actions.runAction(action.key, payload)) {
+    voidDialogOpen.value = false
+    await tx.load()
+    emit('changed')
+  }
+}
+
+async function confirmVoid(payload: { reason: string }) {
+  const action = visibleLifecycleActions.value.find((item) => item.key === 'void')
+  if (action) await runLifecycleAction(action, payload)
 }
 </script>
 
@@ -66,6 +99,7 @@ async function onSubmit() {
 
       <template #validation>
         <TransactionValidationSummary />
+        <p v-if="actions.actionError.value" class="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ actions.actionError.value }}</p>
       </template>
 
       <div class="grid gap-3 lg:grid-cols-4">
@@ -118,8 +152,28 @@ async function onSubmit() {
       </TransactionFormSection>
 
       <template #actions-right>
+        <TransactionActionBar>
+          <BaseButton
+            v-for="action in visibleLifecycleActions"
+            :key="action.key"
+            :variant="action.variant ?? 'secondary'"
+            size="md"
+            type="button"
+            :loading="actions.actionLoading.value"
+            @click="runLifecycleAction(action)"
+          >
+            {{ action.label }}
+          </BaseButton>
+        </TransactionActionBar>
         <BaseButton v-if="!tx.isReadonly.value" variant="primary" size="md" type="submit" :loading="tx.loading.value">Save</BaseButton>
       </template>
     </TransactionFormShell>
+    <VoidTransactionDialog
+      :open="voidDialogOpen"
+      :loading="actions.actionLoading.value"
+      :transaction-number="formTitle"
+      @close="voidDialogOpen = false"
+      @confirm="confirmVoid"
+    />
   </form>
 </template>

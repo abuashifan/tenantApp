@@ -41,8 +41,16 @@ export const salesQuotationFormConfig: TransactionFormConfig<SalesQuotationValue
     view: 'sales.quotations.view',
     create: 'sales.quotations.create',
     edit: 'sales.quotations.edit',
+    approve: 'sales.quotations.approve',
+    cancel: 'sales.quotations.cancel',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'send', label: 'Send', permission: 'sales.quotations.edit', whenStatusIn: ['draft'] },
+    { key: 'approve', label: 'Approve', permission: 'sales.quotations.approve', whenStatusIn: ['draft', 'sent'], variant: 'primary' },
+    { key: 'accept', label: 'Accept', permission: 'sales.quotations.approve', whenStatusIn: ['sent', 'approved'], variant: 'primary' },
+    { key: 'reject', label: 'Reject', permission: 'sales.quotations.cancel', whenStatusIn: ['sent', 'approved'], variant: 'danger', requiresConfirm: true },
+    { key: 'cancel', label: 'Cancel', permission: 'sales.quotations.cancel', whenStatusIn: ['draft', 'sent', 'approved'], variant: 'danger', requiresConfirm: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({

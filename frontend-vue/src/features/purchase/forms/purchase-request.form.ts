@@ -36,8 +36,17 @@ export const purchaseRequestFormConfig: TransactionFormConfig<PurchaseRequestVal
     view: 'purchase.requests.view',
     create: 'purchase.requests.create',
     edit: 'purchase.requests.edit',
+    submit: 'purchase.requests.edit',
+    approve: 'purchase.requests.approve',
+    reject: 'purchase.requests.cancel',
+    cancel: 'purchase.requests.cancel',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'submit', label: 'Submit', permission: 'purchase.requests.edit', whenStatusIn: ['draft'], variant: 'primary' },
+    { key: 'approve', label: 'Approve', permission: 'purchase.requests.approve', whenStatusIn: ['submitted'], variant: 'primary' },
+    { key: 'reject', label: 'Reject', permission: 'purchase.requests.cancel', whenStatusIn: ['submitted'], variant: 'danger', requiresConfirm: true },
+    { key: 'cancel', label: 'Cancel', permission: 'purchase.requests.cancel', whenStatusIn: ['draft', 'submitted', 'approved'], variant: 'danger', requiresConfirm: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'purchase', priceField: 'estimated_unit_price', priceLabel: 'Estimated Unit Price' },
   validationSchema: z.object({

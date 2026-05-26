@@ -32,7 +32,11 @@ export const customerDepositFormConfig: TransactionFormConfig<CustomerDepositVal
     post: 'sales.deposits.post',
     void: 'sales.deposits.void',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'post', label: 'Post', permission: 'sales.deposits.post', whenStatusIn: ['draft'], variant: 'primary', requiresConfirm: true },
+    { key: 'void', label: 'Void', permission: 'sales.deposits.void', whenStatusIn: ['draft', 'posted', 'partially_allocated', 'fully_allocated', 'refunded'], variant: 'danger', requiresReason: true },
+    { key: 'refund', label: 'Refund', permission: 'sales.deposits.refund', whenStatusIn: ['posted', 'partially_allocated'] },
+  ],
   hasLines: false,
   validationSchema: z.object({
     customer_id: z.string().min(1),
@@ -52,4 +56,3 @@ export const customerDepositFormConfig: TransactionFormConfig<CustomerDepositVal
     }
   },
 }
-

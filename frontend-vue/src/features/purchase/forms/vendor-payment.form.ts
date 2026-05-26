@@ -32,7 +32,10 @@ export const vendorPaymentFormConfig: TransactionFormConfig<VendorPaymentValues>
     post: 'purchase.payments.post',
     void: 'purchase.payments.void',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'post', label: 'Post', permission: 'purchase.payments.post', whenStatusIn: ['draft'], variant: 'primary', requiresConfirm: true },
+    { key: 'void', label: 'Void', permission: 'purchase.payments.void', whenStatusIn: ['posted'], variant: 'danger', requiresReason: true },
+  ],
   hasLines: false,
   validationSchema: z.object({
     payment_date: z.string().min(1),
@@ -53,4 +56,3 @@ export const vendorPaymentFormConfig: TransactionFormConfig<VendorPaymentValues>
     }
   },
 }
-

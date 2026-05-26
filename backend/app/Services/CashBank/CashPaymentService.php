@@ -8,6 +8,8 @@ use App\Models\Tenant\JournalEntry;
 use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
+use App\Services\Transactions\TransactionVoidEffectService;
+use App\Services\Audit\AuditLogService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +21,8 @@ class CashPaymentService
         private readonly DocumentNumberService $documentNumberService,
         private readonly TransactionDateGuardService $dateGuardService,
         private readonly CashBankAccountService $cashBankAccountService,
+        private readonly TransactionVoidEffectService $voidEffectService,
+        private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
 
@@ -106,12 +110,15 @@ class CashPaymentService
 
     public function void(CashPayment $payment, ?string $reason = null): CashPayment
     {
-        $payment->status = 'void';
-        $payment->voided_by = auth()->id();
-        $payment->voided_at = now();
-        $payment->void_reason = $reason;
-        $payment->save();
-        return $payment->refresh();
+        if ($payment->status === 'void') throw ApiException::make('CASH_PAYMENT_ALREADY_VOID', 'Cash payment already void.', 422);
+        $reason = $this->voidEffectService->requireReason($reason);
+        $this->guardDate((string) $payment->payment_date, 'void');
+        return DB::connection('tenant')->transaction(function () use ($payment, $reason) {
+            $journalIds = $this->voidEffectService->voidJournalsForSource('cash_payment', (int) $payment->id, $reason);
+            $payment->status = 'void'; $payment->voided_by = auth()->id(); $payment->voided_at = now(); $payment->void_reason = $reason; $payment->save();
+            $this->auditLogService?->logSuccess(['event' => 'cash_bank.cash_payment_voided', 'module' => 'cash_bank', 'record_type' => 'cash_payment', 'record_id' => $payment->id, 'record_number' => $payment->payment_number, 'user_id' => auth()->id(), 'metadata' => ['reason' => $reason, 'voided_journal_ids' => $journalIds]], tenant: true);
+            return $payment->refresh();
+        });
     }
 
     private function journal(CashPayment $payment): JournalEntry
@@ -163,13 +170,12 @@ class CashPaymentService
         return $journal->refresh();
     }
 
-    private function guardDate(string $date): void
+    private function guardDate(string $date, string $action = 'post'): void
     {
-        $check = $this->dateGuardService->check($date, 'post', 'cash_bank');
+        $check = $this->dateGuardService->check($date, $action, 'cash_bank');
         if ($check->denied()) {
             $arr = $check->toArray();
             throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']);
         }
     }
 }
-

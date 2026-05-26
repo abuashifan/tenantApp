@@ -8,6 +8,8 @@ use App\Models\Tenant\JournalEntry;
 use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
+use App\Services\Transactions\TransactionVoidEffectService;
+use App\Services\Audit\AuditLogService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +21,8 @@ class CashReceiptService
         private readonly DocumentNumberService $documentNumberService,
         private readonly TransactionDateGuardService $dateGuardService,
         private readonly CashBankAccountService $cashBankAccountService,
+        private readonly TransactionVoidEffectService $voidEffectService,
+        private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
 
@@ -106,12 +110,15 @@ class CashReceiptService
 
     public function void(CashReceipt $receipt, ?string $reason = null): CashReceipt
     {
-        $receipt->status = 'void';
-        $receipt->voided_by = auth()->id();
-        $receipt->voided_at = now();
-        $receipt->void_reason = $reason;
-        $receipt->save();
-        return $receipt->refresh();
+        if ($receipt->status === 'void') throw ApiException::make('CASH_RECEIPT_ALREADY_VOID', 'Cash receipt already void.', 422);
+        $reason = $this->voidEffectService->requireReason($reason);
+        $this->guardDate((string) $receipt->receipt_date, 'void');
+        return DB::connection('tenant')->transaction(function () use ($receipt, $reason) {
+            $journalIds = $this->voidEffectService->voidJournalsForSource('cash_receipt', (int) $receipt->id, $reason);
+            $receipt->status = 'void'; $receipt->voided_by = auth()->id(); $receipt->voided_at = now(); $receipt->void_reason = $reason; $receipt->save();
+            $this->auditVoid('cash_receipt', $receipt->id, $receipt->receipt_number, $reason, $journalIds);
+            return $receipt->refresh();
+        });
     }
 
     private function journal(CashReceipt $receipt): JournalEntry
@@ -163,12 +170,17 @@ class CashReceiptService
         return $journal->refresh();
     }
 
-    private function guardDate(string $date): void
+    private function guardDate(string $date, string $action = 'post'): void
     {
-        $check = $this->dateGuardService->check($date, 'post', 'cash_bank');
+        $check = $this->dateGuardService->check($date, $action, 'cash_bank');
         if ($check->denied()) {
             $arr = $check->toArray();
             throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']);
         }
+    }
+
+    private function auditVoid(string $type, int $id, string $number, string $reason, array $journalIds): void
+    {
+        $this->auditLogService?->logSuccess(['event' => 'cash_bank.'.$type.'_voided', 'module' => 'cash_bank', 'record_type' => $type, 'record_id' => $id, 'record_number' => $number, 'user_id' => auth()->id(), 'metadata' => ['reason' => $reason, 'voided_journal_ids' => $journalIds]], tenant: true);
     }
 }

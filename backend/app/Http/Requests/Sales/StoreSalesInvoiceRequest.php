@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Sales;
 
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSalesInvoiceRequest extends FormRequest
@@ -15,8 +16,13 @@ class StoreSalesInvoiceRequest extends FormRequest
     {
         return [
             'customer_id' => ['required', 'exists:tenant.contacts,id'],
-            'invoice_date' => ['required', 'date'],
-            'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
+            'invoice_date' => ['required', 'date_format:Y-m-d'],
+            'due_date' => ['nullable', 'date_format:Y-m-d', function (string $attribute, mixed $value, Closure $fail): void {
+                $invoiceDate = $this->input('invoice_date');
+                if (is_string($invoiceDate) && is_string($value) && $value < $invoiceDate) {
+                    $fail('The due date must be a date after or equal to invoice date.');
+                }
+            }],
             'customer_address' => ['nullable', 'string'],
             'sales_order_id' => ['nullable', 'integer'],
             'delivery_order_id' => ['nullable', 'integer'],

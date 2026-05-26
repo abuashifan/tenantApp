@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Purchase;
 
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreVendorBillRequest extends FormRequest
@@ -11,8 +12,13 @@ class StoreVendorBillRequest extends FormRequest
     {
         return [
             'vendor_id' => ['required', 'exists:tenant.contacts,id'],
-            'bill_date' => ['required', 'date'],
-            'due_date' => ['nullable', 'date', 'after_or_equal:bill_date'],
+            'bill_date' => ['required', 'date_format:Y-m-d'],
+            'due_date' => ['nullable', 'date_format:Y-m-d', function (string $attribute, mixed $value, Closure $fail): void {
+                $billDate = $this->input('bill_date');
+                if (is_string($billDate) && is_string($value) && $value < $billDate) {
+                    $fail('The due date must be a date after or equal to bill date.');
+                }
+            }],
             'vendor_invoice_number' => ['nullable', 'string'],
             'vendor_address' => ['nullable', 'string'],
             'purchase_order_id' => ['nullable', 'integer'],

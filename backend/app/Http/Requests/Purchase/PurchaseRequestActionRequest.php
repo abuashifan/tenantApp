@@ -14,7 +14,7 @@ class PurchaseRequestActionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reason' => ['nullable', 'string'],
+            'reason' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }

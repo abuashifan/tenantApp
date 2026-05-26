@@ -8,6 +8,8 @@ use App\Models\Tenant\JournalEntry;
 use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
+use App\Services\Transactions\TransactionVoidEffectService;
+use App\Services\Audit\AuditLogService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +21,8 @@ class BankTransferService
         private readonly DocumentNumberService $documentNumberService,
         private readonly TransactionDateGuardService $dateGuardService,
         private readonly CashBankAccountService $cashBankAccountService,
+        private readonly TransactionVoidEffectService $voidEffectService,
+        private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
 
@@ -89,12 +93,15 @@ class BankTransferService
 
     public function void(BankTransfer $transfer, ?string $reason = null): BankTransfer
     {
-        $transfer->status = 'void';
-        $transfer->voided_by = auth()->id();
-        $transfer->voided_at = now();
-        $transfer->void_reason = $reason;
-        $transfer->save();
-        return $transfer->refresh();
+        if ($transfer->status === 'void') throw ApiException::make('BANK_TRANSFER_ALREADY_VOID', 'Bank transfer already void.', 422);
+        $reason = $this->voidEffectService->requireReason($reason);
+        $this->guardDate((string) $transfer->transfer_date, 'void');
+        return DB::connection('tenant')->transaction(function () use ($transfer, $reason) {
+            $journalIds = $this->voidEffectService->voidJournalsForSource('bank_transfer', (int) $transfer->id, $reason);
+            $transfer->status = 'void'; $transfer->voided_by = auth()->id(); $transfer->voided_at = now(); $transfer->void_reason = $reason; $transfer->save();
+            $this->auditLogService?->logSuccess(['event' => 'cash_bank.bank_transfer_voided', 'module' => 'cash_bank', 'record_type' => 'bank_transfer', 'record_id' => $transfer->id, 'record_number' => $transfer->transfer_number, 'user_id' => auth()->id(), 'metadata' => ['reason' => $reason, 'voided_journal_ids' => $journalIds]], tenant: true);
+            return $transfer->refresh();
+        });
     }
 
     private function journal(BankTransfer $transfer): JournalEntry
@@ -141,13 +148,12 @@ class BankTransferService
         return $journal->refresh();
     }
 
-    private function guardDate(string $date): void
+    private function guardDate(string $date, string $action = 'post'): void
     {
-        $check = $this->dateGuardService->check($date, 'post', 'cash_bank');
+        $check = $this->dateGuardService->check($date, $action, 'cash_bank');
         if ($check->denied()) {
             $arr = $check->toArray();
             throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']);
         }
     }
 }
-

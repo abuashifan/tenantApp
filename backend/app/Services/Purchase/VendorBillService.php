@@ -11,12 +11,16 @@ use App\Models\Tenant\PurchaseOrder;
 use App\Models\Tenant\PurchaseOrderLine;
 use App\Models\Tenant\VendorBill;
 use App\Models\Tenant\VendorDeposit;
+use App\Models\Tenant\VendorDepositAllocation;
+use App\Models\Tenant\VendorPayment;
+use App\Models\Tenant\PurchaseReturn;
 use App\Services\Audit\AuditLogService;
 use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Inventory\InventoryPurchaseIntegrationService;
 use App\Services\Purchase\Concerns\HandlesPurchaseDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
+use App\Services\Transactions\TransactionVoidEffectService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +36,7 @@ class VendorBillService
         private readonly TransactionDateGuardService $dateGuardService,
         private readonly VendorDepositService $depositService,
         private readonly InventoryPurchaseIntegrationService $inventoryIntegration,
+        private readonly TransactionVoidEffectService $voidEffectService,
         private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
@@ -215,8 +220,44 @@ class VendorBillService
     public function void(VendorBill $bill, ?string $reason = null): VendorBill
     {
         if ($bill->status === 'void') throw ApiException::make('VENDOR_BILL_ALREADY_VOID', 'Vendor bill already void.', 422);
-        $bill->status = 'void'; $bill->voided_by = auth()->id(); $bill->voided_at = now(); $bill->void_reason = $reason; $bill->save();
-        return $bill->refresh()->load('lines', 'vendor');
+        $reason = $this->voidEffectService->requireReason($reason);
+        $this->guardDate((string) $bill->bill_date, 'void');
+        if (VendorPayment::query()->where('vendor_bill_id', $bill->id)->where('status', 'posted')->exists()) {
+            throw ApiException::make('VENDOR_BILL_HAS_PAYMENT', 'Void posted vendor payments before voiding this bill.', 422);
+        }
+        if (PurchaseReturn::query()->where('vendor_bill_id', $bill->id)->where('status', 'posted')->exists()) {
+            throw ApiException::make('VENDOR_BILL_HAS_RETURN', 'Void posted purchase returns before voiding this bill.', 422);
+        }
+        return DB::connection('tenant')->transaction(function () use ($bill, $reason) {
+            $bill->load('lines');
+            $journalIds = $this->voidEffectService->voidJournalsForSource('vendor_bill', (int) $bill->id, $reason);
+            $movementIds = $this->voidEffectService->voidStockMovementsForSource('vendor_bill', (int) $bill->id, $reason);
+            $allocations = VendorDepositAllocation::query()->where('vendor_bill_id', $bill->id)->where('status', 'posted')->get();
+            foreach ($allocations as $allocation) {
+                $deposit = VendorDeposit::query()->lockForUpdate()->find($allocation->vendor_deposit_id);
+                if ($deposit) {
+                    $deposit->allocated_amount = max(0, (float) $deposit->allocated_amount - (float) $allocation->allocated_amount);
+                    $deposit->remaining_amount = (float) $deposit->remaining_amount + (float) $allocation->allocated_amount;
+                    $deposit->status = 'posted';
+                    $deposit->save();
+                }
+                $this->voidEffectService->voidJournalById((int) $allocation->journal_entry_id, $reason);
+                $allocation->status = 'void'; $allocation->voided_by = auth()->id(); $allocation->voided_at = now(); $allocation->void_reason = $reason; $allocation->save();
+            }
+            foreach ($bill->lines as $line) {
+                if ($line->purchase_order_line_id && ($orderLine = PurchaseOrderLine::query()->lockForUpdate()->find($line->purchase_order_line_id))) {
+                    $orderLine->billed_quantity = max(0, (float) $orderLine->billed_quantity - (float) $line->quantity);
+                    $orderLine->save();
+                }
+                if ($line->goods_receipt_line_id && ($receiptLine = GoodsReceiptLine::query()->lockForUpdate()->find($line->goods_receipt_line_id))) {
+                    $receiptLine->billed_quantity = max(0, (float) $receiptLine->billed_quantity - (float) $line->quantity);
+                    $receiptLine->save();
+                }
+            }
+            $bill->status = 'void'; $bill->voided_by = auth()->id(); $bill->voided_at = now(); $bill->void_reason = $reason; $bill->save();
+            $this->auditPurchase($this->auditLogService, 'vendor_bill.voided', $bill, 'bill_number', ['reason' => $reason, 'voided_journal_ids' => $journalIds, 'reversed_stock_movement_ids' => $movementIds, 'voided_allocation_ids' => $allocations->pluck('id')->all()]);
+            return $bill->refresh()->load('lines', 'vendor');
+        });
     }
 
     public function applyAvailableVendorDeposit(VendorBill $bill): VendorBill
@@ -293,9 +334,9 @@ class VendorBillService
         return (int) $mapping->account_id;
     }
 
-    private function guardDate(string $date): void
+    private function guardDate(string $date, string $action = 'post'): void
     {
-        $check = $this->dateGuardService->check($date, 'post', 'purchase');
+        $check = $this->dateGuardService->check($date, $action, 'purchase');
         if ($check->denied()) {
             $arr = $check->toArray();
             throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']);

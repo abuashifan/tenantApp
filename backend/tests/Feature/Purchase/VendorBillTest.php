@@ -25,6 +25,11 @@ class VendorBillTest extends PurchaseTestCase
         $this->assertSame(1, DB::connection('tenant')->table('journal_entries')->where('source_type', 'vendor_bill')->count());
         $this->assertSame(3, DB::connection('tenant')->table('journal_entry_lines')->count());
         $this->assertSame(0, StockMovement::query()->count());
+
+        $this->patchJson('/api/purchase/bills/'.$bill['id'].'/void', ['reason' => 'Incorrect vendor bill'], $ctx['headers'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'void');
+        $this->assertSame('void', DB::connection('tenant')->table('journal_entries')->where('source_type', 'vendor_bill')->value('status'));
     }
 
     public function test_create_bill_from_purchase_order_copies_discount(): void
@@ -70,6 +75,10 @@ class VendorBillTest extends PurchaseTestCase
             ->assertStatus(200)
             ->assertJsonPath('data.status', 'partially_paid')
             ->assertJsonPath('data.paid_amount', 50);
+
+        $this->patchJson('/api/purchase/bills/'.$bill['id'].'/void', ['reason' => 'Remove bill allocation'], $ctx['headers'])->assertStatus(200);
+        $this->assertSame('void', DB::connection('tenant')->table('vendor_deposit_allocations')->value('status'));
+        $this->assertSame(50.0, (float) DB::connection('tenant')->table('vendor_deposits')->where('id', $depositId)->value('remaining_amount'));
     }
 
     public function test_permission_denied_for_viewer(): void

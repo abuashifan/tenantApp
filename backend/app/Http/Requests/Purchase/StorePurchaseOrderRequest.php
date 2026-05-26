@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Purchase;
 
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePurchaseOrderRequest extends FormRequest
@@ -12,8 +13,13 @@ class StorePurchaseOrderRequest extends FormRequest
     {
         return [
             'vendor_id' => ['required', 'exists:tenant.contacts,id'],
-            'order_date' => ['required', 'date'],
-            'expected_date' => ['nullable', 'date', 'after_or_equal:order_date'],
+            'order_date' => ['required', 'date_format:Y-m-d'],
+            'expected_date' => ['nullable', 'date_format:Y-m-d', function (string $attribute, mixed $value, Closure $fail): void {
+                $orderDate = $this->input('order_date');
+                if (is_string($orderDate) && is_string($value) && $value < $orderDate) {
+                    $fail('The expected date must be a date after or equal to order date.');
+                }
+            }],
             'purchase_request_id' => ['nullable', 'integer'],
             'vendor_address' => ['nullable', 'string'],
             'shipping_address' => ['nullable', 'string'],

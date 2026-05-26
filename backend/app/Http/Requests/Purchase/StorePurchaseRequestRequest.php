@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Purchase;
 
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePurchaseRequestRequest extends FormRequest
@@ -14,8 +15,13 @@ class StorePurchaseRequestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'request_date' => ['required', 'date'],
-            'needed_date' => ['nullable', 'date', 'after_or_equal:request_date'],
+            'request_date' => ['required', 'date_format:Y-m-d'],
+            'needed_date' => ['nullable', 'date_format:Y-m-d', function (string $attribute, mixed $value, Closure $fail): void {
+                $requestDate = $this->input('request_date');
+                if (is_string($requestDate) && is_string($value) && $value < $requestDate) {
+                    $fail('The needed date must be a date after or equal to request date.');
+                }
+            }],
             'requester_id' => ['nullable', 'integer'],
             'department_id' => ['nullable', 'integer'],
             'project_id' => ['nullable', 'integer'],

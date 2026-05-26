@@ -47,7 +47,11 @@ export const salesReturnFormConfig: TransactionFormConfig<SalesReturnValues> = {
     post: 'sales.returns.post',
     void: 'sales.returns.void',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'approve', label: 'Approve', permission: 'sales.returns.approve', whenStatusIn: ['draft'] },
+    { key: 'post', label: 'Post', permission: 'sales.returns.post', whenStatusIn: ['draft', 'approved'], variant: 'primary', requiresConfirm: true },
+    { key: 'void', label: 'Void', permission: 'sales.returns.void', whenStatusIn: ['draft', 'approved', 'posted'], variant: 'danger', requiresReason: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({

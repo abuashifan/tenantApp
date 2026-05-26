@@ -35,8 +35,15 @@ export const goodsReceiptFormConfig: TransactionFormConfig<GoodsReceiptValues> =
     view: 'purchase.goods_receipts.view',
     create: 'purchase.goods_receipts.create',
     edit: 'purchase.goods_receipts.edit',
+    receive: 'purchase.goods_receipts.receive',
+    cancel: 'purchase.goods_receipts.cancel',
+    void: 'purchase.goods_receipts.void',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'receive', label: 'Receive', permission: 'purchase.goods_receipts.receive', whenStatusIn: ['draft'], variant: 'primary', requiresConfirm: true },
+    { key: 'cancel', label: 'Cancel', permission: 'purchase.goods_receipts.cancel', whenStatusIn: ['draft'], variant: 'danger', requiresConfirm: true },
+    { key: 'void', label: 'Void', permission: 'purchase.goods_receipts.void', whenStatusIn: ['received'], variant: 'danger', requiresReason: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'none', priceField: 'unit_price' },
   validationSchema: z.object({

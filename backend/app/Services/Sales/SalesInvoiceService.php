@@ -13,12 +13,15 @@ use App\Models\Tenant\ProformaInvoice;
 use App\Models\Tenant\SalesInvoice;
 use App\Models\Tenant\SalesOrder;
 use App\Models\Tenant\SalesOrderLine;
+use App\Models\Tenant\SalesReceipt;
+use App\Models\Tenant\SalesReturn;
 use App\Services\Audit\AuditLogService;
 use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Inventory\InventorySalesIntegrationService;
 use App\Services\Sales\Concerns\HandlesSalesDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
+use App\Services\Transactions\TransactionVoidEffectService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +36,7 @@ class SalesInvoiceService
         private readonly SalesCalculationService $calculationService,
         private readonly TransactionDateGuardService $dateGuardService,
         private readonly InventorySalesIntegrationService $inventoryIntegration,
+        private readonly TransactionVoidEffectService $voidEffectService,
         private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
@@ -285,14 +289,37 @@ class SalesInvoiceService
         if ($invoice->status === 'void') {
             throw ApiException::make('SALES_INVOICE_ALREADY_VOID', 'Sales invoice already void.', 422);
         }
+        $reason = $this->voidEffectService->requireReason($reason);
+        $this->guardVoidDate((string) $invoice->invoice_date);
 
-        $invoice->status = 'void';
-        $invoice->voided_by = auth()->id();
-        $invoice->voided_at = now();
-        $invoice->void_reason = $reason;
-        $invoice->save();
+        if (SalesReceipt::query()->where('sales_invoice_id', $invoice->id)->where('status', 'posted')->exists()) {
+            throw ApiException::make('SALES_INVOICE_HAS_RECEIPT', 'Void posted receipts before voiding this invoice.', 422);
+        }
+        if (SalesReturn::query()->where('sales_invoice_id', $invoice->id)->where('status', 'posted')->exists()) {
+            throw ApiException::make('SALES_INVOICE_HAS_RETURN', 'Void posted returns before voiding this invoice.', 422);
+        }
 
-        return $invoice->refresh()->load('lines', 'customer');
+        return DB::connection('tenant')->transaction(function () use ($invoice, $reason) {
+            $invoice->load('lines', 'proformaInvoice');
+            $journalIds = $this->voidEffectService->voidJournalsForSource('sales_invoice', (int) $invoice->id, $reason);
+            $movementIds = $this->voidEffectService->voidStockMovementsForSource('sales_invoice', (int) $invoice->id, $reason);
+            $this->reverseDepositAllocations($invoice, $reason);
+            $this->restoreSourceProgress($invoice);
+
+            $invoice->status = 'void';
+            $invoice->voided_by = auth()->id();
+            $invoice->voided_at = now();
+            $invoice->void_reason = $reason;
+            $invoice->save();
+
+            $this->auditSales($this->auditLogService, 'sales_invoice.voided', 'sales', $invoice, 'invoice_number', [
+                'reason' => $reason,
+                'voided_journal_ids' => $journalIds,
+                'reversed_stock_movement_ids' => $movementIds,
+            ]);
+
+            return $invoice->refresh()->load('lines', 'customer');
+        });
     }
 
     public function applyAvailableDownPayment(SalesInvoice $invoice): ?JournalEntry
@@ -433,6 +460,58 @@ class SalesInvoiceService
             $invoice->proformaInvoice->converted_by = auth()->id();
             $invoice->proformaInvoice->converted_at = now();
             $invoice->proformaInvoice->save();
+        }
+    }
+
+    private function restoreSourceProgress(SalesInvoice $invoice): void
+    {
+        foreach ($invoice->lines as $line) {
+            if ($line->sales_order_line_id && ($orderLine = SalesOrderLine::query()->lockForUpdate()->find($line->sales_order_line_id))) {
+                $orderLine->invoiced_quantity = max(0, (float) $orderLine->invoiced_quantity - (float) $line->quantity);
+                $orderLine->save();
+            }
+            if ($line->delivery_order_line_id && ($deliveryLine = DeliveryOrderLine::query()->lockForUpdate()->find($line->delivery_order_line_id))) {
+                $deliveryLine->invoiced_quantity = max(0, (float) $deliveryLine->invoiced_quantity - (float) $line->quantity);
+                $deliveryLine->save();
+            }
+        }
+
+        if ($invoice->proformaInvoice && $invoice->proformaInvoice->status === 'converted') {
+            $invoice->proformaInvoice->status = 'accepted';
+            $invoice->proformaInvoice->save();
+        }
+    }
+
+    private function reverseDepositAllocations(SalesInvoice $invoice, string $reason): void
+    {
+        $allocations = CustomerDepositAllocation::query()
+            ->where('sales_invoice_id', $invoice->id)
+            ->where('status', 'posted')
+            ->get();
+
+        foreach ($allocations as $allocation) {
+            $deposit = CustomerDeposit::query()->lockForUpdate()->find($allocation->customer_deposit_id);
+            if ($deposit) {
+                $deposit->allocated_amount = max(0, (float) $deposit->allocated_amount - (float) $allocation->allocated_amount);
+                $deposit->remaining_amount = (float) $deposit->remaining_amount + (float) $allocation->allocated_amount;
+                $deposit->status = 'posted';
+                $deposit->save();
+            }
+            $this->voidEffectService->voidJournalById((int) $allocation->journal_entry_id, $reason);
+            $allocation->status = 'void';
+            $allocation->voided_by = auth()->id();
+            $allocation->voided_at = now();
+            $allocation->void_reason = $reason;
+            $allocation->save();
+        }
+    }
+
+    private function guardVoidDate(string $date): void
+    {
+        $check = $this->dateGuardService->check($date, 'void', 'sales');
+        if ($check->denied()) {
+            $arr = $check->toArray();
+            throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']);
         }
     }
 

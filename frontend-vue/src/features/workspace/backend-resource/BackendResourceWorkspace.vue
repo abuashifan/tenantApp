@@ -2,11 +2,13 @@
 import { computed, ref, watch } from 'vue'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import VoidTransactionDialog from '@/components/dialog/VoidTransactionDialog.vue'
 import WorkspaceListPage from '@/components/workspace/WorkspaceListPage.vue'
 import BackendResourceForm from './BackendResourceForm.vue'
 import { listBackendResource, type BackendResourceRow } from './backendResource.service'
 import { makeBackendResourceConfig, resourceCapability } from './backendResource.config'
 import { backendResourceFormConfigs } from './backendResource.form.config'
+import { runBackendResourceAction, extractLaravelErrors } from './backendResourceForm.service'
 import { findSidebarMenuItem } from '@/navigation/sidebar'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
@@ -24,6 +26,9 @@ const startDate = ref('')
 const endDate = ref('')
 const status = ref('')
 const selectedIds = ref<string[]>([])
+const bulkVoidOpen = ref(false)
+const bulkVoidLoading = ref(false)
+const operationNotice = ref<string | null>(null)
 const filterGuidance = computed(() => {
   if (capability.value?.requiredDateFilter === 'range' && (!startDate.value || !endDate.value)) {
     return 'Select a start date and end date to load this report.'
@@ -124,6 +129,35 @@ function closeSecondaryAfterSave(tabId?: string) {
   tabs.closeSecondaryTab(config.value.primaryTabId, tabId)
 }
 
+function openBulkAction(payload: { key: string; selectedIds: string[] }) {
+  if (payload.key !== 'void' || payload.selectedIds.length === 0) return
+  bulkVoidOpen.value = true
+  operationNotice.value = null
+}
+
+async function confirmBulkVoid(payload: { reason: string }) {
+  if (!formConfig.value) return
+  bulkVoidLoading.value = true
+  const failures: string[] = []
+  let successCount = 0
+  for (const id of selectedIds.value) {
+    try {
+      await runBackendResourceAction(formConfig.value.endpoint, id, 'void', 'patch', { reason: payload.reason })
+      successCount += 1
+    } catch (reason) {
+      failures.push(`${id}: ${extractLaravelErrors(reason).messages.join(', ')}`)
+    }
+  }
+  await load()
+  if (failures.length === 0) {
+    selectedIds.value = []
+    bulkVoidOpen.value = false
+  }
+  operationNotice.value = `${successCount} transaction(s) voided; ${failures.length} failed.`
+  error.value = failures.join(' | ') || null
+  bulkVoidLoading.value = false
+}
+
 watch(
   () => menuItem.value?.href,
   () => {
@@ -153,8 +187,10 @@ watch(
     @date-change="({ startDate: from, endDate: to }) => { startDate = from; endDate = to; load() }"
     @status-change="status = $event"
     @action-click="(payload) => payload.key === 'create' ? openCreate() : openRowTab(payload.key, payload.row)"
+    @bulk-action-click="openBulkAction"
   >
     <template #before-table>
+      <div v-if="operationNotice" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700">{{ operationNotice }}</div>
       <div v-if="filterGuidance" class="rounded-2xl border border-slate-200 bg-slate-50/40 px-5 py-4 text-sm font-semibold text-slate-600">
         {{ filterGuidance }}
       </div>
@@ -191,4 +227,11 @@ watch(
       </div>
     </template>
   </WorkspaceListPage>
+  <VoidTransactionDialog
+    :open="bulkVoidOpen"
+    :loading="bulkVoidLoading"
+    :transaction-number="`${selectedIds.length} selected ${formConfig?.title ?? 'transaction'} record(s)`"
+    @close="bulkVoidOpen = false"
+    @confirm="confirmBulkVoid"
+  />
 </template>

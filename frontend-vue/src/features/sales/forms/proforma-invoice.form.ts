@@ -41,8 +41,15 @@ export const proformaInvoiceFormConfig: TransactionFormConfig<ProformaInvoiceVal
     view: 'sales.proformas.view',
     create: 'sales.proformas.create',
     edit: 'sales.proformas.edit',
+    issue: 'sales.proformas.issue',
+    accept: 'sales.proformas.issue',
+    cancel: 'sales.proformas.cancel',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'issue', label: 'Issue', permission: 'sales.proformas.issue', whenStatusIn: ['draft'], variant: 'primary' },
+    { key: 'accept', label: 'Accept', permission: 'sales.proformas.issue', whenStatusIn: ['issued'], variant: 'primary' },
+    { key: 'cancel', label: 'Cancel', permission: 'sales.proformas.cancel', whenStatusIn: ['draft', 'issued'], variant: 'danger', requiresConfirm: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({

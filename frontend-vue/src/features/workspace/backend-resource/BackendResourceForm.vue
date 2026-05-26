@@ -4,6 +4,7 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import VoidTransactionDialog from '@/components/dialog/VoidTransactionDialog.vue'
 import FormActionBar from '@/components/form/FormActionBar.vue'
 import FormCheckbox from '@/components/form/FormCheckbox.vue'
 import FormDateInput from '@/components/form/FormDateInput.vue'
@@ -77,6 +78,8 @@ const error = ref<string | null>(null)
 const serverErrors = ref<string[]>([])
 const hydrating = ref(false)
 const loadedEntityId = ref<string | number | null>(null)
+const voidDialogOpen = ref(false)
+const pendingVoidAction = ref<FormActionConfig | null>(null)
 
 const readonly = computed(() => props.tab.mode === 'detail' || ['posted', 'void', 'voided', 'cancelled', 'closed', 'finalized'].includes(status.value))
 const title = computed(() => {
@@ -275,8 +278,13 @@ async function save(closeAfter = false) {
   }
 }
 
-async function runAction(action: FormActionConfig) {
+async function runAction(action: FormActionConfig, actionPayload?: Record<string, unknown>) {
   if (!props.tab.entityId) return
+  if (action.key === 'void' && !actionPayload) {
+    pendingVoidAction.value = action
+    voidDialogOpen.value = true
+    return
+  }
   if (isJournal.value && action.key === 'post' && !journalBalanced.value) {
     serverErrors.value = ['Journal total debit and credit must be balanced before posting.']
     return
@@ -289,15 +297,20 @@ async function runAction(action: FormActionConfig) {
       props.tab.entityId,
       action.endpointSuffix,
       action.method ?? 'patch',
-      action.payload ?? {},
+      actionPayload ?? action.payload ?? {},
     )
     await loadEntity()
     emit('saved')
+    voidDialogOpen.value = false
   } catch (reason) {
     serverErrors.value = extractLaravelErrors(reason).messages
   } finally {
     actionLoading.value = null
   }
+}
+
+function confirmVoid(payload: { reason: string }) {
+  if (pendingVoidAction.value) void runAction(pendingVoidAction.value, payload)
 }
 
 function close() {
@@ -475,5 +488,12 @@ function close() {
         :entity-name="inventoryEntityName"
       />
     </form>
+    <VoidTransactionDialog
+      :open="voidDialogOpen"
+      :loading="actionLoading === 'void'"
+      :transaction-number="String(numberText)"
+      @close="voidDialogOpen = false"
+      @confirm="confirmVoid"
+    />
   </FormPageShell>
 </template>

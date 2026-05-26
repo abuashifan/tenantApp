@@ -13,6 +13,8 @@ use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Purchase\Concerns\HandlesPurchaseDocuments;
 use App\Services\Tenant\TenantContext;
 use App\Services\Transactions\TransactionDateGuardService;
+use App\Services\Transactions\TransactionVoidEffectService;
+use App\Services\Audit\AuditLogService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +27,8 @@ class VendorDepositService
         private readonly TenantContext $tenantContext,
         private readonly DocumentNumberService $documentNumberService,
         private readonly TransactionDateGuardService $dateGuardService,
+        private readonly TransactionVoidEffectService $voidEffectService,
+        private readonly ?AuditLogService $auditLogService = null,
     ) {
     }
 
@@ -102,13 +106,29 @@ class VendorDepositService
 
     public function void(VendorDeposit $deposit, ?string $reason = null): VendorDeposit
     {
-        if ((float) $deposit->allocated_amount > 0) throw ApiException::make('VENDOR_DEPOSIT_HAS_ALLOCATION', 'Allocated deposit cannot be voided.', 422);
-        $deposit->status = 'void';
-        $deposit->voided_by = auth()->id();
-        $deposit->voided_at = now();
-        $deposit->void_reason = $reason;
-        $deposit->save();
-        return $deposit->refresh();
+        if ($deposit->status === 'void') throw ApiException::make('VENDOR_DEPOSIT_ALREADY_VOID', 'Vendor deposit already void.', 422);
+        $reason = $this->voidEffectService->requireReason($reason);
+        $this->guardDate((string) $deposit->deposit_date, 'void');
+        return DB::connection('tenant')->transaction(function () use ($deposit, $reason) {
+            $journalIds = $this->voidEffectService->voidJournalsForSource('vendor_deposit', (int) $deposit->id, $reason);
+            $allocations = VendorDepositAllocation::query()->where('vendor_deposit_id', $deposit->id)->where('status', 'posted')->get();
+            foreach ($allocations as $allocation) {
+                $bill = VendorBill::query()->lockForUpdate()->find($allocation->vendor_bill_id);
+                if ($bill && $bill->status !== 'void') {
+                    $bill->paid_amount = max(0, (float) $bill->paid_amount - (float) $allocation->allocated_amount);
+                    $bill->applied_vendor_deposit_amount = max(0, (float) $bill->applied_vendor_deposit_amount - (float) $allocation->allocated_amount);
+                    $bill->balance_due = min((float) $bill->grand_total, (float) $bill->balance_due + (float) $allocation->allocated_amount);
+                    $bill->status = $bill->paid_amount > 0 ? 'partially_paid' : 'posted';
+                    $bill->save();
+                }
+                $journalId = $this->voidEffectService->voidJournalById((int) $allocation->journal_entry_id, $reason);
+                if ($journalId) $journalIds[] = $journalId;
+                $allocation->status = 'void'; $allocation->voided_by = auth()->id(); $allocation->voided_at = now(); $allocation->void_reason = $reason; $allocation->save();
+            }
+            $deposit->status = 'void'; $deposit->voided_by = auth()->id(); $deposit->voided_at = now(); $deposit->void_reason = $reason; $deposit->save();
+            $this->auditPurchase($this->auditLogService, 'vendor_deposit.voided', $deposit, 'deposit_number', ['reason' => $reason, 'voided_journal_ids' => array_values(array_unique($journalIds)), 'voided_allocation_ids' => $allocations->pluck('id')->all()]);
+            return $deposit->refresh();
+        });
     }
 
     public function refund(VendorDeposit $deposit, float $amount, ?string $reason = null): VendorDeposit
@@ -188,9 +208,9 @@ class VendorDepositService
         return (int) $mapping->account_id;
     }
 
-    private function guardDate(string $date): void
+    private function guardDate(string $date, string $action = 'post'): void
     {
-        $check = $this->dateGuardService->check($date, 'post', 'purchase');
+        $check = $this->dateGuardService->check($date, $action, 'purchase');
         if ($check->denied()) {
             $arr = $check->toArray();
             throw ApiException::make((string) $arr['code'], (string) $arr['message'], 422, (array) $arr['reasons'], (array) $arr['meta']);

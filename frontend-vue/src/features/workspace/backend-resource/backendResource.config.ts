@@ -16,6 +16,7 @@ type ResourceCapability = {
   dateFilter?: boolean
   statusFilter?: boolean
   requiredDateFilter?: 'range' | 'as-of'
+  voidPermission?: string
 }
 
 const capabilities: Record<string, ResourceCapability> = {
@@ -57,14 +58,14 @@ const capabilities: Record<string, ResourceCapability> = {
   '/purchase/ap/aging': { kind: 'report', dateFilter: true },
   '/purchase/ap/reconciliation': { kind: 'report', dateFilter: true },
   '/cash-bank/accounts': { kind: 'master-data' },
-  '/cash-bank/cash-receipts': { kind: 'document', createPermission: 'cash_bank.create', hasDetail: true, dateFilter: true, statusFilter: true },
-  '/cash-bank/cash-payments': { kind: 'document', createPermission: 'cash_bank.create', hasDetail: true, dateFilter: true, statusFilter: true },
-  '/cash-bank/bank-transfers': { kind: 'document', createPermission: 'cash_bank.transfer', hasDetail: true, dateFilter: true, statusFilter: true },
+  '/cash-bank/cash-receipts': { kind: 'document', createPermission: 'cash_bank.create', hasDetail: true, dateFilter: true, statusFilter: true, voidPermission: 'cash_bank.void' },
+  '/cash-bank/cash-payments': { kind: 'document', createPermission: 'cash_bank.create', hasDetail: true, dateFilter: true, statusFilter: true, voidPermission: 'cash_bank.void' },
+  '/cash-bank/bank-transfers': { kind: 'document', createPermission: 'cash_bank.transfer', hasDetail: true, dateFilter: true, statusFilter: true, voidPermission: 'cash_bank.void' },
   '/cash-bank/bank-reconciliations': { kind: 'document', createPermission: 'cash_bank.create', editPermission: 'cash_bank.edit', hasDetail: true, dateFilter: true, statusFilter: true },
   '/inventory/stock-balances': { kind: 'inventory' },
-  '/inventory/stock-movements': { kind: 'inventory', createPermission: 'inventory.movements.create', hasDetail: true, dateFilter: true, statusFilter: true },
-  '/inventory/stock-adjustments': { kind: 'inventory', createPermission: 'inventory.adjustments.create', editPermission: 'inventory.adjustments.edit', hasDetail: true, dateFilter: true, statusFilter: true },
-  '/inventory/stock-opnames': { kind: 'inventory', createPermission: 'inventory.opname.create', editPermission: 'inventory.opname.edit', hasDetail: true, dateFilter: true, statusFilter: true },
+  '/inventory/stock-movements': { kind: 'inventory', createPermission: 'inventory.movements.create', hasDetail: true, dateFilter: true, statusFilter: true, voidPermission: 'inventory.movements.void' },
+  '/inventory/stock-adjustments': { kind: 'inventory', createPermission: 'inventory.adjustments.create', editPermission: 'inventory.adjustments.edit', hasDetail: true, dateFilter: true, statusFilter: true, voidPermission: 'inventory.adjustments.void' },
+  '/inventory/stock-opnames': { kind: 'inventory', createPermission: 'inventory.opname.create', editPermission: 'inventory.opname.edit', hasDetail: true, dateFilter: true, statusFilter: true, voidPermission: 'inventory.opname.finalize' },
   '/inventory/valuation': { kind: 'inventory' },
   '/inventory/reports/stock-balances': { kind: 'inventory' },
   '/inventory/reports/stock-movements': { kind: 'inventory', dateFilter: true },
@@ -194,11 +195,15 @@ export function makeBackendResourceConfig(item: SidebarMenuItem): WorkspaceListC
       : undefined,
     columns: columnsFor(capability.kind),
     rowKey: 'id',
-    selectable: false,
+    selectable: Boolean(capability.voidPermission),
+    globalActions: capability.voidPermission
+      ? [{ key: 'void', label: 'Bulk Void', variant: 'danger', permission: capability.voidPermission }]
+      : undefined,
     permissions: {
       view: item.permission,
       create: capability.createPermission,
       edit: capability.editPermission,
+      void: capability.voidPermission,
     },
     rowActions,
     emptyTitle: `No ${item.label.toLowerCase()}`,

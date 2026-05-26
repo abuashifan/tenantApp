@@ -27,6 +27,12 @@ class VendorPaymentTest extends PurchaseTestCase
 
         $this->assertSame(1, DB::connection('tenant')->table('journal_entries')->where('source_type', 'vendor_payment')->count());
         $this->assertSame(100.0, (float) DB::connection('tenant')->table('vendor_bills')->where('id', $bill['id'])->value('paid_amount'));
+
+        $this->patchJson('/api/purchase/payments/'.$payment['id'].'/void', ['reason' => 'Incorrect payment'], $ctx['headers'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'void');
+        $this->assertSame('void', DB::connection('tenant')->table('journal_entries')->where('source_type', 'vendor_payment')->value('status'));
+        $this->assertSame(0.0, (float) DB::connection('tenant')->table('vendor_bills')->where('id', $bill['id'])->value('paid_amount'));
     }
 
     public function test_prevent_overpayment(): void

@@ -56,7 +56,11 @@ export const salesInvoiceFormConfig: TransactionFormConfig<SalesInvoiceValues> =
     { key: 'sales-order', label: 'From Sales Order' },
     { key: 'delivery-order', label: 'From Delivery Order' },
   ],
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'approve', label: 'Approve', permission: 'sales.invoices.approve', whenStatusIn: ['draft'] },
+    { key: 'post', label: 'Post', permission: 'sales.invoices.post', whenStatusIn: ['draft', 'approved'], variant: 'primary', requiresConfirm: true },
+    { key: 'void', label: 'Void', permission: 'sales.invoices.void', whenStatusIn: ['draft', 'approved', 'posted', 'partially_paid', 'paid'], variant: 'danger', requiresReason: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'sales', priceField: 'unit_price' },
   validationSchema: z.object({

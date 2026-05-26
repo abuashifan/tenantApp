@@ -175,6 +175,9 @@ class StockAdjustmentService
     public function void(StockAdjustment $adjustment, ?string $reason = null): StockAdjustment
     {
         if ($adjustment->status === 'void') return $adjustment;
+        $reason = trim((string) $reason);
+        if ($reason === '') throw ApiException::make('VALIDATION_ERROR', 'Void reason is required.', 422, ['reason' => ['Void reason is required.']]);
+        $this->movementValidation->validatePeriodNotLocked((string) $adjustment->adjustment_date);
 
         return DB::connection('tenant')->transaction(function () use ($adjustment, $reason) {
             if ($adjustment->status === 'posted') {
@@ -201,6 +204,7 @@ class StockAdjustmentService
                 'record_type' => 'stock_adjustment',
                 'record_id' => $adjustment->id,
                 'record_number' => $adjustment->adjustment_number,
+                'metadata' => ['reason' => $reason],
             ], tenant: true);
 
             return $adjustment->refresh()->load('stockMovement');
@@ -338,4 +342,3 @@ class StockAdjustmentService
         return $adjustment->stock_movement_id ? [(int) $adjustment->stock_movement_id] : [];
     }
 }
-

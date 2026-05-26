@@ -55,7 +55,11 @@ export const vendorBillFormConfig: TransactionFormConfig<VendorBillValues> = {
     { key: 'purchase-order', label: 'From Purchase Order' },
     { key: 'goods-receipt', label: 'From Goods Receipt' },
   ],
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'approve', label: 'Approve', permission: 'purchase.bills.approve', whenStatusIn: ['draft'] },
+    { key: 'post', label: 'Post', permission: 'purchase.bills.post', whenStatusIn: ['draft', 'approved'], variant: 'primary', requiresConfirm: true },
+    { key: 'void', label: 'Void', permission: 'purchase.bills.void', whenStatusIn: ['draft', 'approved', 'posted', 'partially_paid', 'paid'], variant: 'danger', requiresReason: true },
+  ],
   hasLines: true,
   lineProduct: { priceMode: 'purchase', priceField: 'unit_price' },
   validationSchema: z.object({

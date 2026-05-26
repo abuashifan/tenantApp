@@ -33,7 +33,10 @@ export const salesReceiptFormConfig: TransactionFormConfig<SalesReceiptValues> =
     post: 'sales.receipts.post',
     void: 'sales.receipts.void',
   },
-  actions: [{ key: 'save', label: 'Save' }],
+  actions: [
+    { key: 'post', label: 'Post', permission: 'sales.receipts.post', whenStatusIn: ['draft'], variant: 'primary', requiresConfirm: true },
+    { key: 'void', label: 'Void', permission: 'sales.receipts.void', whenStatusIn: ['posted'], variant: 'danger', requiresReason: true },
+  ],
   hasLines: false,
   validationSchema: z.object({
     receipt_date: z.string().min(1),
@@ -54,4 +57,3 @@ export const salesReceiptFormConfig: TransactionFormConfig<SalesReceiptValues> =
     }
   },
 }
-
