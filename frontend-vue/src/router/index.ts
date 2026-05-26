@@ -76,6 +76,23 @@ const router = createRouter({
           },
         },
         {
+          path: 'accounting/fiscal-closing',
+          name: 'fiscal-closing',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['fiscal_year.view'],
+            apiEndpoint: '/accounting/fiscal-year/status',
+            primaryTabId: '/accounting/fiscal-closing',
+            primaryTabLabel: 'Fiscal Closing',
+            primaryTabClosable: true,
+          },
+        },
+        {
+          path: 'accounting/period-locks',
+          name: 'period-locks',
+          redirect: '/accounting/fiscal-closing',
+        },
+        {
           path: 'reports/general-ledger',
           name: 'general-ledger',
           component: () => import('@/pages/workspace/RouteIntent.vue'),

@@ -71,7 +71,7 @@ export const sidebarMenuGroups: SidebarMenuGroup[] = [
     icon: ClipboardList,
     items: [
       item('accounting', 'journals', 'Journal Entries', '/accounting/journals', '/journals', 'journal.view', true),
-      item('accounting', 'period-locks', 'Period Locks', '/accounting/period-locks', '/accounting/period-locks/status', 'fiscal_year.view'),
+      item('accounting', 'fiscal-closing', 'Fiscal Closing', '/accounting/fiscal-closing', '/accounting/fiscal-year/status', 'fiscal_year.view', true),
     ],
   },
   {

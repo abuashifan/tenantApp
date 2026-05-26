@@ -3,6 +3,7 @@ import type { Component } from 'vue'
 import DashboardWorkspaceContent from '@/pages/dashboard/DashboardWorkspaceContent.vue'
 import JournalWorkspaceContent from '@/pages/accounting/journals/JournalWorkspaceContent.vue'
 import ChartOfAccountsWorkspaceContent from '@/pages/accounting/chart-of-accounts/ChartOfAccountsWorkspaceContent.vue'
+import FiscalClosingWorkspace from '@/pages/accounting/fiscal-closing/FiscalClosingWorkspace.vue'
 import TrialBalanceWorkspaceContent from '@/pages/accounting/trial-balance/TrialBalanceWorkspaceContent.vue'
 import GeneralLedgerWorkspaceContent from '@/pages/reports/general-ledger/GeneralLedgerWorkspaceContent.vue'
 import FinancialStatementWorkspace from '@/features/reports/financial-statements/FinancialStatementWorkspace.vue'
@@ -43,6 +44,7 @@ export const workspaceRegistry: Record<string, Component> = {
   '/dashboard': DashboardWorkspaceContent,
   '/accounting/journals': JournalWorkspaceContent,
   '/accounting/chart-of-accounts': ChartOfAccountsWorkspaceContent,
+  '/accounting/fiscal-closing': FiscalClosingWorkspace,
   '/accounting/trial-balance': TrialBalanceWorkspaceContent,
   '/reports/general-ledger': GeneralLedgerWorkspaceContent,
   '/reports/profit-loss': FinancialStatementWorkspace,

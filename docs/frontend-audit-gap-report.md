@@ -89,8 +89,8 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 ## 5. Backend Endpoint Not Connected to Frontend
 
 ### Accounting
-- [ ] Endpoint fiscal closing checklist/close/reopen belum punya wizard final Vue khusus.
-- [ ] Endpoint period-lock update belum punya form final (hanya route placeholder).
+- [x] Fiscal Closing + Period Locking workspace Vue aktif di `/accounting/fiscal-closing`: status fiscal year, checklist, preview, close/reopen, dan update period lock memakai endpoint backend existing. Detail: `docs/point-4-fiscal-closing-period-locking-workspace.md`.
+- [x] Endpoint period-lock update tidak lagi hanya placeholder; menu Accounting mengarah ke workspace Fiscal Closing yang memuat panel Period Lock.
 
 ### Sales
 - [x] Action status (`approve/post/void/issue/ship/deliver`) pada workspace form Sales aktif telah terhubung ke service action dengan permission/status gating; Bulk Void memakai endpoint void per dokumen dengan alasan dan ringkasan hasil.
@@ -114,8 +114,8 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 
 ## 6. Frontend Pages Missing
 
-- [ ] Buat page final Fiscal Closing Wizard (`/accounting/fiscal-closing`) di frontend Vue.
-- [ ] Buat page final Period Locks management.
+- [x] Buat page final Fiscal Closing Wizard (`/accounting/fiscal-closing`) di frontend Vue.
+- [x] Buat page final Period Locks management di workspace Fiscal Closing.
 - [ ] Buat page list+form final Contacts, Units, Product Categories, Products, Warehouses, Departments, Projects (bukan hanya generic placeholder).
 - [ ] Buat page final Sales docs end-to-end di Vue (quotation/order/DO/proforma/invoice/billing/receipt/deposit/return).
 - [ ] Buat page final Purchase docs end-to-end di Vue.
