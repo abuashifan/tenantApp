@@ -182,7 +182,7 @@ export const sidebarMenuGroups: SidebarMenuGroup[] = [
     label: 'Settings',
     icon: Settings,
     items: [
-      item('settings', 'company-settings', 'Company Settings', '/settings/company', '/settings/company', 'settings.company.view'),
+      item('settings', 'company-settings', 'Company Settings', '/settings/company', '/settings/company', 'settings.company.view', true),
       item('settings', 'settings-account-mappings', 'Account Mappings', '/settings/account-mappings', '/master-data/account-mappings', 'settings.company.view'),
     ],
   },

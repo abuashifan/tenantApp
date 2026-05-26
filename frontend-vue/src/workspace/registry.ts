@@ -44,6 +44,7 @@ import ApReconciliationPage from '@/pages/purchase/ApReconciliationPage.vue'
 import VendorLedgerDetailPage from '@/pages/purchase/ap/VendorLedgerDetailPage.vue'
 import BillLedgerDetailPage from '@/pages/purchase/ap/BillLedgerDetailPage.vue'
 import CashBankAccountStatementPage from '@/pages/cash-bank/CashBankAccountStatementPage.vue'
+import CompanySettingsPage from '@/pages/settings/CompanySettingsPage.vue'
 
 export const workspaceRegistry: Record<string, Component> = {
   '/dashboard': DashboardWorkspaceContent,
@@ -98,6 +99,9 @@ export const workspaceRegistry: Record<string, Component> = {
 
   // Cash & Bank
   '/cash-bank/account-statement': CashBankAccountStatementPage,
+
+  // Settings
+  '/settings/company': CompanySettingsPage,
 }
 
 export const defaultWorkspaceComponent = BackendResourceWorkspaceContent

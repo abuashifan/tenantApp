@@ -134,6 +134,18 @@ const router = createRouter({
           },
         },
         {
+          path: 'settings/company',
+          name: 'company-settings',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['settings.company.view'],
+            apiEndpoint: '/settings/company',
+            primaryTabId: '/settings/company',
+            primaryTabLabel: 'Company Settings',
+            primaryTabClosable: true,
+          },
+        },
+        {
           path: 'reports/profit-loss',
           name: 'profit-loss',
           component: () => import('@/pages/workspace/RouteIntent.vue'),

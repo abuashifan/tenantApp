@@ -35,9 +35,9 @@ Sumber utama: `backend/routes/api.php`.
 | Company/Tenant | GET | /api/companies | CompanyController@index | auth:sanctum | Connected |
 | Company/Tenant | POST | /api/companies/select | CompanyController@select | auth:sanctum | Connected |
 | Tenant Context | GET | /api/tenant-context-test | TenantContextTestController | company.access | Needs verification (no dedicated page) |
-| Company Settings | GET | /api/settings/company | CompanySettingController@show | settings.company.view | Page placeholder/generic |
-| Company Settings | PATCH | /api/settings/company/accounting | CompanySettingController@updateAccounting | settings.company.edit | Page placeholder/generic |
-| Company Settings | PATCH | /api/settings/company/modules | CompanySettingController@updateModules | settings.company.edit | Page placeholder/generic |
+| Company Settings | GET | /api/settings/company | CompanySettingController@show | settings.company.view | Connected (dedicated edit surface) |
+| Company Settings | PATCH | /api/settings/company/accounting | CompanySettingController@updateAccounting | settings.company.edit | Connected |
+| Company Settings | PATCH | /api/settings/company/modules | CompanySettingController@updateModules | settings.company.edit | Connected |
 | Accounting | GET | /api/accounting/fiscal-year/status | FiscalYearStatusController | dashboard.view | Connected (dashboard) |
 | Accounting | GET/POST/PATCH | /api/accounting/fiscal-years/* | FiscalYearClosingController | fiscal_year.* | Frontend page missing (wizard final) |
 | Accounting | GET/PATCH | /api/accounting/period-locks* | PeriodLockController | fiscal_year.* | Route ada, UI final missing |
@@ -71,6 +71,7 @@ Catatan: route list API sesudah integrasi Access Management menampilkan **307** 
 |---|---|---|---|---|---|
 | Auth | /login | `frontend-vue/src/pages/auth/LoginPage.vue` | Menu N/A | Connected | Done |
 | Auth | /select-company | `frontend-vue/src/pages/auth/SelectCompanyPage.vue` | Menu N/A | Connected | Done |
+| Settings | /settings/company | `frontend-vue/src/pages/settings/CompanySettingsPage.vue` | Sidebar ada | `/settings/company`, `/settings/company/accounting`, `/settings/company/modules` | Connected |
 | Dashboard | /dashboard | RouteIntent + DashboardWorkspaceContent | Sidebar ada | API `/accounting/fiscal-year/status`, `/reports/financial-summary` | Connected (real summary data) |
 | Accounting | /accounting/journals | RouteIntent -> Journal workspace | Sidebar ada | API `/journals` | Partial |
 | Accounting | /accounting/chart-of-accounts | RouteIntent | Sidebar ada | `/master-data/chart-of-accounts` | Partial |
@@ -116,6 +117,9 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 - [x] Gap route `/api/access/*` ditutup: rute terdaftar di bawah `auth:sanctum`, `company.access`, dan permission action.
 - [x] Sidebar Vue permission-aware dan halaman company users, roles, permission matrix, invitations, serta access audit tersambung ke API aktif.
 - [x] Route metadata dan workspace registry Vue diperbaiki untuk semua halaman Access Management aktif, sehingga sidebar/direct route membuka halaman Access yang benar di existing workspace/virtual tab flow, bukan fallback generic backend resource. Dokumentasi detail: `docs/phase-18-access-api-vue-navigation.md`.
+
+### Settings
+- [x] Company Settings memiliki edit surface Vue dedicated di `/settings/company`: info company read-only, accounting settings, module toggles, separate save, permission-aware read-only state, serta validasi API. Detail: `docs/point-9-company-settings-edit-surface.md`.
 
 ## 6. Frontend Pages Missing
 
