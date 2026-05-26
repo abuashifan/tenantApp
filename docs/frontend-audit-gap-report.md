@@ -71,7 +71,7 @@ Catatan: route list API sesudah integrasi Access Management menampilkan **307** 
 |---|---|---|---|---|---|
 | Auth | /login | `frontend-vue/src/pages/auth/LoginPage.vue` | Menu N/A | Connected | Done |
 | Auth | /select-company | `frontend-vue/src/pages/auth/SelectCompanyPage.vue` | Menu N/A | Connected | Done |
-| Dashboard | /dashboard | RouteIntent + DashboardWorkspaceContent | Sidebar ada | API `/accounting/fiscal-year/status` | Partial |
+| Dashboard | /dashboard | RouteIntent + DashboardWorkspaceContent | Sidebar ada | API `/accounting/fiscal-year/status`, `/reports/financial-summary` | Connected (real summary data) |
 | Accounting | /accounting/journals | RouteIntent -> Journal workspace | Sidebar ada | API `/journals` | Partial |
 | Accounting | /accounting/chart-of-accounts | RouteIntent | Sidebar ada | `/master-data/chart-of-accounts` | Partial |
 | Reports | /reports/general-ledger | RouteIntent | Sidebar ada | `/reports/general-ledger` | Partial |
@@ -92,6 +92,7 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 ### Accounting
 - [x] Fiscal Closing + Period Locking workspace Vue aktif di `/accounting/fiscal-closing`: status fiscal year, checklist, preview, close/reopen, dan update period lock memakai endpoint backend existing. Detail: `docs/point-4-fiscal-closing-period-locking-workspace.md`.
 - [x] Endpoint period-lock update tidak lagi hanya placeholder; menu Accounting mengarah ke workspace Fiscal Closing yang memuat panel Period Lock.
+- [x] Dashboard Vue tidak lagi memakai metric `Rp 0` placeholder; `/dashboard` menampilkan status fiscal year dan financial summary API nyata secara permission-aware. Detail: `docs/point-7-dashboard-real-api-data.md`.
 
 ### Sales
 - [x] Action status (`approve/post/void/issue/ship/deliver`) pada workspace form Sales aktif telah terhubung ke service action dengan permission/status gating; Bulk Void memakai endpoint void per dokumen dengan alasan dan ringkasan hasil.
@@ -132,7 +133,7 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 | Accounting Mock | `frontend-vue/src/stores/mockAccountingDataStore.ts` | mock balances/ledger temporary | `/reports/*`, `/journals*` | Hapus dependensi mock, ganti query API + caching store |
 | Routing Placeholder | `frontend-vue/src/router/index.ts` | `placeholderWorkspaceRoutes` | sesuai menu endpoint | Ganti route placeholder jadi page/module final |
 | Sidebar Status | `frontend-vue/src/navigation/sidebar.ts` | flag `implemented=false` masif | sesuai modul | Track progress per menu dan enforce status real |
-| Dashboard | `frontend-vue/src/pages/dashboard/DashboardWorkspaceContent.vue` | TODO dashboard final | `/accounting/fiscal-year/status` + KPI endpoint tambahan | Implement widget + data pipeline |
+| Dashboard | `frontend-vue/src/pages/dashboard/DashboardWorkspaceContent.vue` | Tidak ada placeholder metric; memakai fiscal status + financial summary API | `/accounting/fiscal-year/status`, `/reports/financial-summary` | Fixed (Point 7) |
 | App shell | `frontend-vue/src/layouts/AppShell.vue` | TODO design spec | N/A | Finalisasi layout production |
 
 ## 8. Sidebar/Menu Mismatch
@@ -239,4 +240,4 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 - Total page Next.js legacy (`frontend/app/**/page.tsx`): **81**.
 - Estimasi endpoint belum terhubung penuh ke UI final: **>= 180** (karena mayoritas modul non-accounting core masih placeholder).
 - Estimasi page/module missing atau belum final di Vue: **>= 40 route/menu kerja**.
-- Temuan dummy/temporary utama: **5 area kunci** (mock store, placeholder routes, sidebar implementation flags, dashboard TODO, appshell TODO).
+- Temuan dummy/temporary utama tersisa: **4 area kunci** (mock store, placeholder routes, sidebar implementation flags, appshell TODO).
