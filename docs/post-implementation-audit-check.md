@@ -60,9 +60,9 @@ Working tree after audit:
 
 ## 1. Executive Summary
 
-- Overall status: **Done for point 8, partial overall due to remaining point 10 follow-up**. Points 3, 4, 5, 6, 7, 8, and 9 are implemented and wired to backend routes. Point 10 remains substantially implemented with a follow-up around stale workspace data on company switch.
-- Biggest remaining risks: high-volume generic list endpoints now return paginated payloads to the frontend, but pagination/search/sort currently happens after service-level collection retrieval; active company switching updates headers for new requests but does not centrally clear all open workspace data/tabs.
-- Recommended next action: move high-volume generic list filtering/pagination into query builders as needed, and add company-switch workspace cache invalidation.
+- Overall status: **Done for points 3-10**. Points 3, 4, 5, 6, 7, 8, 9, and 10 are implemented and wired to backend routes/frontend flows.
+- Biggest remaining risk: high-volume generic list endpoints now return paginated payloads to the frontend, but pagination/search/sort currently happens after service-level collection retrieval.
+- Recommended next action: move high-volume generic list filtering/pagination into query builders as needed and complete manual browser QA for permission-specific menus.
 
 ## 2. Scope Checked
 
@@ -88,7 +88,7 @@ Working tree after audit:
 | 7 | Dashboard Real API Data | Done | Dashboard uses fiscal-year status and financial-summary services; no hardcoded Rp 0 dashboard cards found in production page. | Dashboard is intentionally minimal, not analytics-heavy. | P2 |
 | 8 | Workspace Pagination/Filter/Sort | Done | Generic resource capability map now marks supported master data, sales, purchase, cash bank, and inventory list resources as `paginationMode: 'remote'`; backend list controllers return paginated metadata when `page/per_page` is sent. | Follow-up: move high-volume pagination/search/sort from collection-level helper into database query builders where needed. | P2 |
 | 9 | Company Settings Edit Surface | Done | Settings routes exist; `CompanySettingsPage.vue` loads, edits accounting/modules, preserves 422 field errors, and is permission-aware. `php artisan test --filter=Settings` passed. | Manual save success/error UX verification recommended. | P2 |
-| 10 | API Interceptor/Error Handling | Partial | `api.ts` centralizes headers and normalizes 401/403/404/409/422/500/network; interceptor clears invalid auth and avoids 403 logout. `npm run build` passed. | Company switch does not centrally close/refresh existing workspace tabs/data. | P1 |
+| 10 | API Interceptor/Error Handling | Done | `api.ts` centralizes headers and normalizes 401/403/404/409/422/500/network; interceptor clears invalid auth and avoids 403 logout. Company switch clears tenant-scoped workspace state, remounts cached workspace content, clears old permissions, refetches new permissions, and redirects to Dashboard. | Manual browser verification of multi-company switch still recommended. | P2 |
 
 ## 4. Point 3 Detailed Audit - Access API + Vue Navigation
 
@@ -359,11 +359,15 @@ Response shape remains compatible with existing consumers because rejected error
 ### Findings
 
 - New requests after company change will read current `activeCompanyId`, so the header updates correctly.
-- Existing workspace rows/tabs are not centrally cleared on company switch. This is a residual tenant-data visibility risk if a user switches companies while workspace state remains open.
+- Company switch now clears tenant-scoped workspace state through `invalidateTenantScopedState()`.
+- `workspaceTabsStore.resetForCompanySwitch()` closes non-dashboard tabs, clears secondary tabs, clears draft/list state, and increments `tenantStateVersion`.
+- `WorkspaceContentArea` includes `tenantStateVersion` in the `KeepAlive` component key so cached workspace rows/forms cannot be reused after company switch.
+- `SelectCompanyPage.vue` confirms before switching when workspace state exists, uses a stronger warning when dirty tabs are present, clears old permissions before fetching new company permissions, and redirects to `/dashboard`.
+- Access Management store state is cleared on switch so old users, roles, and permission matrix data cannot remain visible.
 
 ### Verdict
 
-Partial.
+Done, with manual browser QA still recommended for real multi-company role combinations.
 
 ## 12. Cross-Module Regression Checklist
 
@@ -427,11 +431,12 @@ Notes:
 
 ### P1 - Important
 
-- [ ] Point 10: clear or refresh open workspace tabs/list data when company changes to avoid stale tenant data remaining visible after switch.
+- [ ] None found.
 
 ### P2 - Follow-up
 
 - [ ] Point 8: move high-volume generic endpoint pagination/search/sort from collection-level `listResponse()` helper into database query builders when needed.
+- [ ] Point 10: manually verify company switch with two real companies and different role permissions in browser devtools.
 - [ ] Manually verify permission-based sidebar visibility in browser with users that have and do not have access permissions.
 - [ ] Manually verify 401/403/422 UX with real API responses in browser.
 - [ ] Review legacy TODO markers in transaction dependency checkers and account mapping service when those modules become next scope.
@@ -439,8 +444,8 @@ Notes:
 
 ## 16. Recommended Next Codex Prompts
 
-- [ ] Prompt 1: "Configure remote pagination/filter/sort capability map for generic backend workspaces and verify against Laravel list endpoints."
-- [ ] Prompt 2: "Add company switch workspace cache invalidation so open tabs and list rows cannot display stale tenant data."
+- [ ] Prompt 1: "Move high-volume generic endpoint pagination/search/sort from collection-level helpers into database query builders."
+- [ ] Prompt 2: "Run manual-style company switch QA with users that have different permissions per company."
 - [ ] Prompt 3: "Run manual-style auth/permission error-state audit for 401, 403, and 422 across access, settings, and transaction forms."
 
 ## 17. Final Checklist

@@ -12,7 +12,7 @@ const activeComponent = computed(() => {
   const routeRegistryKey = route.meta.workspaceRegistryKey as string | undefined
   return workspaceRegistry[tabs.activePrimaryTabId] ?? (routeRegistryKey ? workspaceRegistry[routeRegistryKey] : undefined) ?? defaultWorkspaceComponent
 })
-const activeKey = computed(() => `primary:${tabs.activePrimaryTabId}`)
+const activeKey = computed(() => `tenant:${tabs.tenantStateVersion}:primary:${tabs.activePrimaryTabId}`)
 </script>
 
 <template>

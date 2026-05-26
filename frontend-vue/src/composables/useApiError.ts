@@ -1,22 +1,11 @@
-import type { AxiosError } from 'axios'
+import { normalizeApiError } from '@/services/api'
+import type { ApiError as NormalizedApiError } from '@/types/api'
 
-export type ApiError = {
-  message: string
-  status?: number
-}
+export type ApiError = NormalizedApiError
 
 export function useApiError() {
   function normalize(error: unknown): ApiError {
-    const axiosError = error as AxiosError<unknown> | undefined
-
-    const status = axiosError?.response?.status
-    const message =
-      axiosError?.message ??
-      (typeof error === 'object' && error !== null && 'message' in error
-        ? String((error as { message: unknown }).message)
-        : 'Unknown error')
-
-    return { message, status }
+    return normalizeApiError(error)
   }
 
   return { normalize }

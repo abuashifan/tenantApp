@@ -8,11 +8,12 @@ export type ApiResponse<T> = {
 }
 
 export type ApiError = {
-  status: number
+  status?: number
   code?: string
   message: string
   errors?: ValidationErrors
   meta?: Record<string, unknown>
+  raw?: unknown
 }
 
 export type PaginatedResponse<T> = {

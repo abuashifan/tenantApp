@@ -1,8 +1,7 @@
-import type { AxiosError } from 'axios'
-
 import { api } from '@/api'
-import type { ApiErrorResponse, ApiResponse } from '@/services/apiResponse'
+import type { ApiResponse } from '@/services/apiResponse'
 import { unwrap } from '@/services/apiResponse'
+import { normalizeApiError } from '@/services/api'
 
 export type LaravelFieldErrors = Record<string, string[]>
 
@@ -23,22 +22,18 @@ export function normalizePayload(payload: unknown): Record<string, unknown> {
 }
 
 export function extractLaravelErrors(error: unknown) {
-  const axiosError = error as AxiosError<ApiErrorResponse>
-  const payload = axiosError.response?.data
+  const normalized = normalizeApiError(error)
   const fieldErrors: LaravelFieldErrors = {}
   const messages: string[] = []
 
-  if (payload?.message) messages.push(payload.message)
-  const errors = payload?.errors
-  if (errors && !Array.isArray(errors) && typeof errors === 'object') {
-    for (const [key, value] of Object.entries(errors)) {
-      const list = Array.isArray(value) ? value.map(String) : [String(value)]
-      fieldErrors[key] = list
-      messages.push(...list)
+  if (normalized.message) messages.push(normalized.message)
+  if (normalized.errors) {
+    for (const [key, value] of Object.entries(normalized.errors)) {
+      fieldErrors[key] = value
+      messages.push(...value)
     }
   }
 
-  if (messages.length === 0 && error instanceof Error) messages.push(error.message)
   if (messages.length === 0) messages.push('Request failed.')
 
   return { fieldErrors, messages }
@@ -54,7 +49,11 @@ export async function createBackendResource(endpoint: string, payload: Record<st
   return normalizePayload(unwrap(response.data))
 }
 
-export async function updateBackendResource(endpoint: string, id: string | number, payload: Record<string, unknown>) {
+export async function updateBackendResource(
+  endpoint: string,
+  id: string | number,
+  payload: Record<string, unknown>,
+) {
   const response = await api.patch<ApiResponse<unknown>>(`${endpoint}/${id}`, payload)
   return normalizePayload(unwrap(response.data))
 }
@@ -67,8 +66,9 @@ export async function runBackendResourceAction(
   payload: Record<string, unknown> = {},
 ) {
   const url = `${endpoint}/${id}/${suffix}`
-  const response = method === 'post'
-    ? await api.post<ApiResponse<unknown>>(url, payload)
-    : await api.patch<ApiResponse<unknown>>(url, payload)
+  const response =
+    method === 'post'
+      ? await api.post<ApiResponse<unknown>>(url, payload)
+      : await api.patch<ApiResponse<unknown>>(url, payload)
   return normalizePayload(unwrap(response.data))
 }

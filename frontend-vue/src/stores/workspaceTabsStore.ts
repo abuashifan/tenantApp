@@ -30,6 +30,7 @@ export type WorkspaceTabsState = {
   activeSecondaryTabIdByPrimaryId: Record<string, string>
   draftStateBySecondaryTabId: Record<string, unknown>
   listStateByPrimaryTabId: Record<string, unknown>
+  tenantStateVersion: number
 }
 
 function now() {
@@ -85,6 +86,7 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
     activeSecondaryTabIdByPrimaryId: {},
     draftStateBySecondaryTabId: {},
     listStateByPrimaryTabId: {},
+    tenantStateVersion: 0,
   }),
 
   getters: {
@@ -99,6 +101,19 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
     },
     secondaryTabsForActive(state) {
       return state.secondaryTabsByPrimaryId[state.activePrimaryTabId] ?? []
+    },
+    hasTenantScopedState(state) {
+      const hasTenantTabs = state.primaryTabs.some((tab) => tab.id !== DASHBOARD_PRIMARY_ID)
+      return (
+        hasTenantTabs ||
+        Object.keys(state.secondaryTabsByPrimaryId).some((key) => key !== DASHBOARD_PRIMARY_ID) ||
+        Object.keys(state.activeSecondaryTabIdByPrimaryId).length > 0 ||
+        Object.keys(state.draftStateBySecondaryTabId).length > 0 ||
+        Object.keys(state.listStateByPrimaryTabId).length > 0
+      )
+    },
+    hasDirtySecondaryTabs(state) {
+      return Object.values(state.secondaryTabsByPrimaryId).some((tabs) => tabs.some((tab) => tab.dirty))
     },
   },
 
@@ -317,6 +332,13 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
       this.activeSecondaryTabIdByPrimaryId = {}
       this.draftStateBySecondaryTabId = {}
       this.listStateByPrimaryTabId = {}
+    },
+
+    resetForCompanySwitch() {
+      // Workspace rows, selected IDs, forms, and drafts are tenant-scoped.
+      // Bump the version so KeepAlive remounts cached workspace components.
+      this.closeAllTabs()
+      this.tenantStateVersion += 1
     },
   },
 })

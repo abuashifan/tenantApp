@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import { useRouter } from 'vue-router'
 
-import { ArrowLeftRight, Building2, Check, ChevronRight, LogOut, Star, Users } from 'lucide-vue-next'
+import {
+  ArrowLeftRight,
+  Building2,
+  Check,
+  ChevronRight,
+  LogOut,
+  Star,
+  Users,
+} from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import SearchInput from '@/components/ui/SearchInput.vue'
@@ -12,10 +19,11 @@ import { useCompanyStore } from '@/stores/companyStore'
 import { useAuthStore } from '@/stores/authStore'
 import { fetchCompanies, fetchPermissions, selectCompany } from '@/services/companyApi'
 import { logout } from '@/services/authApi'
+import { normalizeApiError } from '@/services/api'
+import { invalidateTenantScopedState } from '@/services/tenantWorkspaceState'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 const router = useRouter()
-const route = useRoute()
 const companyStore = useCompanyStore()
 const authStore = useAuthStore()
 const workspaceTabs = useWorkspaceTabsStore()
@@ -28,14 +36,15 @@ const loggingOut = ref(false)
 const errorMessage = ref('')
 
 const filtered = computed(() =>
-  companyStore.companies.filter((c) => c.name.toLowerCase().includes(query.value.trim().toLowerCase())),
+  companyStore.companies.filter((c) =>
+    c.name.toLowerCase().includes(query.value.trim().toLowerCase()),
+  ),
 )
 
 function errorText(e: unknown, fallback: string) {
-  if (axios.isAxiosError(e)) {
-    return e.response?.data?.message ?? (e.response ? e.message : 'Network Error: tidak bisa terhubung ke API.')
-  }
-  return (e as Error)?.message ?? fallback
+  const error = normalizeApiError(e)
+  if (error.status === 0) return 'Network Error: tidak bisa terhubung ke API.'
+  return error.message || fallback
 }
 
 onMounted(async () => {
@@ -60,7 +69,7 @@ async function handleLogout() {
   try {
     await logout()
   } catch (e) {
-    if (axios.isAxiosError(e) && e.response?.status !== 401) {
+    if (normalizeApiError(e).status !== 401) {
       errorMessage.value = errorText(e, 'Logout gagal.')
       loggingOut.value = false
       return
@@ -69,13 +78,22 @@ async function handleLogout() {
 
   authStore.clearAuth()
   companyStore.clearActiveCompany()
-  workspaceTabs.closeAllTabs()
+  invalidateTenantScopedState()
   loggingOut.value = false
   await router.push('/login')
 }
 
 async function handleContinue() {
   if (selected.value == null) return
+
+  const isSwitchingCompany =
+    companyStore.activeCompanyId != null && String(companyStore.activeCompanyId) !== String(selected.value)
+  if (isSwitchingCompany && workspaceTabs.hasTenantScopedState) {
+    const message = workspaceTabs.hasDirtySecondaryTabs
+      ? 'Switching company will close the current workspace and discard unsaved changes. Continue?'
+      : 'Switching company will close the current workspace and refresh tenant data. Continue?'
+    if (!window.confirm(message)) return
+  }
 
   selecting.value = true
   errorMessage.value = ''
@@ -87,12 +105,13 @@ async function handleContinue() {
 
     companyStore.setCompanies(merged)
     companyStore.setActiveCompany(activeCompany.id)
+    authStore.setPermissions([])
+    invalidateTenantScopedState()
 
     const permissionData = await fetchPermissions()
     authStore.setPermissions(permissionData.permissions)
 
-    const next = (route.query.next as string | undefined) ?? '/dashboard'
-    await router.push(next)
+    await router.push('/dashboard')
   } catch (e) {
     errorMessage.value = errorText(e, 'Gagal memilih company.')
   } finally {
@@ -116,7 +135,9 @@ async function handleContinue() {
           <div>
             <p class="text-sm font-semibold text-[#1d81af]">Phase 1 · Company Access</p>
             <h1 class="text-2xl font-bold tracking-tight text-slate-950">Pilih perusahaan aktif</h1>
-            <p class="mt-1 text-sm text-slate-500">Satu user bisa memiliki akses ke banyak company.</p>
+            <p class="mt-1 text-sm text-slate-500">
+              Satu user bisa memiliki akses ke banyak company.
+            </p>
           </div>
         </div>
 
@@ -138,15 +159,24 @@ async function handleContinue() {
             </ToneBadge>
           </div>
 
-          <p v-if="errorMessage" class="mb-4 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+          <p
+            v-if="errorMessage"
+            class="mb-4 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700"
+          >
             {{ errorMessage }}
           </p>
 
-          <div v-if="loading" class="rounded-[1.75rem] border border-slate-200 bg-white p-5 text-sm text-slate-500">
+          <div
+            v-if="loading"
+            class="rounded-[1.75rem] border border-slate-200 bg-white p-5 text-sm text-slate-500"
+          >
             Mengambil daftar company...
           </div>
 
-          <div v-else-if="filtered.length === 0" class="rounded-[1.75rem] border border-slate-200 bg-white p-5 text-sm text-slate-500">
+          <div
+            v-else-if="filtered.length === 0"
+            class="rounded-[1.75rem] border border-slate-200 bg-white p-5 text-sm text-slate-500"
+          >
             Tidak ada company yang cocok.
           </div>
 
@@ -185,7 +215,9 @@ async function handleContinue() {
                     </div>
                     <div class="mt-2 flex flex-wrap gap-2">
                       <ToneBadge tone="green">{{ company.user_role ?? 'Member' }}</ToneBadge>
-                      <ToneBadge tone="blue">{{ company.tenant_database?.status ?? company.status ?? 'active' }}</ToneBadge>
+                      <ToneBadge tone="blue">{{
+                        company.tenant_database?.status ?? company.status ?? 'active'
+                      }}</ToneBadge>
                     </div>
                   </div>
                 </div>
@@ -195,7 +227,9 @@ async function handleContinue() {
                 />
               </div>
 
-              <div class="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-xs text-slate-500">
+              <div
+                class="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-xs text-slate-500"
+              >
                 <Users class="h-4 w-4 text-slate-400" />
                 Company code: {{ company.code ?? '-' }}
               </div>
@@ -206,7 +240,13 @@ async function handleContinue() {
             <p class="text-sm text-slate-500">
               Company terpilih akan menjadi konteks tenant untuk dashboard dan seluruh modul ERP.
             </p>
-            <BaseButton class="sm:min-w-44" size="lg" :disabled="selected == null" :loading="selecting" @click="handleContinue">
+            <BaseButton
+              class="sm:min-w-44"
+              size="lg"
+              :disabled="selected == null"
+              :loading="selecting"
+              @click="handleContinue"
+            >
               Lanjutkan
               <ChevronRight class="h-4 w-4" />
             </BaseButton>

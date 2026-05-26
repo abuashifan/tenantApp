@@ -40,6 +40,17 @@ export const useAccessStore = defineStore('access', {
   },
 
   actions: {
+    clearTenantState() {
+      this.companyUsers = []
+      this.selectedCompanyUser = null
+      this.roles = []
+      this.permissionCatalog = null
+      this.effectivePermissions = null
+      this.overrides = []
+      this.loading = false
+      this.saving = false
+      this.error = ''
+    },
     async fetchCompanyUsers() {
       this.companyUsers = await fetchCompanyUsers()
       if (!this.selectedCompanyUser && this.companyUsers[0]) this.selectedCompanyUser = this.companyUsers[0]
