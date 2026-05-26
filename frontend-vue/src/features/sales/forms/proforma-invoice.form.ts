@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { proformaInvoicesService } from '@/services/sales/documents.service'
 import { wrapResourceService } from '@/services/transaction/transactionApi'
+import { salesSourceConversions } from '@/services/transaction/sourceConversions.service'
 import type { TransactionFormConfig } from '@/composables/transaction-form/types'
 
 export type ProformaInvoiceValues = {
@@ -49,6 +50,18 @@ export const proformaInvoiceFormConfig: TransactionFormConfig<ProformaInvoiceVal
     { key: 'issue', label: 'Issue', permission: 'sales.proformas.issue', whenStatusIn: ['draft'], variant: 'primary' },
     { key: 'accept', label: 'Accept', permission: 'sales.proformas.issue', whenStatusIn: ['issued'], variant: 'primary' },
     { key: 'cancel', label: 'Cancel', permission: 'sales.proformas.cancel', whenStatusIn: ['draft', 'issued'], variant: 'danger', requiresConfirm: true },
+  ],
+  conversions: [
+    {
+      key: 'invoice_from_proforma',
+      label: 'Convert to Sales Invoice',
+      permission: 'sales.invoices.create',
+      whenStatusIn: ['accepted', 'issued'],
+      targetPrimaryTabId: '/sales/invoices',
+      targetLabel: 'Sales Invoices',
+      targetNumberField: 'invoice_number',
+      execute: salesSourceConversions.invoiceFromProforma,
+    },
   ],
   hasLines: true,
   lineProduct: { priceMode: 'sales', priceField: 'unit_price' },

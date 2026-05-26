@@ -7,8 +7,11 @@ use App\Models\Tenant\AccountMapping;
 use App\Models\Tenant\ChartOfAccount;
 use App\Models\Tenant\CustomerDeposit;
 use App\Models\Tenant\CustomerDepositAllocation;
+use App\Models\Tenant\DeliveryOrderLine;
 use App\Models\Tenant\JournalEntry;
 use App\Models\Tenant\SalesInvoice;
+use App\Models\Tenant\SalesOrder;
+use App\Models\Tenant\SalesOrderLine;
 use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -33,7 +36,10 @@ class SalesInvoiceTest extends SalesTestCase
         $this->postJson('/api/sales/invoices/from-sales-order/'.$order['id'], [], $ctx['headers'])
             ->assertStatus(201)
             ->assertJsonPath('data.sales_order_id', $order['id'])
-            ->assertJsonPath('data.source_type', 'sales_order');
+            ->assertJsonPath('data.source_type', 'sales_order')
+            ->assertJsonPath('data.source_number', $order['order_number'])
+            ->assertJsonPath('data.lines.0.source_line_type', 'sales_order_line')
+            ->assertJsonPath('data.lines.0.source_line_id', $order['lines'][0]['id']);
     }
 
     public function test_create_invoice_from_delivery_order(): void
@@ -41,12 +47,60 @@ class SalesInvoiceTest extends SalesTestCase
         $ctx = $this->setUpTenant();
         $order = $this->createSalesOrder($ctx);
         $delivery = $this->postJson('/api/sales/delivery-orders/from-sales-order/'.$order['id'], [], $ctx['headers'])->assertStatus(201)->json('data');
+        $this->patchJson('/api/sales/delivery-orders/'.$delivery['id'].'/deliver', [], $ctx['headers'])->assertStatus(200);
 
         $this->postJson('/api/sales/invoices/from-delivery-order/'.$delivery['id'], [], $ctx['headers'])
             ->assertStatus(201)
             ->assertJsonPath('data.delivery_order_id', $delivery['id'])
             ->assertJsonPath('data.source_type', 'delivery_order')
+            ->assertJsonPath('data.lines.0.source_line_type', 'delivery_order_line')
+            ->assertJsonPath('data.lines.0.source_line_id', $delivery['lines'][0]['id'])
             ->assertJsonPath('data.grand_total', 222);
+    }
+
+    public function test_invoice_from_sales_order_uses_remaining_quantity_and_updates_status_when_posted(): void
+    {
+        $ctx = $this->setUpTenant();
+        $this->seedMappings();
+        $order = $this->createSalesOrder($ctx, [
+            'is_taxable' => false,
+            'lines' => [['description' => 'Service', 'quantity' => 5, 'unit_price' => 100]],
+        ]);
+        $first = $this->postJson('/api/sales/invoices/from-sales-order/'.$order['id'], [
+            'lines' => [['sales_order_line_id' => $order['lines'][0]['id'], 'quantity' => 2]],
+        ], $ctx['headers'])->assertStatus(201)->json('data');
+        $this->patchJson('/api/sales/invoices/'.$first['id'].'/post', [], $ctx['headers'])->assertStatus(200);
+
+        $this->assertSame(2.0, (float) SalesOrderLine::query()->findOrFail($order['lines'][0]['id'])->invoiced_quantity);
+        $this->assertSame('partially_invoiced', SalesOrder::query()->findOrFail($order['id'])->status);
+        $this->postJson('/api/sales/invoices/from-sales-order/'.$order['id'], [], $ctx['headers'])
+            ->assertStatus(201)
+            ->assertJsonPath('data.lines.0.quantity', 3);
+        $this->postJson('/api/sales/invoices/from-sales-order/'.$order['id'], [
+            'lines' => [['sales_order_line_id' => $order['lines'][0]['id'], 'quantity' => 4]],
+        ], $ctx['headers'])->assertStatus(422);
+    }
+
+    public function test_invoice_from_delivery_order_uses_delivered_remaining_and_resolves_order_price(): void
+    {
+        $ctx = $this->setUpTenant();
+        $this->seedMappings();
+        $order = $this->createSalesOrder($ctx, [
+            'is_taxable' => false,
+            'lines' => [['description' => 'Goods', 'quantity' => 4, 'unit_price' => 125, 'discount_type' => 'fixed_amount', 'discount_value' => 5]],
+        ]);
+        $delivery = $this->postJson('/api/sales/delivery-orders/from-sales-order/'.$order['id'], [], $ctx['headers'])->assertStatus(201)->json('data');
+        $this->patchJson('/api/sales/delivery-orders/'.$delivery['id'].'/deliver', [], $ctx['headers'])->assertStatus(200);
+        $first = $this->postJson('/api/sales/invoices/from-delivery-order/'.$delivery['id'], [
+            'lines' => [['delivery_order_line_id' => $delivery['lines'][0]['id'], 'quantity' => 1]],
+        ], $ctx['headers'])->assertStatus(201)->assertJsonPath('data.lines.0.unit_price', 125)->json('data');
+        $this->patchJson('/api/sales/invoices/'.$first['id'].'/post', [], $ctx['headers'])->assertStatus(200);
+
+        $this->assertSame(1.0, (float) DeliveryOrderLine::query()->findOrFail($delivery['lines'][0]['id'])->invoiced_quantity);
+        $this->postJson('/api/sales/invoices/from-delivery-order/'.$delivery['id'], [], $ctx['headers'])
+            ->assertStatus(201)
+            ->assertJsonPath('data.lines.0.quantity', 3)
+            ->assertJsonPath('data.lines.0.unit_price', 125);
     }
 
     public function test_create_invoice_from_proforma(): void

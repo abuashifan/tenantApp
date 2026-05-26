@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { purchaseOrdersService } from '@/services/purchase/documents.service'
 import { wrapResourceService } from '@/services/transaction/transactionApi'
+import { purchaseSourceConversions } from '@/services/transaction/sourceConversions.service'
 import type { TransactionFormConfig } from '@/composables/transaction-form/types'
 
 export type PurchaseOrderValues = {
@@ -53,6 +54,28 @@ export const purchaseOrderFormConfig: TransactionFormConfig<PurchaseOrderValues>
     { key: 'confirm', label: 'Confirm', permission: 'purchase.orders.confirm', whenStatusIn: ['approved'], variant: 'primary' },
     { key: 'close', label: 'Close', permission: 'purchase.orders.confirm', whenStatusIn: ['confirmed'] },
     { key: 'cancel', label: 'Cancel', permission: 'purchase.orders.cancel', whenStatusIn: ['draft', 'approved', 'confirmed'], variant: 'danger', requiresConfirm: true },
+  ],
+  conversions: [
+    {
+      key: 'goods_receipt_from_purchase_order',
+      label: 'Convert to Goods Receipt',
+      permission: 'purchase.goods_receipts.create',
+      whenStatusIn: ['confirmed', 'partially_received'],
+      targetPrimaryTabId: '/purchase/goods-receipts',
+      targetLabel: 'Goods Receipts',
+      targetNumberField: 'receipt_number',
+      execute: purchaseSourceConversions.goodsReceiptFromPurchaseOrder,
+    },
+    {
+      key: 'bill_from_purchase_order',
+      label: 'Convert to Vendor Bill',
+      permission: 'purchase.bills.create',
+      whenStatusIn: ['confirmed', 'partially_received', 'received', 'partially_billed'],
+      targetPrimaryTabId: '/purchase/bills',
+      targetLabel: 'Vendor Bills',
+      targetNumberField: 'bill_number',
+      execute: purchaseSourceConversions.billFromPurchaseOrder,
+    },
   ],
   hasLines: true,
   lineProduct: { priceMode: 'purchase', priceField: 'unit_price' },

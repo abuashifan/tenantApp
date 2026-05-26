@@ -87,7 +87,10 @@ class SalesInvoiceService
             ]));
             $invoice->lines()->createMany($totals['lines']);
 
-            return $invoice->refresh()->load('lines', 'customer');
+            $invoice = $invoice->refresh()->load('lines', 'customer');
+            $this->auditSales($this->auditLogService, 'sales_invoice.created', 'sales', $invoice, 'invoice_number');
+
+            return $invoice;
         });
     }
 
@@ -124,7 +127,9 @@ class SalesInvoiceService
 
     public function createFromSalesOrder(SalesOrder $order, array $overrides = []): SalesInvoice
     {
+        $this->guardConvertibleSource($order->status, 'sales order');
         $order->loadMissing('lines');
+        $lines = $this->salesOrderInvoiceLines($order, (array) ($overrides['lines'] ?? []));
         $data = array_merge([
             'invoice_date' => now()->toDateString(),
             'customer_id' => $order->customer_id,
@@ -141,16 +146,8 @@ class SalesInvoiceService
             'source_id' => $order->id,
             'source_number' => $order->order_number,
             'source_revision' => $order->revision_no,
-            'lines' => $order->lines->map(fn ($line) => array_merge($line->only([
-                'product_id', 'product_code', 'description', 'quantity', 'unit_id', 'unit_price',
-                'discount_type', 'discount_value', 'tax_id', 'tax_rate', 'warehouse_id',
-                'department_id', 'project_id', 'sort_order', 'metadata',
-            ]), [
-                'sales_order_line_id' => $line->id,
-                'source_line_type' => 'sales_order_line',
-                'source_line_id' => $line->id,
-            ]))->toArray(),
-        ], $overrides);
+            'lines' => $lines,
+        ], $overrides, ['lines' => $lines]);
 
         if (! array_key_exists('applied_down_payment_amount', $data)) {
             $data['applied_down_payment_amount'] = min($this->availableDownPaymentForOrder($order), $this->previewGrandTotal($data));
@@ -161,7 +158,11 @@ class SalesInvoiceService
 
     public function createFromDeliveryOrder(DeliveryOrder $deliveryOrder, array $overrides = []): SalesInvoice
     {
+        if (! in_array($deliveryOrder->status, ['delivered', 'partially_invoiced'], true)) {
+            throw ApiException::make('DELIVERY_ORDER_NOT_DELIVERED', 'Only delivered delivery orders can be invoiced.', 422);
+        }
         $deliveryOrder->loadMissing('lines');
+        $lines = $this->deliveryOrderInvoiceLines($deliveryOrder, (array) ($overrides['lines'] ?? []));
         return $this->create(array_merge([
             'invoice_date' => now()->toDateString(),
             'customer_id' => $deliveryOrder->customer_id,
@@ -172,34 +173,15 @@ class SalesInvoiceService
             'source_id' => $deliveryOrder->id,
             'source_number' => $deliveryOrder->delivery_number,
             'source_revision' => $deliveryOrder->revision_no,
-            'lines' => $deliveryOrder->lines->map(function ($line) {
-                $orderLine = $line->sales_order_line_id ? SalesOrderLine::query()->find($line->sales_order_line_id) : null;
-
-                return [
-                    'sales_order_line_id' => $line->sales_order_line_id,
-                    'delivery_order_line_id' => $line->id,
-                    'product_id' => $line->product_id,
-                    'product_code' => $line->product_code,
-                    'description' => $line->description,
-                    'quantity' => $line->quantity,
-                    'unit_id' => $line->unit_id,
-                    'unit_price' => $orderLine?->unit_price ?? 0,
-                    'discount_type' => $orderLine?->discount_type,
-                    'discount_value' => $orderLine?->discount_value,
-                    'tax_rate' => $orderLine?->tax_rate,
-                    'warehouse_id' => $line->warehouse_id,
-                    'department_id' => $line->department_id,
-                    'project_id' => $line->project_id,
-                    'source_line_type' => 'delivery_order_line',
-                    'source_line_id' => $line->id,
-                    'sort_order' => $line->sort_order,
-                ];
-            })->toArray(),
-        ], $overrides));
+            'lines' => $lines,
+        ], $overrides, ['lines' => $lines]));
     }
 
     public function createFromProforma(ProformaInvoice $proforma, array $overrides = []): SalesInvoice
     {
+        if (in_array($proforma->status, ['converted', 'cancelled'], true)) {
+            throw ApiException::make('PROFORMA_NOT_CONVERTIBLE', 'Proforma invoice is not available for conversion.', 422);
+        }
         $proforma->loadMissing('lines');
         return $this->create(array_merge([
             'invoice_date' => now()->toDateString(),
@@ -257,6 +239,7 @@ class SalesInvoiceService
 
         return DB::connection('tenant')->transaction(function () use ($invoice, $appliedDownPaymentAmount) {
             $invoice->load('lines');
+            $this->validateSourceRemainingQuantities($invoice);
             if ($appliedDownPaymentAmount !== null) {
                 $invoice->applied_down_payment_amount = min($appliedDownPaymentAmount, (float) $invoice->grand_total);
             }
@@ -455,6 +438,8 @@ class SalesInvoiceService
             }
         }
 
+        $this->refreshInvoiceSourceStatuses($invoice);
+
         if ($invoice->proformaInvoice) {
             $invoice->proformaInvoice->status = 'converted';
             $invoice->proformaInvoice->converted_by = auth()->id();
@@ -475,6 +460,8 @@ class SalesInvoiceService
                 $deliveryLine->save();
             }
         }
+
+        $this->refreshInvoiceSourceStatuses($invoice);
 
         if ($invoice->proformaInvoice && $invoice->proformaInvoice->status === 'converted') {
             $invoice->proformaInvoice->status = 'accepted';
@@ -529,5 +516,139 @@ class SalesInvoiceService
         $totals = $this->calculationService->calculateDocument($lines, $data);
 
         return (float) $totals['grand_total'];
+    }
+
+    private function salesOrderInvoiceLines(SalesOrder $order, array $requestedLines): array
+    {
+        $requested = collect($requestedLines)->keyBy(fn (array $line) => (string) ($line['sales_order_line_id'] ?? $line['source_line_id'] ?? ''));
+        $lines = $order->lines->map(function ($line) use ($requested, $requestedLines): ?array {
+            $remaining = max(0, (float) $line->quantity - (float) $line->invoiced_quantity);
+            if ($remaining <= 0 || ($requestedLines !== [] && ! $requested->has((string) $line->id))) {
+                return null;
+            }
+            $quantity = $requestedLines === [] ? $remaining : (float) ($requested->get((string) $line->id)['quantity'] ?? 0);
+            if ($quantity <= 0 || $quantity > $remaining) {
+                throw ApiException::make('INVOICE_QUANTITY_EXCEEDS_REMAINING', 'Invoice quantity exceeds remaining sales order quantity.', 422);
+            }
+
+            return array_merge($line->only([
+                'product_id', 'product_code', 'description', 'unit_id', 'unit_price',
+                'discount_type', 'discount_value', 'tax_id', 'tax_rate', 'warehouse_id',
+                'department_id', 'project_id', 'sort_order', 'metadata',
+            ]), [
+                'quantity' => $quantity,
+                'sales_order_line_id' => $line->id,
+                'source_line_type' => 'sales_order_line',
+                'source_line_id' => $line->id,
+            ]);
+        })->filter()->values()->toArray();
+
+        if ($lines === []) {
+            throw ApiException::make('SALES_ORDER_ALREADY_INVOICED', 'Sales order has no remaining quantity to invoice.', 422);
+        }
+
+        return $lines;
+    }
+
+    private function deliveryOrderInvoiceLines(DeliveryOrder $deliveryOrder, array $requestedLines): array
+    {
+        $requested = collect($requestedLines)->keyBy(fn (array $line) => (string) ($line['delivery_order_line_id'] ?? $line['source_line_id'] ?? ''));
+        $lines = $deliveryOrder->lines->map(function ($line) use ($requested, $requestedLines): ?array {
+            $remaining = max(0, (float) $line->quantity - (float) $line->invoiced_quantity);
+            if ($remaining <= 0 || ($requestedLines !== [] && ! $requested->has((string) $line->id))) {
+                return null;
+            }
+            $quantity = $requestedLines === [] ? $remaining : (float) ($requested->get((string) $line->id)['quantity'] ?? 0);
+            if ($quantity <= 0 || $quantity > $remaining) {
+                throw ApiException::make('INVOICE_QUANTITY_EXCEEDS_REMAINING', 'Invoice quantity exceeds remaining delivered quantity.', 422);
+            }
+            $orderLine = $line->sales_order_line_id ? SalesOrderLine::query()->find($line->sales_order_line_id) : null;
+            if (! $orderLine) {
+                throw ApiException::make('DELIVERY_ORDER_PRICING_SOURCE_MISSING', 'Unable to resolve delivery line price from its sales order source.', 422);
+            }
+
+            return [
+                'sales_order_line_id' => $line->sales_order_line_id,
+                'delivery_order_line_id' => $line->id,
+                'product_id' => $line->product_id,
+                'product_code' => $line->product_code,
+                'description' => $line->description,
+                'quantity' => $quantity,
+                'unit_id' => $line->unit_id,
+                'unit_price' => $orderLine->unit_price,
+                'discount_type' => $orderLine->discount_type,
+                'discount_value' => $orderLine->discount_value,
+                'tax_id' => $orderLine->tax_id,
+                'tax_rate' => $orderLine->tax_rate,
+                'warehouse_id' => $line->warehouse_id,
+                'department_id' => $line->department_id,
+                'project_id' => $line->project_id,
+                'source_line_type' => 'delivery_order_line',
+                'source_line_id' => $line->id,
+                'sort_order' => $line->sort_order,
+            ];
+        })->filter()->values()->toArray();
+
+        if ($lines === []) {
+            throw ApiException::make('DELIVERY_ORDER_ALREADY_INVOICED', 'Delivery order has no remaining quantity to invoice.', 422);
+        }
+
+        return $lines;
+    }
+
+    private function validateSourceRemainingQuantities(SalesInvoice $invoice): void
+    {
+        foreach ($invoice->lines as $line) {
+            if ($line->sales_order_line_id) {
+                $source = SalesOrderLine::query()->lockForUpdate()->findOrFail($line->sales_order_line_id);
+                if ((float) $line->quantity > (float) $source->quantity - (float) $source->invoiced_quantity) {
+                    throw ApiException::make('INVOICE_QUANTITY_EXCEEDS_REMAINING', 'Invoice quantity exceeds remaining sales order quantity.', 422);
+                }
+            }
+            if ($line->delivery_order_line_id) {
+                $source = DeliveryOrderLine::query()->lockForUpdate()->findOrFail($line->delivery_order_line_id);
+                if ((float) $line->quantity > (float) $source->quantity - (float) $source->invoiced_quantity) {
+                    throw ApiException::make('INVOICE_QUANTITY_EXCEEDS_REMAINING', 'Invoice quantity exceeds remaining delivered quantity.', 422);
+                }
+            }
+        }
+        if ($invoice->proforma_invoice_id && ProformaInvoice::query()->lockForUpdate()->findOrFail($invoice->proforma_invoice_id)->status === 'converted') {
+            throw ApiException::make('PROFORMA_ALREADY_CONVERTED', 'Proforma invoice has already been converted.', 422);
+        }
+    }
+
+    private function refreshInvoiceSourceStatuses(SalesInvoice $invoice): void
+    {
+        if ($invoice->sales_order_id && ($order = SalesOrder::query()->with('lines')->find($invoice->sales_order_id))) {
+            $total = (float) $order->lines->sum('quantity');
+            $invoiced = (float) $order->lines->sum('invoiced_quantity');
+            if ($invoiced > 0) {
+                $order->status = $invoiced >= $total ? 'invoiced' : 'partially_invoiced';
+                $order->invoiced_amount = $order->lines->sum(fn ($line) => min((float) $line->invoiced_quantity, (float) $line->quantity) * (float) $line->unit_price);
+                $order->save();
+            } elseif (in_array($order->status, ['invoiced', 'partially_invoiced'], true)) {
+                $order->status = 'confirmed';
+                $order->invoiced_amount = 0;
+                $order->save();
+            }
+        }
+        if ($invoice->delivery_order_id && ($delivery = DeliveryOrder::query()->with('lines')->find($invoice->delivery_order_id))) {
+            $total = (float) $delivery->lines->sum('quantity');
+            $invoiced = (float) $delivery->lines->sum('invoiced_quantity');
+            if ($invoiced > 0) {
+                $delivery->status = $invoiced >= $total ? 'invoiced' : 'partially_invoiced';
+                $delivery->save();
+            } elseif (in_array($delivery->status, ['invoiced', 'partially_invoiced'], true)) {
+                $delivery->status = 'delivered';
+                $delivery->save();
+            }
+        }
+    }
+
+    private function guardConvertibleSource(string $status, string $source): void
+    {
+        if (in_array($status, ['cancelled', 'void', 'closed'], true)) {
+            throw ApiException::make('SOURCE_NOT_CONVERTIBLE', ucfirst($source).' is not available for conversion.', 422);
+        }
     }
 }

@@ -92,7 +92,7 @@ class PurchaseOrderService
 
     public function createFromPurchaseRequest(PurchaseRequest $request, array $overrides = []): PurchaseOrder
     {
-        if ($request->status === 'converted') throw ApiException::make('PURCHASE_REQUEST_ALREADY_CONVERTED', 'Purchase request already converted.', 422);
+        if (in_array($request->status, ['converted', 'cancelled', 'rejected'], true)) throw ApiException::make('PURCHASE_REQUEST_NOT_CONVERTIBLE', 'Purchase request is not available for conversion.', 422);
         if (empty($overrides['vendor_id'])) throw ApiException::make('VENDOR_REQUIRED', 'Vendor is required to convert purchase request.', 422);
         $request->loadMissing('lines');
         $order = $this->create(array_merge([

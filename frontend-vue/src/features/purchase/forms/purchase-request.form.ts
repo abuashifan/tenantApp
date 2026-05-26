@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { purchaseRequestsService } from '@/services/purchase/documents.service'
 import { wrapResourceService } from '@/services/transaction/transactionApi'
+import { purchaseSourceConversions } from '@/services/transaction/sourceConversions.service'
 import type { TransactionFormConfig } from '@/composables/transaction-form/types'
 
 export type PurchaseRequestValues = {
@@ -46,6 +47,22 @@ export const purchaseRequestFormConfig: TransactionFormConfig<PurchaseRequestVal
     { key: 'approve', label: 'Approve', permission: 'purchase.requests.approve', whenStatusIn: ['submitted'], variant: 'primary' },
     { key: 'reject', label: 'Reject', permission: 'purchase.requests.cancel', whenStatusIn: ['submitted'], variant: 'danger', requiresConfirm: true },
     { key: 'cancel', label: 'Cancel', permission: 'purchase.requests.cancel', whenStatusIn: ['draft', 'submitted', 'approved'], variant: 'danger', requiresConfirm: true },
+  ],
+  conversions: [
+    {
+      key: 'order_from_request',
+      label: 'Convert to Purchase Order',
+      permission: 'purchase.orders.convert',
+      whenStatusIn: ['approved'],
+      targetPrimaryTabId: '/purchase/orders',
+      targetLabel: 'Purchase Orders',
+      targetNumberField: 'order_number',
+      execute: purchaseSourceConversions.orderFromRequest,
+      buildPayload() {
+        const vendorId = window.prompt('Enter vendor ID for the purchase order')
+        return vendorId ? { vendor_id: vendorId } : null
+      },
+    },
   ],
   hasLines: true,
   lineProduct: { priceMode: 'purchase', priceField: 'estimated_unit_price', priceLabel: 'Estimated Unit Price' },

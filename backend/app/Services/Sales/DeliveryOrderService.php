@@ -61,13 +61,24 @@ class DeliveryOrderService
 
     public function createFromSalesOrder(SalesOrder $salesOrder, array $overrides = []): DeliveryOrder
     {
+        $this->guardConvertibleSource($salesOrder->status, 'sales order');
         $salesOrder->loadMissing('lines');
+        $requestedLines = (array) ($overrides['lines'] ?? []);
+        $requested = collect($requestedLines)->keyBy(fn (array $line) => (string) ($line['sales_order_line_id'] ?? $line['source_line_id'] ?? ''));
+        $lines = $salesOrder->lines->map(function ($line) use ($requested, $requestedLines): ?array {
+            $remaining = max(0, (float) $line->quantity - (float) $line->delivered_quantity);
+            if ($remaining <= 0 || ($requestedLines !== [] && ! $requested->has((string) $line->id))) return null;
+            $quantity = $requestedLines === [] ? $remaining : (float) ($requested->get((string) $line->id)['quantity'] ?? 0);
+            if ($quantity <= 0 || $quantity > $remaining) throw ApiException::make('DELIVERY_QUANTITY_EXCEEDS_REMAINING', 'Delivery quantity exceeds remaining sales order quantity.', 422);
+            return ['sales_order_line_id' => $line->id, 'product_id' => $line->product_id, 'product_code' => $line->product_code, 'description' => $line->description, 'quantity' => $quantity, 'unit_id' => $line->unit_id, 'warehouse_id' => $line->warehouse_id, 'department_id' => $line->department_id, 'project_id' => $line->project_id, 'source_line_type' => 'sales_order_line', 'source_line_id' => $line->id, 'sort_order' => $line->sort_order];
+        })->filter()->values()->toArray();
+        if ($lines === []) throw ApiException::make('SALES_ORDER_ALREADY_DELIVERED', 'Sales order has no remaining quantity to deliver.', 422);
         return $this->create(array_merge([
             'delivery_date' => now()->toDateString(), 'customer_id' => $salesOrder->customer_id, 'sales_order_id' => $salesOrder->id,
             'sales_order_number' => $salesOrder->order_number, 'shipping_address' => $salesOrder->shipping_address,
             'source_type' => 'sales_order', 'source_id' => $salesOrder->id, 'source_number' => $salesOrder->order_number, 'source_revision' => $salesOrder->revision_no,
-            'lines' => $salesOrder->lines->map(fn ($line) => ['sales_order_line_id' => $line->id, 'product_id' => $line->product_id, 'product_code' => $line->product_code, 'description' => $line->description, 'quantity' => max(0, (float) $line->quantity - (float) $line->delivered_quantity), 'unit_id' => $line->unit_id, 'warehouse_id' => $line->warehouse_id, 'department_id' => $line->department_id, 'project_id' => $line->project_id, 'source_line_type' => 'sales_order_line', 'source_line_id' => $line->id, 'sort_order' => $line->sort_order])->filter(fn ($line) => (float) $line['quantity'] > 0)->values()->toArray(),
-        ], $overrides));
+            'lines' => $lines,
+        ], $overrides, ['lines' => $lines]));
     }
 
     public function markReady(DeliveryOrder $deliveryOrder): DeliveryOrder { return $this->transition($deliveryOrder, 'ready', 'ready_by', 'ready_at', ['draft']); }
@@ -104,4 +115,5 @@ class DeliveryOrderService
     private function normalizeDeliveryLines(array $lines): array { return array_values(array_map(fn (array $line, int $i): array => ['sales_order_line_id' => $line['sales_order_line_id'] ?? null, 'product_id' => $line['product_id'] ?? null, 'product_code' => $line['product_code'] ?? null, 'description' => $line['description'], 'quantity' => (float) $line['quantity'], 'unit_id' => $line['unit_id'] ?? null, 'warehouse_id' => $line['warehouse_id'] ?? null, 'department_id' => $line['department_id'] ?? null, 'project_id' => $line['project_id'] ?? null, 'source_line_type' => $line['source_line_type'] ?? null, 'source_line_id' => $line['source_line_id'] ?? null, 'sort_order' => $line['sort_order'] ?? $i, 'metadata' => $line['metadata'] ?? null], $lines, array_keys($lines))); }
     private function validateRemainingQuantities(array $lines, ?DeliveryOrder $current = null): void { foreach ($lines as $line) { if (empty($line['sales_order_line_id'])) continue; $orderLine = SalesOrderLine::query()->findOrFail((int) $line['sales_order_line_id']); $currentQuantity = $current ? (float) $current->lines()->where('sales_order_line_id', $orderLine->id)->sum('quantity') : 0.0; if ((float) $line['quantity'] > (float) $orderLine->quantity - (float) $orderLine->delivered_quantity + $currentQuantity) throw ApiException::make('DELIVERY_QUANTITY_EXCEEDS_REMAINING', 'Delivery quantity exceeds remaining sales order quantity.', 422); } }
     private function transition(DeliveryOrder $deliveryOrder, string $status, string $userField, string $dateField, array $from): DeliveryOrder { if (! in_array($deliveryOrder->status, $from, true)) throw ApiException::make('INVALID_DELIVERY_ORDER_STATUS', 'Invalid delivery order status transition.', 422); $deliveryOrder->status = $status; $deliveryOrder->{$userField} = auth()->id(); $deliveryOrder->{$dateField} = now(); $deliveryOrder->save(); return $deliveryOrder->refresh()->load('lines', 'customer', 'salesOrder'); }
+    private function guardConvertibleSource(string $status, string $source): void { if (in_array($status, ['cancelled', 'void', 'closed'], true)) throw ApiException::make('SOURCE_NOT_CONVERTIBLE', ucfirst($source).' is not available for conversion.', 422); }
 }

@@ -112,7 +112,9 @@ class VendorBillService
 
     public function createFromPurchaseOrder(PurchaseOrder $order, array $overrides = []): VendorBill
     {
+        $this->guardConvertibleSource($order->status, 'purchase order');
         $order->loadMissing('lines');
+        $lines = $this->purchaseOrderBillLines($order, (array) ($overrides['lines'] ?? []));
         $data = array_merge([
             'bill_date' => now()->toDateString(),
             'vendor_id' => $order->vendor_id,
@@ -128,12 +130,8 @@ class VendorBillService
             'source_id' => $order->id,
             'source_number' => $order->order_number,
             'source_revision' => $order->revision_no,
-            'lines' => $order->lines->map(fn ($line) => array_merge($line->only(['product_id','product_code','description','quantity','unit_id','unit_price','discount_type','discount_value','tax_id','tax_rate','warehouse_id','department_id','project_id','expense_account_id','sort_order','metadata']), [
-                'purchase_order_line_id' => $line->id,
-                'source_line_type' => 'purchase_order_line',
-                'source_line_id' => $line->id,
-            ]))->toArray(),
-        ], $overrides);
+            'lines' => $lines,
+        ], $overrides, ['lines' => $lines]);
 
         if (! array_key_exists('applied_vendor_deposit_amount', $data)) {
             $data['applied_vendor_deposit_amount'] = min($this->depositService->calculateAvailableForPurchaseOrder($order), $this->previewGrandTotal($data));
@@ -144,7 +142,11 @@ class VendorBillService
 
     public function createFromGoodsReceipt(GoodsReceipt $goodsReceipt, array $overrides = []): VendorBill
     {
+        if (! in_array($goodsReceipt->status, ['received', 'partially_billed'], true)) {
+            throw ApiException::make('GOODS_RECEIPT_NOT_RECEIVED', 'Only received goods receipts can be billed.', 422);
+        }
         $goodsReceipt->loadMissing('lines');
+        $lines = $this->goodsReceiptBillLines($goodsReceipt, (array) ($overrides['lines'] ?? []));
         return $this->create(array_merge([
             'bill_date' => now()->toDateString(),
             'vendor_id' => $goodsReceipt->vendor_id,
@@ -154,30 +156,8 @@ class VendorBillService
             'source_id' => $goodsReceipt->id,
             'source_number' => $goodsReceipt->receipt_number,
             'source_revision' => $goodsReceipt->revision_no,
-            'lines' => $goodsReceipt->lines->map(function ($line) {
-                $orderLine = $line->purchase_order_line_id ? PurchaseOrderLine::query()->find($line->purchase_order_line_id) : null;
-                return [
-                    'purchase_order_line_id' => $line->purchase_order_line_id,
-                    'goods_receipt_line_id' => $line->id,
-                    'product_id' => $line->product_id,
-                    'product_code' => $line->product_code,
-                    'description' => $line->description,
-                    'quantity' => $line->quantity,
-                    'unit_id' => $line->unit_id,
-                    'unit_price' => $orderLine?->unit_price ?? 0,
-                    'discount_type' => $orderLine?->discount_type,
-                    'discount_value' => $orderLine?->discount_value,
-                    'tax_rate' => $orderLine?->tax_rate,
-                    'warehouse_id' => $line->warehouse_id,
-                    'department_id' => $line->department_id,
-                    'project_id' => $line->project_id,
-                    'expense_account_id' => $line->expense_account_id,
-                    'source_line_type' => 'goods_receipt_line',
-                    'source_line_id' => $line->id,
-                    'sort_order' => $line->sort_order,
-                ];
-            })->toArray(),
-        ], $overrides));
+            'lines' => $lines,
+        ], $overrides, ['lines' => $lines]));
     }
 
     public function approve(VendorBill $bill): VendorBill
@@ -194,6 +174,7 @@ class VendorBillService
 
         return DB::connection('tenant')->transaction(function () use ($bill, $appliedVendorDepositAmount) {
             $bill->load('lines');
+            $this->validateSourceRemainingQuantities($bill);
             if ($appliedVendorDepositAmount !== null) $bill->applied_vendor_deposit_amount = min($appliedVendorDepositAmount, (float) $bill->grand_total);
             $journal = $this->createBillJournal($bill);
             $bill->journal_entry_id = $journal->id;
@@ -254,6 +235,7 @@ class VendorBillService
                     $receiptLine->save();
                 }
             }
+            $this->refreshBillingSourceStatuses($bill);
             $bill->status = 'void'; $bill->voided_by = auth()->id(); $bill->voided_at = now(); $bill->void_reason = $reason; $bill->save();
             $this->auditPurchase($this->auditLogService, 'vendor_bill.voided', $bill, 'bill_number', ['reason' => $reason, 'voided_journal_ids' => $journalIds, 'reversed_stock_movement_ids' => $movementIds, 'voided_allocation_ids' => $allocations->pluck('id')->all()]);
             return $bill->refresh()->load('lines', 'vendor');
@@ -325,6 +307,7 @@ class VendorBillService
                 $receiptLine->save();
             }
         }
+        $this->refreshBillingSourceStatuses($bill);
     }
 
     private function requiredMapping(string $key): int
@@ -347,5 +330,134 @@ class VendorBillService
     {
         $lines = $this->normalizePurchaseLines((array) $data['lines']);
         return (float) $this->calculationService->calculateDocument($lines, $data)['grand_total'];
+    }
+
+    private function purchaseOrderBillLines(PurchaseOrder $order, array $requestedLines): array
+    {
+        $requested = collect($requestedLines)->keyBy(fn (array $line) => (string) ($line['purchase_order_line_id'] ?? $line['source_line_id'] ?? ''));
+        $lines = $order->lines->map(function ($line) use ($requested, $requestedLines): ?array {
+            $remaining = max(0, (float) $line->quantity - (float) $line->billed_quantity);
+            if ($remaining <= 0 || ($requestedLines !== [] && ! $requested->has((string) $line->id))) {
+                return null;
+            }
+            $quantity = $requestedLines === [] ? $remaining : (float) ($requested->get((string) $line->id)['quantity'] ?? 0);
+            if ($quantity <= 0 || $quantity > $remaining) {
+                throw ApiException::make('BILL_QUANTITY_EXCEEDS_REMAINING', 'Bill quantity exceeds remaining purchase order quantity.', 422);
+            }
+
+            return array_merge($line->only(['product_id','product_code','description','unit_id','unit_price','discount_type','discount_value','tax_id','tax_rate','warehouse_id','department_id','project_id','expense_account_id','sort_order','metadata']), [
+                'quantity' => $quantity,
+                'purchase_order_line_id' => $line->id,
+                'source_line_type' => 'purchase_order_line',
+                'source_line_id' => $line->id,
+            ]);
+        })->filter()->values()->toArray();
+
+        if ($lines === []) {
+            throw ApiException::make('PURCHASE_ORDER_ALREADY_BILLED', 'Purchase order has no remaining quantity to bill.', 422);
+        }
+
+        return $lines;
+    }
+
+    private function goodsReceiptBillLines(GoodsReceipt $goodsReceipt, array $requestedLines): array
+    {
+        $requested = collect($requestedLines)->keyBy(fn (array $line) => (string) ($line['goods_receipt_line_id'] ?? $line['source_line_id'] ?? ''));
+        $lines = $goodsReceipt->lines->map(function ($line) use ($requested, $requestedLines): ?array {
+            $remaining = max(0, (float) $line->quantity - (float) $line->billed_quantity);
+            if ($remaining <= 0 || ($requestedLines !== [] && ! $requested->has((string) $line->id))) {
+                return null;
+            }
+            $quantity = $requestedLines === [] ? $remaining : (float) ($requested->get((string) $line->id)['quantity'] ?? 0);
+            if ($quantity <= 0 || $quantity > $remaining) {
+                throw ApiException::make('BILL_QUANTITY_EXCEEDS_REMAINING', 'Bill quantity exceeds remaining received quantity.', 422);
+            }
+            $orderLine = $line->purchase_order_line_id ? PurchaseOrderLine::query()->find($line->purchase_order_line_id) : null;
+            if (! $orderLine) {
+                throw ApiException::make('GOODS_RECEIPT_PRICING_SOURCE_MISSING', 'Unable to resolve goods receipt price from its purchase order source.', 422);
+            }
+
+            return [
+                'purchase_order_line_id' => $line->purchase_order_line_id,
+                'goods_receipt_line_id' => $line->id,
+                'product_id' => $line->product_id,
+                'product_code' => $line->product_code,
+                'description' => $line->description,
+                'quantity' => $quantity,
+                'unit_id' => $line->unit_id,
+                'unit_price' => $orderLine->unit_price,
+                'discount_type' => $orderLine->discount_type,
+                'discount_value' => $orderLine->discount_value,
+                'tax_id' => $orderLine->tax_id,
+                'tax_rate' => $orderLine->tax_rate,
+                'warehouse_id' => $line->warehouse_id,
+                'department_id' => $line->department_id,
+                'project_id' => $line->project_id,
+                'expense_account_id' => $line->expense_account_id ?? $orderLine->expense_account_id,
+                'source_line_type' => 'goods_receipt_line',
+                'source_line_id' => $line->id,
+                'sort_order' => $line->sort_order,
+            ];
+        })->filter()->values()->toArray();
+
+        if ($lines === []) {
+            throw ApiException::make('GOODS_RECEIPT_ALREADY_BILLED', 'Goods receipt has no remaining quantity to bill.', 422);
+        }
+
+        return $lines;
+    }
+
+    private function validateSourceRemainingQuantities(VendorBill $bill): void
+    {
+        foreach ($bill->lines as $line) {
+            if ($line->purchase_order_line_id) {
+                $source = PurchaseOrderLine::query()->lockForUpdate()->findOrFail($line->purchase_order_line_id);
+                if ((float) $line->quantity > (float) $source->quantity - (float) $source->billed_quantity) {
+                    throw ApiException::make('BILL_QUANTITY_EXCEEDS_REMAINING', 'Bill quantity exceeds remaining purchase order quantity.', 422);
+                }
+            }
+            if ($line->goods_receipt_line_id) {
+                $source = GoodsReceiptLine::query()->lockForUpdate()->findOrFail($line->goods_receipt_line_id);
+                if ((float) $line->quantity > (float) $source->quantity - (float) $source->billed_quantity) {
+                    throw ApiException::make('BILL_QUANTITY_EXCEEDS_REMAINING', 'Bill quantity exceeds remaining received quantity.', 422);
+                }
+            }
+        }
+    }
+
+    private function refreshBillingSourceStatuses(VendorBill $bill): void
+    {
+        if ($bill->purchase_order_id && ($order = PurchaseOrder::query()->with('lines')->find($bill->purchase_order_id))) {
+            $total = (float) $order->lines->sum('quantity');
+            $billed = (float) $order->lines->sum('billed_quantity');
+            if ($billed > 0) {
+                $order->status = $billed >= $total ? 'billed' : 'partially_billed';
+                $order->billed_amount = $order->lines->sum(fn ($line) => min((float) $line->billed_quantity, (float) $line->quantity) * (float) $line->unit_price);
+                $order->save();
+            } elseif (in_array($order->status, ['billed', 'partially_billed'], true)) {
+                $received = (float) $order->lines->sum('received_quantity');
+                $order->status = $received > 0 ? ($received >= $total ? 'received' : 'partially_received') : 'confirmed';
+                $order->billed_amount = 0;
+                $order->save();
+            }
+        }
+        if ($bill->goods_receipt_id && ($receipt = GoodsReceipt::query()->with('lines')->find($bill->goods_receipt_id))) {
+            $total = (float) $receipt->lines->sum('quantity');
+            $billed = (float) $receipt->lines->sum('billed_quantity');
+            if ($billed > 0) {
+                $receipt->status = $billed >= $total ? 'billed' : 'partially_billed';
+                $receipt->save();
+            } elseif (in_array($receipt->status, ['billed', 'partially_billed'], true)) {
+                $receipt->status = 'received';
+                $receipt->save();
+            }
+        }
+    }
+
+    private function guardConvertibleSource(string $status, string $source): void
+    {
+        if (in_array($status, ['cancelled', 'void', 'closed'], true)) {
+            throw ApiException::make('SOURCE_NOT_CONVERTIBLE', ucfirst($source).' is not available for conversion.', 422);
+        }
     }
 }

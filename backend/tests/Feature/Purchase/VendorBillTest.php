@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Purchase;
 
+use App\Models\Tenant\GoodsReceiptLine;
+use App\Models\Tenant\PurchaseOrder;
+use App\Models\Tenant\PurchaseOrderLine;
 use App\Models\Tenant\StockMovement;
 use Illuminate\Support\Facades\DB;
 
@@ -52,10 +55,57 @@ class VendorBillTest extends PurchaseTestCase
         $ctx = $this->setUpTenant();
         $order = $this->postJson('/api/purchase/orders', $this->purchaseOrderPayload(['is_taxable' => false]), $ctx['headers'])->assertStatus(201)->json('data');
         $receipt = $this->postJson('/api/purchase/goods-receipts/from-purchase-order/'.$order['id'], [], $ctx['headers'])->assertStatus(201)->json('data');
+        $this->patchJson('/api/purchase/goods-receipts/'.$receipt['id'].'/receive', [], $ctx['headers'])->assertStatus(200);
 
         $this->postJson('/api/purchase/bills/from-goods-receipt/'.$receipt['id'], [], $ctx['headers'])
             ->assertStatus(201)
-            ->assertJsonPath('data.goods_receipt_id', $receipt['id']);
+            ->assertJsonPath('data.goods_receipt_id', $receipt['id'])
+            ->assertJsonPath('data.lines.0.source_line_type', 'goods_receipt_line')
+            ->assertJsonPath('data.lines.0.unit_price', 100);
+    }
+
+    public function test_bill_from_purchase_order_uses_remaining_quantity_and_updates_status_when_posted(): void
+    {
+        $ctx = $this->setUpTenant();
+        $this->seedPurchaseMappings();
+        $order = $this->postJson('/api/purchase/orders', $this->purchaseOrderPayload([
+            'is_taxable' => false,
+            'lines' => [['description' => 'Stock', 'quantity' => 5, 'unit_price' => 100]],
+        ]), $ctx['headers'])->assertStatus(201)->json('data');
+        $first = $this->postJson('/api/purchase/bills/from-purchase-order/'.$order['id'], [
+            'lines' => [['purchase_order_line_id' => $order['lines'][0]['id'], 'quantity' => 2]],
+        ], $ctx['headers'])->assertStatus(201)->json('data');
+        $this->patchJson('/api/purchase/bills/'.$first['id'].'/post', [], $ctx['headers'])->assertStatus(200);
+
+        $this->assertSame(2.0, (float) PurchaseOrderLine::query()->findOrFail($order['lines'][0]['id'])->billed_quantity);
+        $this->assertSame('partially_billed', PurchaseOrder::query()->findOrFail($order['id'])->status);
+        $this->postJson('/api/purchase/bills/from-purchase-order/'.$order['id'], [], $ctx['headers'])
+            ->assertStatus(201)
+            ->assertJsonPath('data.lines.0.quantity', 3);
+        $this->postJson('/api/purchase/bills/from-purchase-order/'.$order['id'], [
+            'lines' => [['purchase_order_line_id' => $order['lines'][0]['id'], 'quantity' => 4]],
+        ], $ctx['headers'])->assertStatus(422);
+    }
+
+    public function test_bill_from_goods_receipt_uses_received_remaining_and_tracks_receipt_progress(): void
+    {
+        $ctx = $this->setUpTenant();
+        $this->seedPurchaseMappings();
+        $order = $this->postJson('/api/purchase/orders', $this->purchaseOrderPayload([
+            'is_taxable' => false,
+            'lines' => [['description' => 'Stock', 'quantity' => 4, 'unit_price' => 80]],
+        ]), $ctx['headers'])->assertStatus(201)->json('data');
+        $receipt = $this->postJson('/api/purchase/goods-receipts/from-purchase-order/'.$order['id'], [], $ctx['headers'])->assertStatus(201)->json('data');
+        $this->patchJson('/api/purchase/goods-receipts/'.$receipt['id'].'/receive', [], $ctx['headers'])->assertStatus(200);
+        $first = $this->postJson('/api/purchase/bills/from-goods-receipt/'.$receipt['id'], [
+            'lines' => [['goods_receipt_line_id' => $receipt['lines'][0]['id'], 'quantity' => 1]],
+        ], $ctx['headers'])->assertStatus(201)->assertJsonPath('data.lines.0.unit_price', 80)->json('data');
+        $this->patchJson('/api/purchase/bills/'.$first['id'].'/post', [], $ctx['headers'])->assertStatus(200);
+
+        $this->assertSame(1.0, (float) GoodsReceiptLine::query()->findOrFail($receipt['lines'][0]['id'])->billed_quantity);
+        $this->postJson('/api/purchase/bills/from-goods-receipt/'.$receipt['id'], [], $ctx['headers'])
+            ->assertStatus(201)
+            ->assertJsonPath('data.lines.0.quantity', 3);
     }
 
     public function test_bill_applies_posted_vendor_deposit(): void

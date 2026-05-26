@@ -86,6 +86,7 @@ class GoodsReceiptService
 
     public function createFromPurchaseOrder(PurchaseOrder $purchaseOrder, array $overrides = []): GoodsReceipt
     {
+        if (in_array($purchaseOrder->status, ['cancelled', 'void', 'closed'], true)) throw ApiException::make('SOURCE_NOT_CONVERTIBLE', 'Purchase order is not available for conversion.', 422);
         $purchaseOrder->loadMissing('lines');
         $lines = $overrides['lines'] ?? $purchaseOrder->lines->map(function ($line): array {
             $remaining = max(0, (float) $line->quantity - (float) $line->received_quantity);

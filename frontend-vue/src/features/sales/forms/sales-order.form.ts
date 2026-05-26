@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { salesOrdersService } from '@/services/sales/documents.service'
 import { wrapResourceService } from '@/services/transaction/transactionApi'
+import { salesSourceConversions } from '@/services/transaction/sourceConversions.service'
 import type { TransactionFormConfig } from '@/composables/transaction-form/types'
 
 export type SalesOrderValues = {
@@ -53,6 +54,38 @@ export const salesOrderFormConfig: TransactionFormConfig<SalesOrderValues> = {
     { key: 'confirm', label: 'Confirm', permission: 'sales.orders.confirm', whenStatusIn: ['approved'], variant: 'primary' },
     { key: 'close', label: 'Close', permission: 'sales.orders.confirm', whenStatusIn: ['confirmed'] },
     { key: 'cancel', label: 'Cancel', permission: 'sales.orders.cancel', whenStatusIn: ['draft', 'approved', 'confirmed'], variant: 'danger', requiresConfirm: true },
+  ],
+  conversions: [
+    {
+      key: 'delivery_order_from_sales_order',
+      label: 'Convert to Delivery Order',
+      permission: 'sales.delivery_orders.create',
+      whenStatusIn: ['confirmed', 'partially_delivered'],
+      targetPrimaryTabId: '/sales/delivery-orders',
+      targetLabel: 'Delivery Orders',
+      targetNumberField: 'delivery_number',
+      execute: salesSourceConversions.deliveryOrderFromSalesOrder,
+    },
+    {
+      key: 'proforma_from_sales_order',
+      label: 'Convert to Proforma',
+      permission: 'sales.proformas.convert',
+      whenStatusIn: ['approved', 'confirmed'],
+      targetPrimaryTabId: '/sales/proformas',
+      targetLabel: 'Proforma Invoices',
+      targetNumberField: 'proforma_number',
+      execute: salesSourceConversions.proformaFromSalesOrder,
+    },
+    {
+      key: 'invoice_from_sales_order',
+      label: 'Convert to Sales Invoice',
+      permission: 'sales.invoices.create',
+      whenStatusIn: ['confirmed', 'partially_delivered', 'delivered', 'partially_invoiced'],
+      targetPrimaryTabId: '/sales/invoices',
+      targetLabel: 'Sales Invoices',
+      targetNumberField: 'invoice_number',
+      execute: salesSourceConversions.invoiceFromSalesOrder,
+    },
   ],
   hasLines: true,
   lineProduct: { priceMode: 'sales', priceField: 'unit_price' },

@@ -40,6 +40,18 @@ export type TransactionActionConfig = {
   whenStatusIn?: string[]
 }
 
+export type TransactionConversionConfig = {
+  key: string
+  label: string
+  permission: string
+  whenStatusIn: string[]
+  targetPrimaryTabId: string
+  targetLabel: string
+  targetNumberField: string
+  execute(id: string | number, payload?: Record<string, unknown>): Promise<unknown>
+  buildPayload?(): Record<string, unknown> | null
+}
+
 export type TransactionLineProductConfig = {
   priceMode: 'sales' | 'purchase' | 'none'
   priceField?: 'unit_price' | 'estimated_unit_price' | 'amount'
@@ -90,6 +102,7 @@ export type TransactionFormConfig<TValues extends Record<string, unknown> = Reco
   }
   sourceOptions?: TransactionSourceOption[]
   actions: TransactionActionConfig[]
+  conversions?: TransactionConversionConfig[]
   validationSchema: ZodTypeAny
   hasLines?: boolean
   lineProduct?: TransactionLineProductConfig

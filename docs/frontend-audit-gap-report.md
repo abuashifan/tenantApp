@@ -94,10 +94,12 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 
 ### Sales
 - [x] Action status (`approve/post/void/issue/ship/deliver`) pada workspace form Sales aktif telah terhubung ke service action dengan permission/status gating; Bulk Void memakai endpoint void per dokumen dengan alasan dan ringkasan hasil.
+- [x] Source conversion workflow Sales aktif telah dihubungkan ke Vue transaction forms: Sales Order → Delivery Order/Proforma/Sales Invoice, Delivery Order → Sales Invoice, dan Proforma → Sales Invoice memakai endpoint backend existing. Backend menjaga source header/line references, remaining quantity, dan price resolution Delivery Order → Sales Invoice dari Sales Order line. Files utama: `backend/app/Services/Sales/SalesInvoiceService.php`, `frontend-vue/src/services/transaction/sourceConversions.service.ts`, `frontend-vue/src/features/transaction-form/TransactionFormPanel.vue`, dan form config Sales.
 - [ ] AR ledger detail by customer/invoice di Vue belum terlihat sebagai halaman detail final dedicated.
 
 ### Purchase
 - [x] Lifecycle action dan Bulk Void untuk form Purchase aktif telah terhubung ke endpoint backend yang tersedia; penyelesaian page AP lain tetap mengikuti roadmap.
+- [x] Source conversion workflow Purchase aktif telah dihubungkan ke Vue transaction forms: Purchase Request → Purchase Order, Purchase Order → Goods Receipt/Vendor Bill, dan Goods Receipt → Vendor Bill memakai endpoint backend existing. Backend menjaga source header/line references, remaining quantity, dan price resolution Goods Receipt → Vendor Bill dari Purchase Order line. Files utama: `backend/app/Services/Purchase/VendorBillService.php`, `frontend-vue/src/services/transaction/sourceConversions.service.ts`, `frontend-vue/src/features/transaction-form/TransactionFormPanel.vue`, dan form config Purchase.
 
 ### Cash Bank
 - [~] Workspace resource cash receipt/payment/transfer sekarang meminta alasan dan mendukung Bulk Void; bank reconciliation belum memiliki endpoint void backend.

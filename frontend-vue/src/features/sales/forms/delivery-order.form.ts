@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { deliveryOrdersService } from '@/services/sales/documents.service'
 import { wrapResourceService } from '@/services/transaction/transactionApi'
+import { salesSourceConversions } from '@/services/transaction/sourceConversions.service'
 import type { TransactionFormConfig } from '@/composables/transaction-form/types'
 
 export type DeliveryOrderValues = {
@@ -56,6 +57,18 @@ export const deliveryOrderFormConfig: TransactionFormConfig<DeliveryOrderValues>
     { key: 'deliver', label: 'Deliver', permission: 'sales.delivery_orders.deliver', whenStatusIn: ['ready', 'shipped'], variant: 'primary' },
     { key: 'cancel', label: 'Cancel', permission: 'sales.delivery_orders.cancel', whenStatusIn: ['draft', 'ready', 'shipped'], variant: 'danger', requiresConfirm: true },
     { key: 'void', label: 'Void', permission: 'sales.delivery_orders.void', whenStatusIn: ['delivered'], variant: 'danger', requiresReason: true },
+  ],
+  conversions: [
+    {
+      key: 'invoice_from_delivery_order',
+      label: 'Convert to Sales Invoice',
+      permission: 'sales.invoices.create',
+      whenStatusIn: ['delivered', 'partially_invoiced'],
+      targetPrimaryTabId: '/sales/invoices',
+      targetLabel: 'Sales Invoices',
+      targetNumberField: 'invoice_number',
+      execute: salesSourceConversions.invoiceFromDeliveryOrder,
+    },
   ],
   hasLines: true,
   lineProduct: { priceMode: 'none', priceField: 'unit_price' },

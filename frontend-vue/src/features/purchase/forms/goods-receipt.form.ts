@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { goodsReceiptsService } from '@/services/purchase/documents.service'
 import { wrapResourceService } from '@/services/transaction/transactionApi'
+import { purchaseSourceConversions } from '@/services/transaction/sourceConversions.service'
 import type { TransactionFormConfig } from '@/composables/transaction-form/types'
 
 export type GoodsReceiptValues = {
@@ -43,6 +44,18 @@ export const goodsReceiptFormConfig: TransactionFormConfig<GoodsReceiptValues> =
     { key: 'receive', label: 'Receive', permission: 'purchase.goods_receipts.receive', whenStatusIn: ['draft'], variant: 'primary', requiresConfirm: true },
     { key: 'cancel', label: 'Cancel', permission: 'purchase.goods_receipts.cancel', whenStatusIn: ['draft'], variant: 'danger', requiresConfirm: true },
     { key: 'void', label: 'Void', permission: 'purchase.goods_receipts.void', whenStatusIn: ['received'], variant: 'danger', requiresReason: true },
+  ],
+  conversions: [
+    {
+      key: 'bill_from_goods_receipt',
+      label: 'Convert to Vendor Bill',
+      permission: 'purchase.bills.create',
+      whenStatusIn: ['received', 'partially_billed'],
+      targetPrimaryTabId: '/purchase/bills',
+      targetLabel: 'Vendor Bills',
+      targetNumberField: 'bill_number',
+      execute: purchaseSourceConversions.billFromGoodsReceipt,
+    },
   ],
   hasLines: true,
   lineProduct: { priceMode: 'none', priceField: 'unit_price' },

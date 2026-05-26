@@ -31,6 +31,7 @@ class PurchaseWorkflowIntegrationTest extends PurchaseTestCase
             ]],
         ], $ctx['headers'])->assertStatus(201)->json('data');
         $receipt = $this->postJson('/api/purchase/goods-receipts/from-purchase-order/'.$order['id'], [], $ctx['headers'])->assertStatus(201)->json('data');
+        $this->patchJson('/api/purchase/goods-receipts/'.$receipt['id'].'/receive', [], $ctx['headers'])->assertStatus(200);
         $bill = $this->postJson('/api/purchase/bills/from-goods-receipt/'.$receipt['id'], [], $ctx['headers'])->assertStatus(201)->json('data');
 
         $this->patchJson('/api/purchase/bills/'.$bill['id'].'/post', [], $ctx['headers'])
