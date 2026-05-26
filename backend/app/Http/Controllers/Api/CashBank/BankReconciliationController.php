@@ -20,7 +20,7 @@ class BankReconciliationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        return $this->successResponse($this->service->list($request->query()), 'Bank reconciliations retrieved successfully');
+        return $this->listResponse($this->service->list($request->query()), $request, 'Bank reconciliations retrieved successfully');
     }
 
     public function store(StoreBankReconciliationRequest $request): JsonResponse

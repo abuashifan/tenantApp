@@ -21,7 +21,7 @@ class StockAdjustmentController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        return $this->successResponse($this->service->list($request->query()), 'Stock adjustments retrieved successfully');
+        return $this->listResponse($this->service->list($request->query()), $request, 'Stock adjustments retrieved successfully');
     }
 
     public function store(StoreStockAdjustmentRequest $request): JsonResponse

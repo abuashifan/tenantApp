@@ -25,7 +25,7 @@ class JournalEntryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $items = $this->service->list($request->query());
-        return $this->successResponse($items, 'Journals retrieved successfully');
+        return $this->listResponse($items, $request, 'Journals retrieved successfully');
     }
 
     public function store(StoreJournalEntryRequest $request): JsonResponse

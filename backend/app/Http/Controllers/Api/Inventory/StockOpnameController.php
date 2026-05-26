@@ -22,7 +22,7 @@ class StockOpnameController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        return $this->successResponse($this->service->list($request->query()), 'Stock opnames retrieved successfully');
+        return $this->listResponse($this->service->list($request->query()), $request, 'Stock opnames retrieved successfully');
     }
 
     public function store(StoreStockOpnameRequest $request): JsonResponse

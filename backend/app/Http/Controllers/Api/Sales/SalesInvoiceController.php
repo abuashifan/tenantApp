@@ -26,7 +26,7 @@ class SalesInvoiceController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        return $this->successResponse($this->service->list($request->query()), 'Sales invoices retrieved successfully');
+        return $this->listResponse($this->service->list($request->query()), $request, 'Sales invoices retrieved successfully');
     }
 
     public function store(StoreSalesInvoiceRequest $request): JsonResponse

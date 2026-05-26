@@ -18,7 +18,7 @@ class SalesReturnController extends Controller
 {
     use ApiResponse;
     public function __construct(private readonly SalesReturnService $service) {}
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Sales returns retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Sales returns retrieved successfully'); }
     public function store(StoreSalesReturnRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Sales return created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Sales return retrieved successfully'); }
     public function update(UpdateSalesReturnRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(SalesReturn::query()->findOrFail($id), $request->validated()), 'Sales return updated successfully'); }

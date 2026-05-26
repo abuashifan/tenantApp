@@ -22,7 +22,7 @@ class DepartmentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $items = $this->service->list($request->query());
-        return $this->successResponse($items, 'Departments retrieved successfully');
+        return $this->listResponse($items, $request, 'Departments retrieved successfully');
     }
 
     public function store(StoreDepartmentRequest $request): JsonResponse

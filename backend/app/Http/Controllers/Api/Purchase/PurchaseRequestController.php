@@ -22,7 +22,7 @@ class PurchaseRequestController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        return $this->successResponse($this->service->list($request->query()), 'Purchase requests retrieved successfully');
+        return $this->listResponse($this->service->list($request->query()), $request, 'Purchase requests retrieved successfully');
     }
 
     public function store(StorePurchaseRequestRequest $request): JsonResponse

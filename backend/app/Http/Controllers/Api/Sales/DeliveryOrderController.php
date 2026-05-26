@@ -17,7 +17,7 @@ class DeliveryOrderController extends Controller
 {
     use ApiResponse;
     public function __construct(private readonly DeliveryOrderService $service) {}
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Delivery orders retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Delivery orders retrieved successfully'); }
     public function store(StoreDeliveryOrderRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Delivery order created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Delivery order retrieved successfully'); }
     public function update(UpdateDeliveryOrderRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(DeliveryOrder::query()->findOrFail($id), $request->validated()), 'Delivery order updated successfully'); }

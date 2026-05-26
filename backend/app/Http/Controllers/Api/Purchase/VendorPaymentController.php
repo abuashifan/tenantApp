@@ -15,7 +15,7 @@ class VendorPaymentController extends Controller
 {
     use ApiResponse;
     public function __construct(private readonly VendorPaymentService $service) {}
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Vendor payments retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Vendor payments retrieved successfully'); }
     public function store(StoreVendorPaymentRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Vendor payment created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Vendor payment retrieved successfully'); }
     public function post(int $id): JsonResponse { return $this->successResponse($this->service->post(VendorPayment::query()->findOrFail($id)), 'Vendor payment posted successfully'); }

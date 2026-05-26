@@ -19,7 +19,7 @@ class StockMovementController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        return $this->successResponse($this->service->list($request->query()), 'Stock movements retrieved successfully');
+        return $this->listResponse($this->service->list($request->query()), $request, 'Stock movements retrieved successfully');
     }
 
     public function store(StoreStockMovementRequest $request): JsonResponse

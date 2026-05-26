@@ -17,7 +17,7 @@ class BankTransferController extends Controller
 
     public function __construct(private readonly BankTransferService $service) {}
 
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Bank transfers retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Bank transfers retrieved successfully'); }
     public function store(StoreBankTransferRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Bank transfer created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Bank transfer retrieved successfully'); }
     public function post(int $id): JsonResponse { return $this->successResponse($this->service->post(BankTransfer::query()->findOrFail($id)), 'Bank transfer posted successfully'); }

@@ -22,7 +22,7 @@ class ProductCategoryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $items = $this->service->list($request->query());
-        return $this->successResponse($items, 'Product categories retrieved successfully');
+        return $this->listResponse($items, $request, 'Product categories retrieved successfully');
     }
 
     public function store(StoreProductCategoryRequest $request): JsonResponse

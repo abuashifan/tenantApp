@@ -22,7 +22,7 @@ class UnitController extends Controller
     public function index(Request $request): JsonResponse
     {
         $items = $this->service->list($request->query());
-        return $this->successResponse($items, 'Units retrieved successfully');
+        return $this->listResponse($items, $request, 'Units retrieved successfully');
     }
 
     public function store(StoreUnitRequest $request): JsonResponse

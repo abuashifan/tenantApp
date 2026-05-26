@@ -22,7 +22,7 @@ class ContactController extends Controller
     public function index(Request $request): JsonResponse
     {
         $items = $this->service->list($request->query());
-        return $this->successResponse($items, 'Contacts retrieved successfully');
+        return $this->listResponse($items, $request, 'Contacts retrieved successfully');
     }
 
     public function store(StoreContactRequest $request): JsonResponse

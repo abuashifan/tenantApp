@@ -19,7 +19,7 @@ class PurchaseOrderController extends Controller
 
     public function __construct(private readonly PurchaseOrderService $service) {}
 
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Purchase orders retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Purchase orders retrieved successfully'); }
     public function store(StorePurchaseOrderRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Purchase order created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Purchase order retrieved successfully'); }
     public function update(UpdatePurchaseOrderRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(PurchaseOrder::query()->findOrFail($id), $request->validated()), 'Purchase order updated successfully'); }

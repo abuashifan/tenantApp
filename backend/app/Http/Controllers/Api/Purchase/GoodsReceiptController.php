@@ -19,7 +19,7 @@ class GoodsReceiptController extends Controller
 
     public function __construct(private readonly GoodsReceiptService $service) {}
 
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Goods receipts retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Goods receipts retrieved successfully'); }
     public function store(StoreGoodsReceiptRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Goods receipt created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Goods receipt retrieved successfully'); }
     public function update(UpdateGoodsReceiptRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(GoodsReceipt::query()->findOrFail($id), $request->validated()), 'Goods receipt updated successfully'); }

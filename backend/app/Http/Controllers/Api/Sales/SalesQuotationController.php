@@ -22,7 +22,7 @@ class SalesQuotationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        return $this->successResponse($this->service->list($request->query()), 'Sales quotations retrieved successfully');
+        return $this->listResponse($this->service->list($request->query()), $request, 'Sales quotations retrieved successfully');
     }
 
     public function store(StoreSalesQuotationRequest $request): JsonResponse

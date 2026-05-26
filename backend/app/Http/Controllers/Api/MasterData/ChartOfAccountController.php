@@ -22,7 +22,7 @@ class ChartOfAccountController extends Controller
     public function index(Request $request): JsonResponse
     {
         $items = $this->service->list($request->query());
-        return $this->successResponse($items, 'Chart of accounts retrieved successfully');
+        return $this->listResponse($items, $request, 'Chart of accounts retrieved successfully');
     }
 
     public function store(StoreChartOfAccountRequest $request): JsonResponse

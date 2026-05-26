@@ -18,7 +18,7 @@ class VendorDepositController extends Controller
 {
     use ApiResponse;
     public function __construct(private readonly VendorDepositService $service) {}
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Vendor deposits retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Vendor deposits retrieved successfully'); }
     public function store(StoreVendorDepositRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Vendor deposit created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Vendor deposit retrieved successfully'); }
     public function post(int $id): JsonResponse { return $this->successResponse($this->service->post(VendorDeposit::query()->findOrFail($id)), 'Vendor deposit posted successfully'); }

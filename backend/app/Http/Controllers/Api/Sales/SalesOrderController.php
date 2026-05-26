@@ -17,7 +17,7 @@ class SalesOrderController extends Controller
 {
     use ApiResponse;
     public function __construct(private readonly SalesOrderService $service) {}
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Sales orders retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Sales orders retrieved successfully'); }
     public function store(StoreSalesOrderRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Sales order created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Sales order retrieved successfully'); }
     public function update(UpdateSalesOrderRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(SalesOrder::query()->findOrFail($id), $request->validated()), 'Sales order updated successfully'); }

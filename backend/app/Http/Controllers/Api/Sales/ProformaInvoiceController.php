@@ -18,7 +18,7 @@ class ProformaInvoiceController extends Controller
 {
     use ApiResponse;
     public function __construct(private readonly ProformaInvoiceService $service) {}
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Proforma invoices retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Proforma invoices retrieved successfully'); }
     public function store(StoreProformaInvoiceRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Proforma invoice created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Proforma invoice retrieved successfully'); }
     public function update(UpdateProformaInvoiceRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(ProformaInvoice::query()->findOrFail($id), $request->validated()), 'Proforma invoice updated successfully'); }

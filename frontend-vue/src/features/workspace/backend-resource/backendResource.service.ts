@@ -14,6 +14,8 @@ export type BackendResourceListResult = {
     perPage: number
     total: number
     lastPage: number
+    from?: number | null
+    to?: number | null
   } | null
 }
 
@@ -64,6 +66,8 @@ function extractPagination(payload: unknown, rowCount: number) {
     const perPage = numberFrom(candidate, ['per_page', 'perPage', 'page_size', 'pageSize'])
     const total = numberFrom(candidate, ['total'])
     const lastPage = numberFrom(candidate, ['last_page', 'lastPage'])
+    const from = numberFrom(candidate, ['from'])
+    const to = numberFrom(candidate, ['to'])
     if (page == null && perPage == null && total == null && lastPage == null) continue
 
     const safePerPage = Math.max(1, perPage ?? rowCount ?? 1)
@@ -73,6 +77,8 @@ function extractPagination(payload: unknown, rowCount: number) {
       perPage: safePerPage,
       total: safeTotal,
       lastPage: Math.max(1, lastPage ?? Math.ceil(safeTotal / safePerPage)),
+      from,
+      to,
     }
   }
 

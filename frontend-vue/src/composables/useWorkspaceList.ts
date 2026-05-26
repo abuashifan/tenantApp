@@ -62,8 +62,8 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
     params.page = pagination.value.page
     params.per_page = pagination.value.perPage
     if (sorting.value[0]) {
-      params.sort = sorting.value[0].id
-      params.direction = sorting.value[0].desc ? 'desc' : 'asc'
+      params.sort_by = sorting.value[0].id
+      params.sort_direction = sorting.value[0].desc ? 'desc' : 'asc'
     }
     return params
   }
@@ -81,11 +81,19 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
       if (options.fetcher) {
         rows.value = await options.fetcher(requestParams())
       } else if (options.endpoint) {
-        const params: Record<string, string> = {}
-        if (filters.value.search) params[options.searchParam ?? 'search'] = filters.value.search
-        if (filters.value.startDate) params[options.startDateParam ?? 'date_from'] = filters.value.startDate
-        if (filters.value.endDate) params[options.endDateParam ?? 'date_to'] = filters.value.endDate
-        if (status.value) params.status = status.value
+        const params = requestParams()
+        if (filters.value.search && options.searchParam && options.searchParam !== 'search') {
+          params[options.searchParam] = filters.value.search
+          delete params.search
+        }
+        if (filters.value.startDate && options.startDateParam && options.startDateParam !== 'date_from') {
+          params[options.startDateParam] = filters.value.startDate
+          delete params.date_from
+        }
+        if (filters.value.endDate && options.endDateParam && options.endDateParam !== 'date_to') {
+          params[options.endDateParam] = filters.value.endDate
+          delete params.date_to
+        }
 
         const response = await api.get<ApiResponse<BackendListPayload<TRaw>>>(options.endpoint, { params })
         const payload = normalizePayload(unwrap(response.data))

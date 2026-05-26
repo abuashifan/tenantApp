@@ -52,6 +52,8 @@ export type WorkspacePagination = {
   perPage: number
   total: number
   lastPage?: number
+  from?: number | null
+  to?: number | null
 }
 
 export type WorkspaceDateRange = {

@@ -22,7 +22,7 @@ class WarehouseController extends Controller
     public function index(Request $request): JsonResponse
     {
         $items = $this->service->list($request->query());
-        return $this->successResponse($items, 'Warehouses retrieved successfully');
+        return $this->listResponse($items, $request, 'Warehouses retrieved successfully');
     }
 
     public function store(StoreWarehouseRequest $request): JsonResponse

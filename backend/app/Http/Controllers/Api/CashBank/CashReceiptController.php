@@ -17,7 +17,7 @@ class CashReceiptController extends Controller
 
     public function __construct(private readonly CashReceiptService $service) {}
 
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Cash receipts retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Cash receipts retrieved successfully'); }
     public function store(StoreCashReceiptRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Cash receipt created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Cash receipt retrieved successfully'); }
     public function post(int $id): JsonResponse { return $this->successResponse($this->service->post(CashReceipt::query()->findOrFail($id)), 'Cash receipt posted successfully'); }

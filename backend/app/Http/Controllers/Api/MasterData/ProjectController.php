@@ -22,7 +22,7 @@ class ProjectController extends Controller
     public function index(Request $request): JsonResponse
     {
         $items = $this->service->list($request->query());
-        return $this->successResponse($items, 'Projects retrieved successfully');
+        return $this->listResponse($items, $request, 'Projects retrieved successfully');
     }
 
     public function store(StoreProjectRequest $request): JsonResponse

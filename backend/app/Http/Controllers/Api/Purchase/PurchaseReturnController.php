@@ -24,7 +24,7 @@ class PurchaseReturnController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        return $this->successResponse($this->service->list($request->query()), 'Purchase returns retrieved successfully');
+        return $this->listResponse($this->service->list($request->query()), $request, 'Purchase returns retrieved successfully');
     }
 
     public function store(StorePurchaseReturnRequest $request): JsonResponse

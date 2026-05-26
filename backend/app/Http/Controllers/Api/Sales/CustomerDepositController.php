@@ -18,7 +18,7 @@ class CustomerDepositController extends Controller
 {
     use ApiResponse;
     public function __construct(private readonly CustomerDepositService $service) {}
-    public function index(Request $request): JsonResponse { return $this->successResponse($this->service->list($request->query()), 'Customer deposits retrieved successfully'); }
+    public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Customer deposits retrieved successfully'); }
     public function store(StoreCustomerDepositRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Customer deposit created successfully', 201); }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Customer deposit retrieved successfully'); }
     public function post(int $id): JsonResponse { return $this->successResponse($this->service->post(CustomerDeposit::query()->findOrFail($id)), 'Customer deposit posted successfully'); }
