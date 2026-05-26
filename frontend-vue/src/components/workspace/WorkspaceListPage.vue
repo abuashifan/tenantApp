@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="TRow extends { id: string }">
 import { computed, h, ref, shallowRef } from 'vue'
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, SortingState } from '@tanstack/vue-table'
 
 import WorkspaceConfirmDialog from '@/components/workspace/WorkspaceConfirmDialog.vue'
 import WorkspaceDataTable from '@/components/workspace/WorkspaceDataTable.vue'
@@ -20,10 +20,15 @@ const props = withDefaults(
     loading?: boolean
     error?: string | null
     pagination?: WorkspacePagination
+    remotePagination?: boolean
+    sorting?: SortingState
+    remoteSort?: boolean
     search?: string
     startDate?: string
     endDate?: string
     status?: string
+    includeVoid?: boolean
+    showIncludeVoid?: boolean
     selectedIds?: string[]
   }>(),
   {
@@ -34,6 +39,8 @@ const props = withDefaults(
     startDate: '',
     endDate: '',
     status: '',
+    includeVoid: false,
+    showIncludeVoid: false,
     selectedIds: () => [],
   },
 )
@@ -44,8 +51,10 @@ const emit = defineEmits<{
   filterChange: [filters: Record<string, unknown>]
   dateChange: [range: { startDate: string; endDate: string }]
   statusChange: [status: string]
+  includeVoidChange: [includeVoid: boolean]
   pageChange: [page: number]
-  sortChange: [sorting: unknown]
+  perPageChange: [perPage: number]
+  sortChange: [sorting: SortingState]
   rowClick: [row: TRow]
   actionClick: [payload: { key: string; row?: TRow }]
   bulkActionClick: [payload: { key: string; selectedIds: string[] }]
@@ -147,13 +156,27 @@ function confirmPendingAction() {
       </WorkspaceToolbar>
 
       <WorkspaceFilterPanel
+        v-if="$slots['advanced-filters']"
         :open="filtersOpen"
         :status="status"
         :status-options="config.statusOptions"
+        :show-include-void="showIncludeVoid"
+        :include-void="includeVoid"
         @update:status="emit('statusChange', $event)"
+        @update:include-void="emit('includeVoidChange', $event)"
       >
         <slot name="advanced-filters" />
       </WorkspaceFilterPanel>
+      <WorkspaceFilterPanel
+        v-else
+        :open="filtersOpen"
+        :status="status"
+        :status-options="config.statusOptions"
+        :show-include-void="showIncludeVoid"
+        :include-void="includeVoid"
+        @update:status="emit('statusChange', $event)"
+        @update:include-void="emit('includeVoidChange', $event)"
+      />
 
       <slot name="before-table" />
 
@@ -178,8 +201,15 @@ function confirmPendingAction() {
         :selected-ids="selectedIds"
         :empty-title="config.emptyTitle"
         :empty-description="config.emptyDescription"
+        :pagination="pagination"
+        :remote-pagination="remotePagination"
+        :sorting="sorting"
+        :remote-sort="remoteSort"
         @update:selected-ids="emit('update:selectedIds', $event)"
         @row-click="emit('rowClick', $event)"
+        @page-change="emit('pageChange', $event)"
+        @per-page-change="emit('perPageChange', $event)"
+        @sort-change="emit('sortChange', $event)"
       />
 
       <slot name="after-table" />

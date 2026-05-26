@@ -7,6 +7,16 @@ export type BackendResourceRow = {
   [key: string]: unknown
 }
 
+export type BackendResourceListResult = {
+  rows: BackendResourceRow[]
+  pagination: {
+    page: number
+    perPage: number
+    total: number
+    lastPage: number
+  } | null
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value != null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -22,9 +32,51 @@ function extractRows(payload: unknown): unknown[] {
   for (const key of ['data', 'items', 'records', 'results', 'rows', 'lines', 'accounts']) {
     const value = record[key]
     if (Array.isArray(value)) return value
+    if (key === 'data' && asRecord(value)) return extractRows(value)
   }
 
   return [record]
+}
+
+function numberFrom(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const parsed = Number(record[key])
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+function extractPagination(payload: unknown, rowCount: number) {
+  const record = asRecord(payload)
+  if (!record) return null
+  const nested = asRecord(record.data)
+  const candidates = [
+    record,
+    asRecord(record.meta),
+    asRecord(record.pagination),
+    nested,
+    nested ? asRecord(nested.meta) : null,
+    nested ? asRecord(nested.pagination) : null,
+  ].filter((value): value is Record<string, unknown> => value != null)
+
+  for (const candidate of candidates) {
+    const page = numberFrom(candidate, ['current_page', 'page', 'currentPage'])
+    const perPage = numberFrom(candidate, ['per_page', 'perPage', 'page_size', 'pageSize'])
+    const total = numberFrom(candidate, ['total'])
+    const lastPage = numberFrom(candidate, ['last_page', 'lastPage'])
+    if (page == null && perPage == null && total == null && lastPage == null) continue
+
+    const safePerPage = Math.max(1, perPage ?? rowCount ?? 1)
+    const safeTotal = Math.max(0, total ?? rowCount)
+    return {
+      page: Math.max(1, page ?? 1),
+      perPage: safePerPage,
+      total: safeTotal,
+      lastPage: Math.max(1, lastPage ?? Math.ceil(safeTotal / safePerPage)),
+    }
+  }
+
+  return null
 }
 
 function rowId(row: Record<string, unknown>, index: number) {
@@ -36,12 +88,14 @@ function rowId(row: Record<string, unknown>, index: number) {
   return `row-${index + 1}`
 }
 
-export async function listBackendResource(endpoint: string, params: Record<string, unknown> = {}) {
+export async function listBackendResource(endpoint: string, params: Record<string, unknown> = {}): Promise<BackendResourceListResult> {
   const response = await api.get<ApiResponse<unknown>>(endpoint, { params })
   const payload = unwrap(response.data)
 
-  return extractRows(payload)
+  const rows = extractRows(payload)
     .map(asRecord)
     .filter((row): row is Record<string, unknown> => row != null)
     .map((row, index) => ({ ...row, id: rowId(row, index) }) as BackendResourceRow)
+
+  return { rows, pagination: extractPagination(payload, rows.length) }
 }

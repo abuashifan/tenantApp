@@ -1,7 +1,8 @@
 <script setup lang="ts" generic="TRow extends { id: string }">
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, SortingState } from '@tanstack/vue-table'
 
 import DataTable from '@/components/table/DataTable.vue'
+import type { WorkspacePagination } from '@/types/workspace'
 
 defineProps<{
   columns: ColumnDef<TRow, unknown>[]
@@ -11,11 +12,18 @@ defineProps<{
   selectedIds: string[]
   emptyTitle?: string
   emptyDescription?: string
+  pagination?: WorkspacePagination
+  remotePagination?: boolean
+  sorting?: SortingState
+  remoteSort?: boolean
 }>()
 
 defineEmits<{
   'update:selectedIds': [ids: string[]]
   rowClick: [row: TRow]
+  pageChange: [page: number]
+  perPageChange: [perPage: number]
+  sortChange: [sorting: SortingState]
 }>()
 </script>
 
@@ -28,6 +36,16 @@ defineEmits<{
     :selected-ids="selectedIds"
     :empty-title="emptyTitle"
     :empty-description="emptyDescription"
+    :pagination="pagination"
+    :manual-pagination="remotePagination"
+    :sorting="sorting"
+    :manual-sorting="remoteSort"
+    :clear-selection-on-page-change="remotePagination"
+    show-page-size
     @update:selected-ids="$emit('update:selectedIds', $event)"
+    @row-click="$emit('rowClick', $event)"
+    @page-change="$emit('pageChange', $event)"
+    @per-page-change="$emit('perPageChange', $event)"
+    @sort-change="$emit('sortChange', $event)"
   />
 </template>

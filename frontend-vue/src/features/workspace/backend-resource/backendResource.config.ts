@@ -8,7 +8,20 @@ import type { BackendResourceRow } from './backendResource.service'
 
 export type BackendWorkspaceKind = 'master-data' | 'document' | 'report' | 'inventory' | 'settings'
 
-type ResourceCapability = {
+export type BackendQueryParamMap = {
+  page?: string
+  perPage?: string
+  search?: string
+  sortBy?: string
+  sortDirection?: string
+  status?: string
+  startDate?: string
+  endDate?: string
+  asOfDate?: string
+  includeVoid?: string
+}
+
+export type ResourceCapability = {
   kind: BackendWorkspaceKind
   createPermission?: string
   editPermission?: string
@@ -17,6 +30,12 @@ type ResourceCapability = {
   statusFilter?: boolean
   requiredDateFilter?: 'range' | 'as-of'
   voidPermission?: string
+  paginationMode?: 'remote' | 'local' | 'none'
+  remoteSearch?: boolean
+  remoteFilters?: boolean
+  remoteSort?: boolean
+  includeVoidFilter?: boolean
+  queryParamMap?: BackendQueryParamMap
 }
 
 const capabilities: Record<string, ResourceCapability> = {
@@ -77,7 +96,7 @@ const capabilities: Record<string, ResourceCapability> = {
 }
 
 export function resourceCapability(item: SidebarMenuItem): ResourceCapability {
-  return capabilities[item.href] ?? { kind: 'report' as BackendWorkspaceKind }
+  return { paginationMode: 'local', ...(capabilities[item.href] ?? { kind: 'report' as BackendWorkspaceKind }) }
 }
 
 function value(row: BackendResourceRow, keys: string[]) {
@@ -111,48 +130,53 @@ function statusCell(row: BackendResourceRow) {
 
 function masterDataColumns(): ColumnDef<BackendResourceRow, unknown>[] {
   return [
-    { id: 'code', header: 'Code', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['code', 'account_code', 'sku', 'category_code', 'unit_code', 'warehouse_code', 'contact_code', 'mapping_key', 'id'])) },
-    { id: 'name', header: 'Name', cell: ({ row }) => text(row.original, ['name', 'account_name', 'product_name', 'category_name', 'warehouse_name', 'contact_name', 'label']) },
-    { id: 'type', header: 'Type', cell: ({ row }) => text(row.original, ['type', 'contact_type', 'account_type', 'category', 'unit_name']) },
-    { id: 'status', header: 'Status', cell: ({ row }) => statusCell(row.original) },
+    { id: 'code', accessorFn: (row) => text(row, ['code', 'account_code', 'sku', 'category_code', 'unit_code', 'warehouse_code', 'contact_code', 'mapping_key', 'id']), header: 'Code', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['code', 'account_code', 'sku', 'category_code', 'unit_code', 'warehouse_code', 'contact_code', 'mapping_key', 'id'])) },
+    { id: 'name', accessorFn: (row) => text(row, ['name', 'account_name', 'product_name', 'category_name', 'warehouse_name', 'contact_name', 'label']), header: 'Name', cell: ({ row }) => text(row.original, ['name', 'account_name', 'product_name', 'category_name', 'warehouse_name', 'contact_name', 'label']) },
+    { id: 'type', accessorFn: (row) => text(row, ['type', 'contact_type', 'account_type', 'category', 'unit_name']), header: 'Type', cell: ({ row }) => text(row.original, ['type', 'contact_type', 'account_type', 'category', 'unit_name']) },
+    { id: 'status', accessorFn: (row) => statusText(row), header: 'Status', cell: ({ row }) => statusCell(row.original) },
   ]
+}
+
+function statusText(row: BackendResourceRow) {
+  const raw = value(row, ['status', 'state', 'is_active'])
+  return typeof raw === 'boolean' ? (raw ? 'active' : 'inactive') : String(raw)
 }
 
 function documentColumns(): ColumnDef<BackendResourceRow, unknown>[] {
   return [
-    { id: 'number', header: 'Number', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['document_number', 'number', 'quotation_number', 'order_number', 'invoice_number', 'billing_number', 'receipt_number', 'return_number', 'deposit_number', 'transfer_number', 'id'])) },
-    { id: 'date', header: 'Date', cell: ({ row }) => text(row.original, ['document_date', 'date', 'transaction_date', 'order_date', 'invoice_date', 'created_at']) },
-    { id: 'party', header: 'Customer / Vendor', cell: ({ row }) => text(row.original, ['customer_name', 'vendor_name', 'contact_name', 'customer', 'vendor', 'contact']) },
-    { id: 'status', header: 'Status', cell: ({ row }) => statusCell(row.original) },
-    { id: 'total', header: 'Total', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['grand_total', 'total', 'total_amount', 'amount', 'balance'])) },
+    { id: 'number', accessorFn: (row) => text(row, ['document_number', 'number', 'quotation_number', 'order_number', 'invoice_number', 'billing_number', 'receipt_number', 'return_number', 'deposit_number', 'transfer_number', 'id']), header: 'Number', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['document_number', 'number', 'quotation_number', 'order_number', 'invoice_number', 'billing_number', 'receipt_number', 'return_number', 'deposit_number', 'transfer_number', 'id'])) },
+    { id: 'date', accessorFn: (row) => text(row, ['document_date', 'date', 'transaction_date', 'order_date', 'invoice_date', 'created_at']), header: 'Date', cell: ({ row }) => text(row.original, ['document_date', 'date', 'transaction_date', 'order_date', 'invoice_date', 'created_at']) },
+    { id: 'party', accessorFn: (row) => text(row, ['customer_name', 'vendor_name', 'contact_name', 'customer', 'vendor', 'contact']), header: 'Customer / Vendor', cell: ({ row }) => text(row.original, ['customer_name', 'vendor_name', 'contact_name', 'customer', 'vendor', 'contact']) },
+    { id: 'status', accessorFn: (row) => statusText(row), header: 'Status', cell: ({ row }) => statusCell(row.original) },
+    { id: 'total', accessorFn: (row) => Number(value(row, ['grand_total', 'total', 'total_amount', 'amount', 'balance'])) || 0, header: 'Total', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['grand_total', 'total', 'total_amount', 'amount', 'balance'])) },
   ]
 }
 
 function reportColumns(): ColumnDef<BackendResourceRow, unknown>[] {
   return [
-    { id: 'code', header: 'Account / Reference', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['account_code', 'code', 'document_number', 'number', 'id'])) },
-    { id: 'name', header: 'Description', cell: ({ row }) => text(row.original, ['account_name', 'name', 'description', 'label', 'customer_name', 'vendor_name']) },
-    { id: 'debit', header: 'Debit', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['debit', 'total_debit'])) },
-    { id: 'credit', header: 'Credit', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['credit', 'total_credit'])) },
-    { id: 'balance', header: 'Balance', cell: ({ row }) => h('span', { class: 'tabular-nums font-bold' }, money(row.original, ['balance', 'net_balance', 'amount', 'total'])) },
+    { id: 'code', accessorFn: (row) => text(row, ['account_code', 'code', 'document_number', 'number', 'id']), header: 'Account / Reference', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['account_code', 'code', 'document_number', 'number', 'id'])) },
+    { id: 'name', accessorFn: (row) => text(row, ['account_name', 'name', 'description', 'label', 'customer_name', 'vendor_name']), header: 'Description', cell: ({ row }) => text(row.original, ['account_name', 'name', 'description', 'label', 'customer_name', 'vendor_name']) },
+    { id: 'debit', accessorFn: (row) => Number(value(row, ['debit', 'total_debit'])) || 0, header: 'Debit', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['debit', 'total_debit'])) },
+    { id: 'credit', accessorFn: (row) => Number(value(row, ['credit', 'total_credit'])) || 0, header: 'Credit', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['credit', 'total_credit'])) },
+    { id: 'balance', accessorFn: (row) => Number(value(row, ['balance', 'net_balance', 'amount', 'total'])) || 0, header: 'Balance', cell: ({ row }) => h('span', { class: 'tabular-nums font-bold' }, money(row.original, ['balance', 'net_balance', 'amount', 'total'])) },
   ]
 }
 
 function inventoryColumns(): ColumnDef<BackendResourceRow, unknown>[] {
   return [
-    { id: 'reference', header: 'Product / Reference', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['product_code', 'sku', 'document_number', 'movement_number', 'opname_number', 'adjustment_number', 'id'])) },
-    { id: 'name', header: 'Description', cell: ({ row }) => text(row.original, ['product_name', 'name', 'description', 'warehouse_name', 'warehouse']) },
-    { id: 'quantity', header: 'Quantity', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['quantity', 'qty', 'on_hand', 'available_quantity'])) },
-    { id: 'value', header: 'Value', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['value', 'total_value', 'amount'])) },
-    { id: 'status', header: 'Status', cell: ({ row }) => statusCell(row.original) },
+    { id: 'reference', accessorFn: (row) => text(row, ['product_code', 'sku', 'document_number', 'movement_number', 'opname_number', 'adjustment_number', 'id']), header: 'Product / Reference', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['product_code', 'sku', 'document_number', 'movement_number', 'opname_number', 'adjustment_number', 'id'])) },
+    { id: 'name', accessorFn: (row) => text(row, ['product_name', 'name', 'description', 'warehouse_name', 'warehouse']), header: 'Description', cell: ({ row }) => text(row.original, ['product_name', 'name', 'description', 'warehouse_name', 'warehouse']) },
+    { id: 'quantity', accessorFn: (row) => Number(value(row, ['quantity', 'qty', 'on_hand', 'available_quantity'])) || 0, header: 'Quantity', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['quantity', 'qty', 'on_hand', 'available_quantity'])) },
+    { id: 'value', accessorFn: (row) => Number(value(row, ['value', 'total_value', 'amount'])) || 0, header: 'Value', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['value', 'total_value', 'amount'])) },
+    { id: 'status', accessorFn: (row) => statusText(row), header: 'Status', cell: ({ row }) => statusCell(row.original) },
   ]
 }
 
 function settingsColumns(): ColumnDef<BackendResourceRow, unknown>[] {
   return [
-    { id: 'key', header: 'Setting', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['mapping_key', 'key', 'name', 'id'])) },
-    { id: 'value', header: 'Value', cell: ({ row }) => text(row.original, ['account_name', 'value', 'label', 'company_name', 'name']) },
-    { id: 'status', header: 'Status', cell: ({ row }) => statusCell(row.original) },
+    { id: 'key', accessorFn: (row) => text(row, ['mapping_key', 'key', 'name', 'id']), header: 'Setting', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['mapping_key', 'key', 'name', 'id'])) },
+    { id: 'value', accessorFn: (row) => text(row, ['account_name', 'value', 'label', 'company_name', 'name']), header: 'Value', cell: ({ row }) => text(row.original, ['account_name', 'value', 'label', 'company_name', 'name']) },
+    { id: 'status', accessorFn: (row) => statusText(row), header: 'Status', cell: ({ row }) => statusCell(row.original) },
   ]
 }
 

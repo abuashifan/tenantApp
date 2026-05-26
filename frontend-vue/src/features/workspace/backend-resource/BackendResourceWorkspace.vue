@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SortingState } from '@tanstack/vue-table'
 import { computed, ref, watch } from 'vue'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -6,11 +7,12 @@ import VoidTransactionDialog from '@/components/dialog/VoidTransactionDialog.vue
 import WorkspaceListPage from '@/components/workspace/WorkspaceListPage.vue'
 import BackendResourceForm from './BackendResourceForm.vue'
 import { listBackendResource, type BackendResourceRow } from './backendResource.service'
-import { makeBackendResourceConfig, resourceCapability } from './backendResource.config'
+import { makeBackendResourceConfig, resourceCapability, type BackendQueryParamMap } from './backendResource.config'
 import { backendResourceFormConfigs } from './backendResource.form.config'
 import { runBackendResourceAction, extractLaravelErrors } from './backendResourceForm.service'
 import { findSidebarMenuItem } from '@/navigation/sidebar'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
+import type { WorkspacePagination } from '@/types/workspace'
 
 const tabs = useWorkspaceTabsStore()
 const menuItem = computed(() => findSidebarMenuItem(tabs.activePrimaryTabId))
@@ -25,10 +27,16 @@ const search = ref('')
 const startDate = ref('')
 const endDate = ref('')
 const status = ref('')
+const includeVoid = ref(false)
 const selectedIds = ref<string[]>([])
+const sorting = ref<SortingState>([])
+const pagination = ref<WorkspacePagination>({ page: 1, perPage: 10, total: 0, lastPage: 1 })
+const responsePaginated = ref(false)
 const bulkVoidOpen = ref(false)
 const bulkVoidLoading = ref(false)
 const operationNotice = ref<string | null>(null)
+const requestedRemote = computed(() => capability.value?.paginationMode === 'remote')
+const effectiveRemote = computed(() => requestedRemote.value && responsePaginated.value)
 const filterGuidance = computed(() => {
   if (capability.value?.requiredDateFilter === 'range' && (!startDate.value || !endDate.value)) {
     return 'Select a start date and end date to load this report.'
@@ -57,6 +65,7 @@ function statusValue(row: BackendResourceRow) {
 }
 
 const filteredRows = computed(() => {
+  if (effectiveRemote.value) return rows.value
   const query = search.value.trim().toLowerCase()
   return rows.value.filter((row) => {
     if (query && !rowText(row).includes(query)) return false
@@ -68,6 +77,47 @@ const filteredRows = computed(() => {
   })
 })
 
+function queryKey(key: keyof BackendQueryParamMap, fallback: string) {
+  return capability.value?.queryParamMap?.[key] ?? fallback
+}
+
+function supportsRemote(feature: 'remoteSearch' | 'remoteFilters' | 'remoteSort') {
+  return requestedRemote.value && capability.value?.[feature] !== false
+}
+
+function resetPageAndSelection() {
+  pagination.value.page = 1
+  selectedIds.value = []
+}
+
+function requestParams() {
+  const params: Record<string, unknown> = {}
+  if (requestedRemote.value) {
+    params[queryKey('page', 'page')] = pagination.value.page
+    params[queryKey('perPage', 'per_page')] = pagination.value.perPage
+    if (supportsRemote('remoteSearch') && search.value.trim()) params[queryKey('search', 'search')] = search.value.trim()
+    if (supportsRemote('remoteFilters') && status.value) params[queryKey('status', 'status')] = status.value
+    if (supportsRemote('remoteFilters') && startDate.value) params[queryKey('startDate', 'start_date')] = startDate.value
+    if (supportsRemote('remoteFilters') && endDate.value) params[queryKey('endDate', 'end_date')] = endDate.value
+    if (supportsRemote('remoteFilters') && capability.value?.includeVoidFilter) {
+      params[queryKey('includeVoid', 'include_void')] = includeVoid.value
+    }
+    const activeSort = sorting.value[0]
+    if (supportsRemote('remoteSort') && activeSort) {
+      params[queryKey('sortBy', 'sort_by')] = activeSort.id
+      params[queryKey('sortDirection', 'sort_direction')] = activeSort.desc ? 'desc' : 'asc'
+    }
+  }
+  if (capability.value?.requiredDateFilter === 'range') {
+    params[queryKey('startDate', 'start_date')] = startDate.value
+    params[queryKey('endDate', 'end_date')] = endDate.value
+  }
+  if (capability.value?.requiredDateFilter === 'as-of') {
+    params[queryKey('asOfDate', 'as_of_date')] = endDate.value
+  }
+  return params
+}
+
 async function load() {
   if (!menuItem.value) return
   if (filterGuidance.value) {
@@ -78,15 +128,10 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    const params: Record<string, unknown> = {}
-    if (capability.value?.requiredDateFilter === 'range') {
-      params.start_date = startDate.value
-      params.end_date = endDate.value
-    }
-    if (capability.value?.requiredDateFilter === 'as-of') {
-      params.as_of_date = endDate.value
-    }
-    rows.value = await listBackendResource(menuItem.value.endpoint, params)
+    const result = await listBackendResource(menuItem.value.endpoint, requestParams())
+    rows.value = result.rows
+    responsePaginated.value = result.pagination != null
+    if (result.pagination) pagination.value = result.pagination
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : 'Unable to load workspace data.'
   } finally {
@@ -94,12 +139,50 @@ async function load() {
   }
 }
 
-function resetFilters() {
-  search.value = ''
-  startDate.value = ''
-  endDate.value = ''
-  status.value = ''
-  if (!filterGuidance.value) void load()
+function updateSearch(value: string) {
+  search.value = value
+  resetPageAndSelection()
+  if (supportsRemote('remoteSearch')) void load()
+}
+
+function updateDates(range: { startDate: string; endDate: string }) {
+  startDate.value = range.startDate
+  endDate.value = range.endDate
+  resetPageAndSelection()
+  if (supportsRemote('remoteFilters') || capability.value?.requiredDateFilter) void load()
+}
+
+function updateStatus(value: string) {
+  status.value = value
+  resetPageAndSelection()
+  if (supportsRemote('remoteFilters')) void load()
+}
+
+function updateIncludeVoid(value: boolean) {
+  includeVoid.value = value
+  resetPageAndSelection()
+  if (supportsRemote('remoteFilters')) void load()
+}
+
+function updatePage(page: number) {
+  if (!effectiveRemote.value) return
+  pagination.value.page = page
+  selectedIds.value = []
+  void load()
+}
+
+function updatePerPage(perPage: number) {
+  if (!effectiveRemote.value) return
+  pagination.value.perPage = perPage
+  resetPageAndSelection()
+  void load()
+}
+
+function updateSort(value: SortingState) {
+  if (!effectiveRemote.value || !supportsRemote('remoteSort')) return
+  sorting.value = value
+  resetPageAndSelection()
+  void load()
 }
 
 function openCreate() {
@@ -163,7 +246,15 @@ watch(
   () => {
     if (!menuItem.value) return
     tabs.ensureListSecondaryTab(menuItem.value.href)
-    resetFilters()
+    search.value = ''
+    startDate.value = ''
+    endDate.value = ''
+    status.value = ''
+    includeVoid.value = false
+    sorting.value = []
+    pagination.value = { page: 1, perPage: 10, total: 0, lastPage: 1 }
+    responsePaginated.value = false
+    selectedIds.value = []
     void load()
   },
   { immediate: true },
@@ -182,10 +273,20 @@ watch(
     :start-date="startDate"
     :end-date="endDate"
     :status="status"
+    :include-void="includeVoid"
+    :show-include-void="Boolean(capability?.includeVoidFilter)"
+    :pagination="effectiveRemote ? pagination : undefined"
+    :remote-pagination="effectiveRemote"
+    :sorting="sorting"
+    :remote-sort="effectiveRemote && supportsRemote('remoteSort')"
     @refresh="load"
-    @search="search = $event"
-    @date-change="({ startDate: from, endDate: to }) => { startDate = from; endDate = to; load() }"
-    @status-change="status = $event"
+    @search="updateSearch"
+    @date-change="updateDates"
+    @status-change="updateStatus"
+    @include-void-change="updateIncludeVoid"
+    @page-change="updatePage"
+    @per-page-change="updatePerPage"
+    @sort-change="updateSort"
     @action-click="(payload) => payload.key === 'create' ? openCreate() : openRowTab(payload.key, payload.row)"
     @bulk-action-click="openBulkAction"
   >
@@ -198,7 +299,7 @@ watch(
 
     <template #toolbar-right>
       <span class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600">
-        {{ filteredRows.length }} rows
+        {{ effectiveRemote ? pagination.total : filteredRows.length }} rows
       </span>
     </template>
 

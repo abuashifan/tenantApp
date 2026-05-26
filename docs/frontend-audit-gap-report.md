@@ -93,6 +93,7 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 - [x] Fiscal Closing + Period Locking workspace Vue aktif di `/accounting/fiscal-closing`: status fiscal year, checklist, preview, close/reopen, dan update period lock memakai endpoint backend existing. Detail: `docs/point-4-fiscal-closing-period-locking-workspace.md`.
 - [x] Endpoint period-lock update tidak lagi hanya placeholder; menu Accounting mengarah ke workspace Fiscal Closing yang memuat panel Period Lock.
 - [x] Dashboard Vue tidak lagi memakai metric `Rp 0` placeholder; `/dashboard` menampilkan status fiscal year dan financial summary API nyata secara permission-aware. Detail: `docs/point-7-dashboard-real-api-data.md`.
+- [x] Generic backend resource workspace telah memiliki parser paginator dan kontrak remote pagination/filter/sort opt-in; endpoint collection existing tetap memakai fallback lokal sampai backend menyediakan paginator. Detail/DoD: `docs/point-8-generic-workspace-pagination-filter-sort.md` dan `docs/point-8-generic-workspace-pagination-filter-sort-dod.md`.
 
 ### Sales
 - [x] Action status (`approve/post/void/issue/ship/deliver`) pada workspace form Sales aktif telah terhubung ke service action dengan permission/status gating; Bulk Void memakai endpoint void per dokumen dengan alasan dan ringkasan hasil.
@@ -151,7 +152,7 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 | COA | Chart of accounts workspace | Ya | Ada | Basic | Ada | Aktivasi/deaktivasi basic | Partial |
 | General Ledger | GL workspace | Ya | Ada | Date filter | Needs verification | N/A | Partial |
 | Trial Balance | TB workspace | Ya | Ada | As-of/basic | Needs verification | N/A | Partial |
-| Placeholder modules | RouteIntent generic | API metadata saja | Generic | Generic | Generic | Generic | Dummy |
+| Placeholder modules | RouteIntent generic | API connected | Generic (local; remote opt-in) | Generic (local; remote opt-in) | Local; remote-ready saat endpoint paginated | Generic | Partial |
 
 ## 10. Form Input Audit
 
@@ -187,7 +188,7 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 - [x] 403 handling ada fallback message.
 - [x] 422 normalization ada (`normalizeValidationErrors`).
 - [x] Network/server error fallback message ada.
-- [ ] Pagination response mapping antar service perlu konsistensi audit lanjutan (Needs verification).
+- [~] Generic backend resource telah menormalisasi response pagination dan menyediakan remote opt-in; service dedicated dan aktivasi endpoint paginated tetap perlu audit lanjutan.
 - [ ] Potensi interceptor duplikat (`src/services/api.ts` + `src/plugins/apiInterceptors.ts`) perlu standardisasi agar tidak double side effect.
 
 ## 13. Priority Implementation Plan
@@ -200,7 +201,7 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 ### Priority 2 — Connect Existing Backend to Existing Frontend
 - [ ] Sambungkan semua menu placeholder ke page/workspace final domain.
 - [ ] Ganti semua mock accounting store dengan API backend nyata.
-- [ ] Pastikan semua list/form punya mapping pagination/filter/sort yang konsisten.
+- [~] Generic workspace sudah memiliki mapping pagination/filter/sort remote opt-in; endpoint collection existing tetap lokal dan list dedicated masih perlu konsistensi lanjutan.
 
 ### Priority 3 — Build Missing Accounting Frontend
 - [ ] Finalisasi Contacts/Units/Products/Warehouse/Departments/Projects UI final.

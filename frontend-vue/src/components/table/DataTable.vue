@@ -18,6 +18,7 @@ import { useVueTable } from '@tanstack/vue-table'
 import DataTableCheckbox from '@/components/table/DataTableCheckbox.vue'
 import DataTableEmptyState from '@/components/table/DataTableEmptyState.vue'
 import DataTablePagination from '@/components/table/DataTablePagination.vue'
+import type { WorkspacePagination } from '@/types/workspace'
 import { cn } from '@/utils/cn'
 
 const props = withDefaults(
@@ -38,6 +39,11 @@ const props = withDefaults(
     metaDescription?: string
     showMeta?: boolean
     fillAvailable?: boolean
+    pagination?: WorkspacePagination
+    manualPagination?: boolean
+    sorting?: SortingState
+    manualSorting?: boolean
+    showPageSize?: boolean
   }>(),
   {
     loading: false,
@@ -53,17 +59,26 @@ const props = withDefaults(
     metaDescription: '',
     showMeta: false,
     fillAvailable: false,
+    manualPagination: false,
+    manualSorting: false,
+    showPageSize: false,
   },
 )
 
 const emit = defineEmits<{
   'update:selectedIds': [ids: string[]]
   rowClick: [row: TRow]
+  pageChange: [page: number]
+  perPageChange: [perPage: number]
+  sortChange: [sorting: SortingState]
 }>()
 
 const globalFilter = ref('')
-const sorting = ref<SortingState>([])
-const pagination = ref<PaginationState>({ pageIndex: 0, pageSize: 10 })
+const tableSorting = ref<SortingState>(props.sorting ?? [])
+const tablePagination = ref<PaginationState>({
+  pageIndex: Math.max(0, (props.pagination?.page ?? 1) - 1),
+  pageSize: props.pagination?.perPage ?? 10,
+})
 const rowSelection = ref<RowSelectionState>({})
 
 function selectedIdsFromState(state: RowSelectionState) {
@@ -147,6 +162,29 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => props.pagination,
+  (next) => {
+    if (!next || !props.manualPagination) return
+    tablePagination.value = { pageIndex: Math.max(0, next.page - 1), pageSize: next.perPage }
+  },
+  { deep: true },
+)
+
+watch(
+  () => props.sorting,
+  (next) => {
+    if (next && props.manualSorting) tableSorting.value = next
+  },
+  { deep: true },
+)
+
+const remotePageCount = computed(() => {
+  const pagination = props.pagination
+  if (!pagination) return 1
+  return Math.max(1, pagination.lastPage ?? Math.ceil(pagination.total / pagination.perPage))
+})
+
 const table = useVueTable({
   get data() {
     return props.data
@@ -159,10 +197,10 @@ const table = useVueTable({
       return globalFilter.value
     },
     get sorting() {
-      return sorting.value
+      return tableSorting.value
     },
     get pagination() {
-      return pagination.value
+      return tablePagination.value
     },
     get rowSelection() {
       return rowSelection.value
@@ -172,12 +210,16 @@ const table = useVueTable({
     globalFilter.value = typeof updater === 'function' ? updater(globalFilter.value) : updater
   },
   onSortingChange: (updater) => {
-    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
+    tableSorting.value = typeof updater === 'function' ? updater(tableSorting.value) : updater
+    if (props.manualSorting) emit('sortChange', tableSorting.value)
   },
   onPaginationChange: (updater) => {
-    const next = typeof updater === 'function' ? updater(pagination.value) : updater
-    const pageChanged = next.pageIndex !== pagination.value.pageIndex || next.pageSize !== pagination.value.pageSize
-    pagination.value = next
+    const next = typeof updater === 'function' ? updater(tablePagination.value) : updater
+    const pageChanged = next.pageIndex !== tablePagination.value.pageIndex || next.pageSize !== tablePagination.value.pageSize
+    const pageSizeChanged = next.pageSize !== tablePagination.value.pageSize
+    tablePagination.value = next
+    if (props.manualPagination && pageSizeChanged) emit('perPageChange', next.pageSize)
+    else if (props.manualPagination && pageChanged) emit('pageChange', next.pageIndex + 1)
     if (props.clearSelectionOnPageChange && pageChanged) {
       setRowSelectionState({})
     }
@@ -196,6 +238,15 @@ const table = useVueTable({
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
+  get manualPagination() {
+    return props.manualPagination
+  },
+  get manualSorting() {
+    return props.manualSorting
+  },
+  get pageCount() {
+    return props.manualPagination ? remotePageCount.value : undefined
+  },
 })
 
 const pageCount = computed(() => Math.max(table.getPageCount(), 1))
@@ -295,6 +346,11 @@ const pageCount = computed(() => Math.max(table.getPageCount(), 1))
       </table>
     </div>
 
-    <DataTablePagination :table="table as any" :compact="compact" />
+    <DataTablePagination
+      :table="table as any"
+      :compact="compact"
+      :pagination="props.manualPagination ? props.pagination : undefined"
+      :show-page-size="props.showPageSize"
+    />
   </div>
 </template>
