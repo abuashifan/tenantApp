@@ -170,6 +170,58 @@ const router = createRouter({
           },
         },
         ...placeholderWorkspaceRoutes,
+        {
+          path: 'sales/ar/customers/:customerId/ledger',
+          name: 'sales-ar-customer-ledger',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['sales.ar.view'],
+            apiEndpoint: '/sales/ar/customers/:customerId/ledger',
+            primaryTabLabel: 'AR Customer Ledger',
+            primaryTabClosable: true,
+            primaryTabUseRoutePath: true,
+            workspaceRegistryKey: '/sales/ar/customer-ledger',
+          },
+        },
+        {
+          path: 'sales/ar/invoices/:invoiceId/ledger',
+          name: 'sales-ar-invoice-ledger',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['sales.ar.view'],
+            apiEndpoint: '/sales/ar/invoices/:invoiceId/ledger',
+            primaryTabLabel: 'AR Invoice Ledger',
+            primaryTabClosable: true,
+            primaryTabUseRoutePath: true,
+            workspaceRegistryKey: '/sales/ar/invoice-ledger',
+          },
+        },
+        {
+          path: 'purchase/ap/vendors/:vendorId/ledger',
+          name: 'purchase-ap-vendor-ledger',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['purchase.ap.view'],
+            apiEndpoint: '/purchase/ap/vendors/:vendorId/ledger',
+            primaryTabLabel: 'AP Vendor Ledger',
+            primaryTabClosable: true,
+            primaryTabUseRoutePath: true,
+            workspaceRegistryKey: '/purchase/ap/vendor-ledger',
+          },
+        },
+        {
+          path: 'purchase/ap/bills/:billId/ledger',
+          name: 'purchase-ap-bill-ledger',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['purchase.ap.view'],
+            apiEndpoint: '/purchase/ap/bills/:billId/ledger',
+            primaryTabLabel: 'AP Bill Ledger',
+            primaryTabClosable: true,
+            primaryTabUseRoutePath: true,
+            workspaceRegistryKey: '/purchase/ap/bill-ledger',
+          },
+        },
         // Design/demo routes (restricted)
         {
           path: 'access/company-users',

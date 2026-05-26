@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 import { defaultWorkspaceComponent, workspaceRegistry } from '@/workspace/registry'
 
 const tabs = useWorkspaceTabsStore()
+const route = useRoute()
 
-const activeComponent = computed(() => workspaceRegistry[tabs.activePrimaryTabId] ?? defaultWorkspaceComponent)
+const activeComponent = computed(() => {
+  const routeRegistryKey = route.meta.workspaceRegistryKey as string | undefined
+  return workspaceRegistry[tabs.activePrimaryTabId] ?? (routeRegistryKey ? workspaceRegistry[routeRegistryKey] : undefined) ?? defaultWorkspaceComponent
+})
 const activeKey = computed(() => `primary:${tabs.activePrimaryTabId}`)
 </script>
 

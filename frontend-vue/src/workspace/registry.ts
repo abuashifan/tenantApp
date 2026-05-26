@@ -27,6 +27,8 @@ import CustomerSummaryPage from '@/pages/sales/CustomerSummaryPage.vue'
 import OpenInvoicesPage from '@/pages/sales/OpenInvoicesPage.vue'
 import ArAgingPage from '@/pages/sales/ArAgingPage.vue'
 import ArReconciliationPage from '@/pages/sales/ArReconciliationPage.vue'
+import CustomerLedgerDetailPage from '@/pages/sales/ar/CustomerLedgerDetailPage.vue'
+import InvoiceLedgerDetailPage from '@/pages/sales/ar/InvoiceLedgerDetailPage.vue'
 
 import PurchaseRequestFormPage from '@/pages/purchase/PurchaseRequestFormPage.vue'
 import PurchaseOrderFormPage from '@/pages/purchase/PurchaseOrderFormPage.vue'
@@ -39,6 +41,8 @@ import VendorSummaryPage from '@/pages/purchase/VendorSummaryPage.vue'
 import OpenBillsPage from '@/pages/purchase/OpenBillsPage.vue'
 import ApAgingPage from '@/pages/purchase/ApAgingPage.vue'
 import ApReconciliationPage from '@/pages/purchase/ApReconciliationPage.vue'
+import VendorLedgerDetailPage from '@/pages/purchase/ap/VendorLedgerDetailPage.vue'
+import BillLedgerDetailPage from '@/pages/purchase/ap/BillLedgerDetailPage.vue'
 
 export const workspaceRegistry: Record<string, Component> = {
   '/dashboard': DashboardWorkspaceContent,
@@ -73,6 +77,8 @@ export const workspaceRegistry: Record<string, Component> = {
   '/sales/ar/open-invoices': OpenInvoicesPage,
   '/sales/ar/aging': ArAgingPage,
   '/sales/ar/reconciliation': ArReconciliationPage,
+  '/sales/ar/customer-ledger': CustomerLedgerDetailPage,
+  '/sales/ar/invoice-ledger': InvoiceLedgerDetailPage,
 
   // Purchase & AP
   '/purchase/requests': PurchaseRequestFormPage,
@@ -86,6 +92,8 @@ export const workspaceRegistry: Record<string, Component> = {
   '/purchase/ap/open-bills': OpenBillsPage,
   '/purchase/ap/aging': ApAgingPage,
   '/purchase/ap/reconciliation': ApReconciliationPage,
+  '/purchase/ap/vendor-ledger': VendorLedgerDetailPage,
+  '/purchase/ap/bill-ledger': BillLedgerDetailPage,
 }
 
 export const defaultWorkspaceComponent = BackendResourceWorkspaceContent

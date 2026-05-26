@@ -57,7 +57,7 @@ watch(
 watch(
   () => route.fullPath,
   () => {
-    const primaryId = route.meta.primaryTabId as string | undefined
+    const primaryId = route.meta.primaryTabUseRoutePath ? route.path : (route.meta.primaryTabId as string | undefined)
     const primaryLabel = route.meta.primaryTabLabel as string | undefined
     if (!primaryId || !primaryLabel) return
 
