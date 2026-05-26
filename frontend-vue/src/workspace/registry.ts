@@ -8,7 +8,11 @@ import GeneralLedgerWorkspaceContent from '@/pages/reports/general-ledger/Genera
 import FinancialStatementWorkspace from '@/features/reports/financial-statements/FinancialStatementWorkspace.vue'
 import BackendResourceWorkspaceContent from '@/pages/workspace/BackendResourceWorkspaceContent.vue'
 import UserAccessPage from '@/pages/access/UserAccessPage.vue'
+import CompanyUsersPage from '@/pages/access/CompanyUsersPage.vue'
 import RolesPage from '@/pages/access/RolesPage.vue'
+import RoleDetailPage from '@/pages/access/RoleDetailPage.vue'
+import InvitationsPage from '@/pages/access/InvitationsPage.vue'
+import AccessAuditPage from '@/pages/access/AccessAuditPage.vue'
 import SalesQuotationFormPage from '@/pages/sales/SalesQuotationFormPage.vue'
 import SalesOrderFormPage from '@/pages/sales/SalesOrderFormPage.vue'
 import DeliveryOrderFormPage from '@/pages/sales/DeliveryOrderFormPage.vue'
@@ -45,8 +49,13 @@ export const workspaceRegistry: Record<string, Component> = {
   '/reports/balance-sheet': FinancialStatementWorkspace,
   '/reports/cash-flow': FinancialStatementWorkspace,
   '/reports/financial-summary': FinancialStatementWorkspace,
+  '/access/company-users': CompanyUsersPage,
   '/access/users': UserAccessPage,
+  '/access/permissions': UserAccessPage,
   '/access/roles': RolesPage,
+  '/access/roles/detail': RoleDetailPage,
+  '/access/invitations': InvitationsPage,
+  '/access/audit': AccessAuditPage,
 
   // Sales & AR
   '/sales/quotations': SalesQuotationFormPage,

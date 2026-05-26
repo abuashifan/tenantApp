@@ -100,6 +100,16 @@ watch(selectedCompanyUserId, (id) => {
   if (id) void loadUser(id)
 })
 
+watch(
+  () => route.params.id,
+  (id) => {
+    const requestedUserId = Number(id)
+    if (Number.isInteger(requestedUserId) && requestedUserId > 0 && requestedUserId !== selectedCompanyUserId.value) {
+      selectedCompanyUserId.value = requestedUserId
+    }
+  },
+)
+
 onMounted(load)
 </script>
 

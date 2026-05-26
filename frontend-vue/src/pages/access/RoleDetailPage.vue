@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -94,6 +94,13 @@ async function savePermissions() {
 }
 
 onMounted(load)
+
+watch(
+  () => route.params.id,
+  () => {
+    void load()
+  },
+)
 </script>
 
 <template>

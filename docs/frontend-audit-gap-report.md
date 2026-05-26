@@ -110,6 +110,7 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 ### Access Management
 - [x] Gap route `/api/access/*` ditutup: rute terdaftar di bawah `auth:sanctum`, `company.access`, dan permission action.
 - [x] Sidebar Vue permission-aware dan halaman company users, roles, permission matrix, invitations, serta access audit tersambung ke API aktif.
+- [x] Route metadata dan workspace registry Vue diperbaiki untuk semua halaman Access Management aktif, sehingga sidebar/direct route membuka halaman Access yang benar di existing workspace/virtual tab flow, bukan fallback generic backend resource. Dokumentasi detail: `docs/phase-18-access-api-vue-navigation.md`.
 
 ## 6. Frontend Pages Missing
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, watchEffect } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import AppSidebarCollapsed from '@/components/layout/AppSidebarCollapsed.vue'
 import AppSidebarFull from '@/components/layout/AppSidebarFull.vue'
@@ -15,6 +15,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const ui = useUiStore()
 const company = useCompanyStore()
@@ -49,6 +50,23 @@ watch(
     tabs.ensureListSecondaryTab(path)
     const module = modules.value.find((item) => item.href === path || item.items.some((child) => child.href === path))
     if (module) activeModuleKey.value = module.key
+  },
+  { immediate: true },
+)
+
+watch(
+  () => route.fullPath,
+  () => {
+    const primaryId = route.meta.primaryTabId as string | undefined
+    const primaryLabel = route.meta.primaryTabLabel as string | undefined
+    if (!primaryId || !primaryLabel) return
+
+    tabs.openPrimaryTab({
+      id: primaryId,
+      label: primaryLabel,
+      path: route.path,
+      closable: route.meta.primaryTabClosable !== false,
+    })
   },
   { immediate: true },
 )
