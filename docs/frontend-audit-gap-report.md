@@ -61,8 +61,9 @@ Sumber utama: `backend/routes/api.php`.
 | Purchase & AP | Banyak GET/POST/PATCH | /api/purchase/* | multi-controller Purchase | purchase.* | Route/menu tersedia, implementasi Vue dominan placeholder |
 | Cash Bank | Banyak GET/POST/PATCH | /api/cash-bank/* | multi-controller CashBank | cash_bank.* | Placeholder route/menu |
 | Inventory | Banyak GET/POST/PATCH | /api/inventory/* | multi-controller Inventory | inventory.* | Placeholder route/menu |
+| Access | GET/POST/PATCH/PUT | /api/access/* | Access controllers | access.* | Connected (Phase 18 Vue pages) |
 
-Catatan: total endpoint (GET/POST/PATCH/PUT/DELETE yang terdeteksi regex): **280**.
+Catatan: route list API sesudah integrasi Access Management menampilkan **307** route.
 
 ## 4. Frontend Route Map
 
@@ -80,9 +81,10 @@ Catatan: total endpoint (GET/POST/PATCH/PUT/DELETE yang terdeteksi regex): **280
 | Reports | /reports/cash-flow | RouteIntent | Sidebar ada | `/reports/cash-flow` | Dummy/Placeholder |
 | Reports | /reports/financial-summary | RouteIntent | Sidebar ada | `/reports/financial-summary` | Dummy/Placeholder |
 | Sales/Purchase/Cash/Inventory (bulk) | route hasil `sidebarPlaceholderItems` | RouteIntent generic | Sidebar ada | endpoint ada | Dummy/Placeholder |
+| Access Management | /access/company-users, /access/permissions, /access/roles, /access/invitations, /access/audit | `frontend-vue/src/pages/access/*` | Permission-aware sidebar ada | `/api/access/*` | Connected |
 | Design Demo | /design/* | design demo pages | tidak untuk user akhir | bukan API bisnis | Done (demo only) |
 
-Ringkas: router Vue eksplisit ±22 entri path; Next.js legacy memiliki 81 file page.tsx (masih ada, perlu keputusan single frontend).
+Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki 81 file page.tsx (masih ada, perlu keputusan single frontend).
 
 ## 5. Backend Endpoint Not Connected to Frontend
 
@@ -102,6 +104,10 @@ Ringkas: router Vue eksplisit ±22 entri path; Next.js legacy memiliki 81 file p
 
 ### Inventory
 - [~] Workspace resource stock movement/adjustment/opname sekarang meminta alasan dan mendukung Bulk Void melalui endpoint existing; report/final dedicated page tetap di luar perbaikan ini.
+
+### Access Management
+- [x] Gap route `/api/access/*` ditutup: rute terdaftar di bawah `auth:sanctum`, `company.access`, dan permission action.
+- [x] Sidebar Vue permission-aware dan halaman company users, roles, permission matrix, invitations, serta access audit tersambung ke API aktif.
 
 ## 6. Frontend Pages Missing
 
@@ -222,8 +228,8 @@ Ringkas: router Vue eksplisit ±22 entri path; Next.js legacy memiliki 81 file p
 
 ## Lampiran Ringkas Angka Audit
 
-- Total endpoint backend terdeteksi (regex `Route::get|post|patch|put|delete`): **280**.
-- Total route entry eksplisit Vue router (`path:`): **22**.
+- Total route backend API (`php artisan route:list --path=api`): **307**.
+- Total route entry eksplisit Vue router (`path:`): **31**.
 - Total page Next.js legacy (`frontend/app/**/page.tsx`): **81**.
 - Estimasi endpoint belum terhubung penuh ke UI final: **>= 180** (karena mayoritas modul non-accounting core masih placeholder).
 - Estimasi page/module missing atau belum final di Vue: **>= 40 route/menu kerja**.

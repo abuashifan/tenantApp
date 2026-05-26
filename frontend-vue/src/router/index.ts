@@ -155,6 +155,53 @@ const router = createRouter({
         ...placeholderWorkspaceRoutes,
         // Design/demo routes (restricted)
         {
+          path: 'access/company-users',
+          name: 'access-company-users',
+          component: () => import('@/pages/access/CompanyUsersPage.vue'),
+          meta: { permissions: ['access.users.view'] },
+        },
+        {
+          path: 'access/users',
+          name: 'access-users',
+          redirect: '/access/company-users',
+        },
+        {
+          path: 'access/users/:id',
+          name: 'access-user-detail',
+          component: () => import('@/pages/access/UserAccessPage.vue'),
+          meta: { permissions: ['access.permissions.view'] },
+        },
+        {
+          path: 'access/permissions',
+          name: 'access-permissions',
+          component: () => import('@/pages/access/UserAccessPage.vue'),
+          meta: { permissions: ['access.permissions.view'] },
+        },
+        {
+          path: 'access/roles',
+          name: 'access-roles',
+          component: () => import('@/pages/access/RolesPage.vue'),
+          meta: { permissions: ['access.roles.view'] },
+        },
+        {
+          path: 'access/roles/:id',
+          name: 'access-role-detail',
+          component: () => import('@/pages/access/RoleDetailPage.vue'),
+          meta: { permissions: ['access.roles.view'] },
+        },
+        {
+          path: 'access/invitations',
+          name: 'access-invitations',
+          component: () => import('@/pages/access/InvitationsPage.vue'),
+          meta: { permissions: ['access.invitations.view'] },
+        },
+        {
+          path: 'access/audit',
+          name: 'access-audit',
+          component: () => import('@/pages/access/AccessAuditPage.vue'),
+          meta: { permissions: ['access.audit.view'] },
+        },
+        {
           path: 'design/reusable-table',
           name: 'design-reusable-table',
           component: () => import('@/pages/design/ReusableTableLayoutDemo.vue'),

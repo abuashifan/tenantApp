@@ -8,6 +8,7 @@ use App\Models\CompanyUser;
 use App\Models\TenantDatabase;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -177,10 +178,14 @@ class PermissionTest extends TestCase
             'joined_at' => now(),
         ]);
 
+        $tenantPath = database_path('tenants/test_permission_'.$company->id.'_'.uniqid().'.sqlite');
+        File::ensureDirectoryExists(dirname($tenantPath));
+        File::put($tenantPath, '');
+
         TenantDatabase::query()->create([
             'company_id' => $company->id,
-            'database_name' => 'company_'.str_pad((string) $company->id, 6, '0', STR_PAD_LEFT).'.sqlite',
-            'database_path' => database_path('tenants/company_'.str_pad((string) $company->id, 6, '0', STR_PAD_LEFT).'.sqlite'),
+            'database_name' => basename($tenantPath),
+            'database_path' => $tenantPath,
             'driver' => 'sqlite',
             'status' => 'active',
         ]);
@@ -188,4 +193,3 @@ class PermissionTest extends TestCase
         return [$user, $company];
     }
 }
-

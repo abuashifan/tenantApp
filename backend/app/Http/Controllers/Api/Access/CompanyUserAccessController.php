@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Access\CopyAccessRequest;
 use App\Http\Requests\Access\UpdateCompanyUserPermissionRequest;
 use App\Http\Requests\Access\UpdateCompanyUserRoleRequest;
-use App\Models\ActivityLog;
+use App\Exceptions\ApiException;
 use App\Models\CompanyUser;
 use App\Models\CompanyUserPermissionOverride;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Services\Audit\AuditLogService;
 use App\Services\Permissions\EffectivePermissionService;
 use App\Services\Tenant\TenantContext;
 use App\Traits\ApiResponse;
@@ -25,6 +26,7 @@ class CompanyUserAccessController extends Controller
     public function __construct(
         private readonly TenantContext $tenantContext,
         private readonly EffectivePermissionService $effectivePermissionService,
+        private readonly AuditLogService $auditLogService,
     ) {
     }
 
@@ -57,7 +59,7 @@ class CompanyUserAccessController extends Controller
 
         DB::transaction(function () use ($companyUser, $data, $request): void {
             if (array_key_exists('role_id', $data)) {
-                $role = $data['role_id'] ? Role::query()->findOrFail($data['role_id']) : null;
+                $role = $data['role_id'] ? $this->role((int) $data['role_id']) : null;
                 $companyUser->forceFill([
                     'role_id' => $role?->id,
                     'role' => $role?->slug ?? $companyUser->role,
@@ -97,7 +99,7 @@ class CompanyUserAccessController extends Controller
         $companyUser = $this->companyUser($companyUserId);
         $this->guardSelfPrivilegeChange($request, $companyUser);
         $data = $request->validated();
-        $role = isset($data['role_id']) ? Role::query()->find($data['role_id']) : null;
+        $role = isset($data['role_id']) && $data['role_id'] ? $this->role((int) $data['role_id']) : null;
 
         $companyUser->forceFill([
             'role_id' => $role?->id,
@@ -173,10 +175,23 @@ class CompanyUserAccessController extends Controller
     public function activate(Request $request, int $companyUserId): JsonResponse
     {
         $companyUser = $this->companyUser($companyUserId);
+        if ($companyUser->status === 'active') {
+            return $this->successResponse($this->companyUserPayload($companyUser), 'Company user already active.');
+        }
         $companyUser->forceFill(['status' => 'active'])->save();
         $this->audit('access.user.activate', $companyUser, [], $request);
 
         return $this->successResponse($this->companyUserPayload($companyUser->refresh()), 'Company user activated.');
+    }
+
+    public function remove(Request $request, int $companyUserId): JsonResponse
+    {
+        $companyUser = $this->companyUser($companyUserId);
+        $this->guardSelfPrivilegeChange($request, $companyUser);
+        $companyUser->forceFill(['status' => 'removed'])->save();
+        $this->audit('access.user.removed', $companyUser, [], $request);
+
+        return $this->successResponse($this->companyUserPayload($companyUser->refresh()), 'Company user removed.');
     }
 
     private function companyUsersQuery()
@@ -234,27 +249,47 @@ class CompanyUserAccessController extends Controller
 
     private function guardSelfPrivilegeChange(Request $request, CompanyUser $target): void
     {
-        if ($target->user_id !== $request->user()?->id) {
-            return;
+        if ($target->user_id === $request->user()?->id) {
+            throw ApiException::make('SELF_ACCESS_CHANGE_NOT_ALLOWED', 'Users cannot deactivate, remove, or alter their own access.', 422);
         }
 
-        $activeRole = $this->tenantContext->role();
-        abort_unless(in_array($activeRole, ['owner', 'admin'], true), 403, 'Users cannot modify their own permissions.');
+        if (in_array($target->role, ['owner', 'admin'], true)) {
+            $remainingManagers = CompanyUser::query()
+                ->where('company_id', $this->tenantContext->companyId())
+                ->where('status', 'active')
+                ->whereIn('role', ['owner', 'admin'])
+                ->whereKeyNot($target->id)
+                ->count();
+
+            if ($remainingManagers === 0) {
+                throw ApiException::make('LAST_COMPANY_MANAGER_REQUIRED', 'At least one active owner or admin must remain.', 422);
+            }
+        }
     }
 
     private function audit(string $action, CompanyUser $companyUser, array $properties, Request $request): void
     {
-        ActivityLog::query()->create([
-            'user_id' => $request->user()?->id,
-            'company_id' => $this->tenantContext->company()?->id,
+        $this->auditLogService->logSuccess([
+            'event' => $action,
             'action' => $action,
             'module' => 'access',
-            'description' => 'Access management change.',
-            'subject_type' => CompanyUser::class,
-            'subject_id' => $companyUser->id,
-            'properties' => $properties,
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
+            'message' => 'Access management change.',
+            'record_type' => CompanyUser::class,
+            'record_id' => $companyUser->id,
+            'record_number' => (string) $companyUser->user_id,
+            'metadata' => $properties,
+            'user_id' => $request->user()?->id,
+        ], tenant: false);
+    }
+
+    private function role(int $roleId): Role
+    {
+        return Role::query()
+            ->where(function ($query): void {
+                $query->where('is_system', true)->orWhere('company_id', $this->tenantContext->companyId());
+            })
+            ->where('is_active', true)
+            ->whereKey($roleId)
+            ->firstOrFail();
     }
 }

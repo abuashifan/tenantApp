@@ -17,7 +17,7 @@ class InviteCompanyUserRequest extends FormRequest
             'email' => ['required', 'email', 'max:255'],
             'role' => ['nullable', 'string', 'max:100'],
             'role_id' => ['nullable', 'integer', 'exists:roles,id'],
-            'expires_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date', 'after:now'],
         ];
     }
 }

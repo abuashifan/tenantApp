@@ -18,10 +18,30 @@ export async function fetchCompanyUsers() {
   return unwrap(response.data)
 }
 
+export async function fetchCompanyUser(companyUserId: number) {
+  const response = await api.get<ApiResponse<AccessCompanyUser>>(`/access/company-users/${companyUserId}`)
+  return unwrap(response.data)
+}
+
 export async function updateCompanyUserRole(
   companyUserId: number,
   payload: { role_id?: number | null; role?: string; reset_overrides?: boolean },
 ) {
   const response = await api.patch<ApiResponse<unknown>>(`/access/company-users/${companyUserId}/role`, payload)
+  return unwrap(response.data)
+}
+
+export async function deactivateCompanyUser(companyUserId: number) {
+  const response = await api.patch<ApiResponse<AccessCompanyUser>>(`/access/company-users/${companyUserId}/deactivate`)
+  return unwrap(response.data)
+}
+
+export async function reactivateCompanyUser(companyUserId: number) {
+  const response = await api.patch<ApiResponse<AccessCompanyUser>>(`/access/company-users/${companyUserId}/reactivate`)
+  return unwrap(response.data)
+}
+
+export async function removeCompanyUser(companyUserId: number) {
+  const response = await api.patch<ApiResponse<AccessCompanyUser>>(`/access/company-users/${companyUserId}/remove`)
   return unwrap(response.data)
 }

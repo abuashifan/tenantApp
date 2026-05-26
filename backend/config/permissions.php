@@ -213,6 +213,29 @@ return [
 
         // Audit
         'audit.view',
+
+        // Access Management
+        'access.users.view',
+        'access.users.invite',
+        'access.users.deactivate',
+        'access.users.remove',
+        'access.users.manage',
+        'access.roles.view',
+        'access.roles.create',
+        'access.roles.edit',
+        'access.roles.clone',
+        'access.roles.deactivate',
+        'access.roles.manage',
+        'access.permissions.view',
+        'access.permissions.assign',
+        'access.permissions.revoke',
+        'access.permissions.manage',
+        'access.invitations.view',
+        'access.invitations.create',
+        'access.invitations.resend',
+        'access.invitations.revoke',
+        'access.invitations.manage',
+        'access.audit.view',
     ],
 
     'roles' => [

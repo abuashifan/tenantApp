@@ -36,7 +36,7 @@ Dokumen ini tidak berisi prompt teknis, script, potongan kode, atau instruksi de
 [✓] Phase 15 — Purchase Frontend MVP
 [✓] Phase 16 — Cash Bank Frontend MVP
 [✓] Phase 17 — Inventory Frontend MVP
-[>] Phase 18 — Role, Permission & User Management Advanced
+[✓] Phase 18 — Role, Permission & User Management Advanced
 [ ] Phase 19 — Reports Advanced, Export PDF/Excel, Print View
 [ ] Phase 20 — Audit Log Advanced UI
 [ ] Phase 21 — Backup & Restore Tools
@@ -783,31 +783,31 @@ Scope:
 Status:
 
 ```text
-[ ] Belum dimulai
+[✓] Selesai
 ```
 
 Subphase:
 
 ```text
-[ ] Phase 18A — User Management Foundation
-[ ] Phase 18B — Role Management
-[ ] Phase 18C — Permission Management
-[ ] Phase 18D — User Invitation & Access Workflow
-[ ] Phase 18E — Role & Permission Audit
-[ ] Phase 18F — Integration Tests & Documentation
+[✓] Phase 18A — User Management Foundation
+[✓] Phase 18B — Role Management
+[✓] Phase 18C — Permission Management
+[✓] Phase 18D — User Invitation & Access Workflow
+[✓] Phase 18E — Role & Permission Audit
+[✓] Phase 18F — Integration Tests & Documentation
 ```
 
 Scope:
 
 ```text
-[ ] User management
-[ ] Role management
-[ ] Permission management
-[ ] User invitation
-[ ] Access workflow
-[ ] Role audit
-[ ] Permission audit
-[ ] Tests and documentation
+[✓] User management
+[✓] Role management
+[✓] Permission management
+[✓] User invitation lifecycle administration
+[✓] Access workflow
+[✓] Role audit
+[✓] Permission audit
+[✓] Tests and documentation
 ```
 
 ---

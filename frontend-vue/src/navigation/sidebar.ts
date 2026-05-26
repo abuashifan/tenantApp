@@ -6,6 +6,7 @@ import {
   Database,
   LayoutDashboard,
   Settings,
+  ShieldCheck,
   ShoppingCart,
   WalletCards,
   Warehouse,
@@ -161,6 +162,18 @@ export const sidebarMenuGroups: SidebarMenuGroup[] = [
       item('inventory-reports', 'valuation-report', 'Valuation Report', '/inventory/reports/valuation', '/inventory/reports/valuation', 'inventory.reports.view'),
       item('inventory-reports', 'low-stock-report', 'Low Stock Report', '/inventory/reports/low-stock', '/inventory/reports/low-stock', 'inventory.reports.view'),
       item('inventory-reports', 'negative-stock-report', 'Negative Stock Report', '/inventory/reports/negative-stock', '/inventory/reports/negative-stock', 'inventory.reports.view'),
+    ],
+  },
+  {
+    key: 'access',
+    label: 'Access Management',
+    icon: ShieldCheck,
+    items: [
+      item('access', 'access-company-users', 'Company Users', '/access/company-users', '/access/company-users', 'access.users.view', true),
+      item('access', 'access-user-permissions', 'Permission Matrix', '/access/permissions', '/access/permission-catalog', 'access.permissions.view', true),
+      item('access', 'access-roles', 'Roles', '/access/roles', '/access/roles', 'access.roles.view', true),
+      item('access', 'access-invitations', 'Invitations', '/access/invitations', '/access/invitations', 'access.invitations.view', true),
+      item('access', 'access-audit', 'Access Audit', '/access/audit', '/access/audit', 'access.audit.view', true),
     ],
   },
   {

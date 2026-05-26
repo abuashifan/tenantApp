@@ -6,7 +6,10 @@ use App\Services\Tenant\TenantContext;
 
 class PermissionService
 {
-    public function __construct(private readonly TenantContext $tenantContext)
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly EffectivePermissionService $effectivePermissionService,
+    )
     {
     }
 
@@ -48,19 +51,20 @@ class PermissionService
      */
     public function userPermissions(): array
     {
-        $role = $this->tenantContext->role();
+        $companyUser = $this->tenantContext->companyUser();
 
-        $rolePermissions = $this->resolveRolePermissions($role);
-        $overrides = $this->resolveUserOverrides();
-
-        return array_values(array_unique(array_merge($rolePermissions, $overrides)));
+        return $companyUser
+            ? $this->effectivePermissionService->getEffectivePermissionKeys($companyUser)
+            : [];
     }
 
     public function can(string $permission): bool
     {
-        $role = $this->tenantContext->role();
+        $companyUser = $this->tenantContext->companyUser();
 
-        return $this->roleHasPermission($role, $permission);
+        return $companyUser
+            ? $this->effectivePermissionService->hasPermission($companyUser, $permission)
+            : false;
     }
 
     public function cannot(string $permission): bool
@@ -83,4 +87,3 @@ class PermissionService
         return [];
     }
 }
-

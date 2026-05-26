@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import CopyAccessDialog from '@/components/access/CopyAccessDialog.vue'
 import PermissionMatrixTable from '@/components/access/PermissionMatrixTable.vue'
@@ -13,6 +14,7 @@ import { unwrap, type ApiResponse } from '@/services/apiResponse'
 
 const access = useAccessStore()
 const auth = useAuthStore()
+const route = useRoute()
 const activeModuleKey = ref('')
 const selectedCompanyUserId = ref<number | null>(null)
 const selectedRoleId = ref<number | null>(null)
@@ -33,7 +35,12 @@ async function load() {
   access.error = ''
   try {
     await Promise.all([access.fetchCompanyUsers(), access.fetchRoles(), access.fetchPermissionCatalog()])
-    selectedCompanyUserId.value = selectedCompanyUserId.value ?? access.selectedCompanyUser?.id ?? access.companyUsers[0]?.id ?? null
+    const requestedUserId = Number(route.params.id)
+    selectedCompanyUserId.value = selectedCompanyUserId.value
+      ?? (Number.isInteger(requestedUserId) && requestedUserId > 0 ? requestedUserId : null)
+      ?? access.selectedCompanyUser?.id
+      ?? access.companyUsers[0]?.id
+      ?? null
     activeModuleKey.value = activeModuleKey.value || access.permissionCatalog?.modules[0]?.key || ''
     if (selectedCompanyUserId.value) await loadUser(selectedCompanyUserId.value)
   } catch (error) {
@@ -51,27 +58,42 @@ async function loadUser(companyUserId: number) {
 async function save() {
   if (!selectedCompanyUserId.value) return
   message.value = ''
-  await access.updateUserPermissions(selectedCompanyUserId.value, selectedRoleId.value)
-  if (access.effectivePermissions?.company_user.user_id === auth.user?.id) {
-    const response = await api.get<ApiResponse<{ permissions: string[] }>>('/auth/permissions')
-    auth.setPermissions(unwrap(response.data).permissions)
+  access.error = ''
+  try {
+    await access.updateUserPermissions(selectedCompanyUserId.value, selectedRoleId.value)
+    if (access.effectivePermissions?.company_user.user_id === auth.user?.id) {
+      const response = await api.get<ApiResponse<{ permissions: string[] }>>('/auth/permissions')
+      auth.setPermissions(unwrap(response.data).permissions)
+    }
+    message.value = 'Hak akses tersimpan.'
+  } catch (error) {
+    access.error = error instanceof Error ? error.message : 'Unable to save access data.'
   }
-  message.value = 'Hak akses tersimpan.'
 }
 
 async function reset() {
   if (!selectedCompanyUserId.value) return
-  await access.resetPermissions(selectedCompanyUserId.value)
-  selectedRoleId.value = access.effectivePermissions?.company_user.role_id ?? null
-  message.value = 'Override dihapus. Permission kembali ke role default.'
+  access.error = ''
+  try {
+    await access.resetPermissions(selectedCompanyUserId.value)
+    selectedRoleId.value = access.effectivePermissions?.company_user.role_id ?? null
+    message.value = 'Override dihapus. Permission kembali ke role default.'
+  } catch (error) {
+    access.error = error instanceof Error ? error.message : 'Unable to reset permissions.'
+  }
 }
 
 async function copyAccess(payload: { source_company_user_id: number; copy_role: boolean; copy_overrides: boolean }) {
   if (!selectedCompanyUserId.value) return
-  await access.copyAccess(selectedCompanyUserId.value, payload)
-  selectedRoleId.value = access.effectivePermissions?.company_user.role_id ?? null
-  copyOpen.value = false
-  message.value = 'Hak akses berhasil disalin.'
+  access.error = ''
+  try {
+    await access.copyAccess(selectedCompanyUserId.value, payload)
+    selectedRoleId.value = access.effectivePermissions?.company_user.role_id ?? null
+    copyOpen.value = false
+    message.value = 'Hak akses berhasil disalin.'
+  } catch (error) {
+    access.error = error instanceof Error ? error.message : 'Unable to copy permissions.'
+  }
 }
 
 watch(selectedCompanyUserId, (id) => {

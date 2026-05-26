@@ -125,7 +125,8 @@ class PermissionCatalogService
     private function moduleLabel(string $module): string
     {
         return match ($module) {
-            'settings', 'access' => 'Info Perusahaan',
+            'settings' => 'Info Perusahaan',
+            'access' => 'Access Management',
             'master_data', 'coa', 'contacts', 'products', 'units', 'warehouses', 'departments', 'projects' => 'Master Data',
             'journal', 'accounting', 'fiscal_year' => 'Buku Besar',
             'sales' => 'Penjualan',
