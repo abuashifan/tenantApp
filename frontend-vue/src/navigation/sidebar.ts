@@ -135,6 +135,7 @@ export const sidebarMenuGroups: SidebarMenuGroup[] = [
       item('cash-bank', 'cash-payments', 'Cash Payments', '/cash-bank/cash-payments', '/cash-bank/cash-payments', 'cash_bank.view'),
       item('cash-bank', 'bank-transfers', 'Bank Transfers', '/cash-bank/bank-transfers', '/cash-bank/bank-transfers', 'cash_bank.view'),
       item('cash-bank', 'bank-reconciliation', 'Bank Reconciliation', '/cash-bank/bank-reconciliations', '/cash-bank/bank-reconciliations', 'cash_bank.view'),
+      item('cash-bank', 'cash-bank-account-statement', 'Account Statement', '/cash-bank/account-statement', '/cash-bank/reports/account-statement', 'cash_bank.view', true),
     ],
   },
   {

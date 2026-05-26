@@ -80,7 +80,8 @@ Catatan: route list API sesudah integrasi Access Management menampilkan **307** 
 | Reports | /reports/balance-sheet | RouteIntent | Sidebar ada | `/reports/balance-sheet` | Dummy/Placeholder |
 | Reports | /reports/cash-flow | RouteIntent | Sidebar ada | `/reports/cash-flow` | Dummy/Placeholder |
 | Reports | /reports/financial-summary | RouteIntent | Sidebar ada | `/reports/financial-summary` | Dummy/Placeholder |
-| Sales/Purchase/Cash/Inventory (bulk) | route hasil `sidebarPlaceholderItems` | RouteIntent generic | Sidebar ada | endpoint ada | Dummy/Placeholder |
+| Sales/Purchase/Cash/Inventory (bulk) | route hasil `sidebarPlaceholderItems` | RouteIntent generic | Sidebar ada | endpoint ada | Dummy/Placeholder, except Cash Bank Account Statement |
+| Cash Bank | /cash-bank/account-statement | `frontend-vue/src/pages/cash-bank/CashBankAccountStatementPage.vue` | Sidebar ada | `/cash-bank/reports/account-statement` | Connected |
 | Access Management | /access/company-users, /access/permissions, /access/roles, /access/invitations, /access/audit | `frontend-vue/src/pages/access/*` | Permission-aware sidebar ada | `/api/access/*` | Connected |
 | Design Demo | /design/* | design demo pages | tidak untuk user akhir | bukan API bisnis | Done (demo only) |
 
@@ -104,6 +105,7 @@ Ringkas: router Vue memiliki 31 entri `path:` eksplisit; Next.js legacy memiliki
 
 ### Cash Bank
 - [~] Workspace resource cash receipt/payment/transfer sekarang meminta alasan dan mendukung Bulk Void; bank reconciliation belum memiliki endpoint void backend.
+- [x] Gap Cash Bank Account Statement ditutup: halaman Vue `/cash-bank/account-statement` memakai endpoint existing, selector akun, filter periode, summary balance, dan tabel running balance dengan permission `cash_bank.view`. Detail: `docs/point-6-cash-bank-account-statement.md`.
 
 ### Inventory
 - [~] Workspace resource stock movement/adjustment/opname sekarang meminta alasan dan mendukung Bulk Void melalui endpoint existing; report/final dedicated page tetap di luar perbaikan ini.

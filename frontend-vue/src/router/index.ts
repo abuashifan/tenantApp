@@ -122,6 +122,18 @@ const router = createRouter({
           },
         },
         {
+          path: 'cash-bank/account-statement',
+          name: 'cash-bank-account-statement',
+          component: () => import('@/pages/workspace/RouteIntent.vue'),
+          meta: {
+            permissions: ['cash_bank.view'],
+            apiEndpoint: '/cash-bank/reports/account-statement',
+            primaryTabId: '/cash-bank/account-statement',
+            primaryTabLabel: 'Account Statement',
+            primaryTabClosable: true,
+          },
+        },
+        {
           path: 'reports/profit-loss',
           name: 'profit-loss',
           component: () => import('@/pages/workspace/RouteIntent.vue'),
