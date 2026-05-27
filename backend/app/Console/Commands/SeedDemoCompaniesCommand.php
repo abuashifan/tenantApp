@@ -96,7 +96,7 @@ class SeedDemoCompaniesCommand extends Command
             File::put($databasePath, '');
         }
 
-        TenantDatabase::firstOrCreate(
+        TenantDatabase::updateOrCreate(
             ['company_id' => $companyId],
             [
                 'database_name' => $databaseName,

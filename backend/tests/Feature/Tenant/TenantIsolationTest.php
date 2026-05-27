@@ -119,7 +119,7 @@ class TenantIsolationTest extends TestCase
             'joined_at' => now(),
         ]);
 
-        $databaseName = 'company_000101.sqlite';
+        $databaseName = 'test_tenant_inactive_101.sqlite';
         $databasePath = database_path('tenants/'.$databaseName);
         $this->ensureTenantFile($databasePath);
 
@@ -186,7 +186,7 @@ class TenantIsolationTest extends TestCase
             'joined_at' => now(),
         ]);
 
-        $databaseName = 'company_'.str_pad((string) $company->id, 6, '0', STR_PAD_LEFT).'.sqlite';
+        $databaseName = 'test_tenant_'.$companyIdSeed.'.sqlite';
         $databasePath = database_path('tenants/'.$databaseName);
         $this->ensureTenantFile($databasePath);
 
@@ -215,4 +215,3 @@ class TenantIsolationTest extends TestCase
         $this->tenantFiles[] = $path;
     }
 }
-

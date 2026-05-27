@@ -13,11 +13,11 @@ const app = createApp(App)
 
 const pinia = createPinia()
 app.use(pinia)
-app.use(router)
 
 // Hydrate stores before mounting so guards/interceptors see persisted state.
-useAuthStore(pinia).loadFromStorage()
+useAuthStore(pinia).initializeAuthFromStorage()
 useCompanyStore(pinia).loadFromStorage()
 setupApiInterceptors(router)
+app.use(router)
 
 app.mount('#app')

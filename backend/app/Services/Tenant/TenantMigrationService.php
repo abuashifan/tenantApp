@@ -157,9 +157,11 @@ class TenantMigrationService
             ];
         }
 
-        $databasePath = (string) ($tenantDatabase->database_path ?? '');
-        if (trim($databasePath) === '') {
-            $databasePath = database_path('tenants/'.$databaseName);
+        $databasePath = database_path('tenants/'.$databaseName);
+        try {
+            $databasePath = $this->connectionManager->resolveDatabasePath($tenantDatabase);
+        } catch (Throwable) {
+            // Keep the canonical path in the failure result below.
         }
 
         $migrationPath = base_path('database/migrations/tenant');
@@ -191,7 +193,7 @@ class TenantMigrationService
         }
 
         try {
-            $this->connectionManager->connect($databasePath);
+            $this->connectionManager->connect($tenantDatabase);
 
             $exitCode = Artisan::call('migrate', [
                 '--database' => 'tenant',

@@ -132,7 +132,7 @@ class CompanySettingTest extends TestCase
             'joined_at' => now(),
         ]);
 
-        $databaseName = 'company_'.str_pad((string) $company->id, 6, '0', STR_PAD_LEFT).'.sqlite';
+        $databaseName = 'test_settings_'.$companySeed.'.sqlite';
         $databasePath = database_path('tenants/'.$databaseName);
         $this->ensureTenantFile($databasePath);
 

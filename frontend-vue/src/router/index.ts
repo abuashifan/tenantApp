@@ -25,13 +25,13 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('@/pages/auth/LoginPage.vue'),
-      meta: { public: true },
+      meta: { public: true, guestOnly: true },
     },
     {
       path: '/select-company',
       name: 'select-company',
       component: () => import('@/pages/auth/SelectCompanyPage.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresCompany: false },
     },
     {
       path: '/',
@@ -363,14 +363,19 @@ router.beforeEach(async (to) => {
   const company = useCompanyStore()
 
   const isPublic = to.matched.some((r) => Boolean(r.meta.public))
+  const guestOnly = to.matched.some((r) => Boolean(r.meta.guestOnly))
   const requiresAuth = to.matched.some((r) => Boolean(r.meta.requiresAuth)) || (!isPublic && to.path !== '/login')
   const requiresCompany = to.matched.some((r) => Boolean(r.meta.requiresCompany))
 
-  if (!isPublic && requiresAuth && !auth.isAuthenticated) {
+  if (requiresAuth && !auth.isAuthenticated) {
     return { path: '/login', query: { next: to.fullPath } }
   }
 
-  if (!isPublic && requiresCompany && company.activeCompanyId == null) {
+  if (guestOnly && auth.isAuthenticated) {
+    return { path: company.activeCompanyId == null ? '/select-company' : '/dashboard' }
+  }
+
+  if (requiresCompany && company.activeCompanyId == null) {
     return { path: '/select-company', query: { next: to.fullPath } }
   }
 
@@ -379,13 +384,10 @@ router.beforeEach(async (to) => {
     const allowed = auth.permissions.includes('*') || requiredPermissions.every((p) => auth.permissions.includes(p))
     if (!allowed) {
       // Basic deny: redirect to dashboard (or login if not authed)
-      return auth.isAuthenticated ? { path: '/dashboard' } : { path: '/login' }
+      return auth.isAuthenticated && to.path !== '/dashboard' ? { path: '/dashboard' } : true
     }
   }
 
-  if (to.path === '/login' && auth.isAuthenticated) {
-    return { path: company.activeCompanyId == null ? '/select-company' : '/dashboard' }
-  }
   return true
 })
 

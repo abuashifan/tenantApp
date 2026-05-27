@@ -8,7 +8,6 @@ import AuthShell from '@/components/auth/AuthShell.vue'
 import AuthTextField from '@/components/auth/AuthTextField.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { fetchCompanies } from '@/services/companyApi'
-import { login } from '@/services/authApi'
 import { normalizeApiError } from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
@@ -28,11 +27,10 @@ async function handleLogin() {
   errorMessage.value = ''
   loading.value = true
   try {
-    const data = await login({
+    await auth.login({
       email: email.value,
       password: password.value,
     })
-    auth.setAuth({ token: data.token, user: data.user })
 
     const companies = await fetchCompanies()
     company.setCompanies(companies)

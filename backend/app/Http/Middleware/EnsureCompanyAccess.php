@@ -71,9 +71,20 @@ class EnsureCompanyAccess
         $request->attributes->set('active_tenant_database', $tenantDatabase);
 
         try {
-            $this->connectionManager->connect((string) $tenantDatabase->database_path);
+            $this->connectionManager->connect($tenantDatabase);
         } catch (Throwable $e) {
-            return ApiResponseBuilder::error(ApiErrorCode::TENANT_DATABASE_NOT_ACTIVE, $e->getMessage(), [], 422);
+            return ApiResponseBuilder::error(
+                ApiErrorCode::TENANT_DATABASE_NOT_ACTIVE,
+                'Tenant database is not available.',
+                [],
+                422,
+                [
+                    'company_id' => $company->id,
+                    'database_name' => $tenantDatabase->database_name,
+                    'database_path' => $tenantDatabase->database_path,
+                    'detail' => $e->getMessage(),
+                ],
+            );
         }
 
         return $next($request);

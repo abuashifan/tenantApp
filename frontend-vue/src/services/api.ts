@@ -25,9 +25,9 @@ function safeJson<T>(value: string | null): T | null {
 function authToken() {
   try {
     const auth = useAuthStore()
-    return auth.token || localStorage.getItem('ta_token') || ''
+    return auth.token || localStorage.getItem('ta_token') || localStorage.getItem('auth_token') || ''
   } catch {
-    return localStorage.getItem('ta_token') || ''
+    return localStorage.getItem('ta_token') || localStorage.getItem('auth_token') || ''
   }
 }
 
@@ -36,10 +36,14 @@ function activeCompanyId() {
     const company = useCompanyStore()
     return (
       company.activeCompanyId ??
-      safeJson<string | number>(localStorage.getItem('ta_active_company_id'))
+      safeJson<string | number>(
+        localStorage.getItem('ta_active_company_id') ?? localStorage.getItem('active_company_id'),
+      )
     )
   } catch {
-    return safeJson<string | number>(localStorage.getItem('ta_active_company_id'))
+    return safeJson<string | number>(
+      localStorage.getItem('ta_active_company_id') ?? localStorage.getItem('active_company_id'),
+    )
   }
 }
 
@@ -108,12 +112,31 @@ export function clearInvalidAuth() {
     localStorage.removeItem('ta_token')
     localStorage.removeItem('ta_user')
     localStorage.removeItem('ta_permissions')
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_permissions')
   }
 
   try {
-    useCompanyStore().clearActiveCompany()
+    useCompanyStore().clearCompanyState()
   } catch {
-    localStorage.setItem('ta_active_company_id', JSON.stringify(null))
+    localStorage.removeItem('ta_active_company_id')
+    localStorage.removeItem('ta_active_company')
+    localStorage.removeItem('ta_companies')
+    localStorage.removeItem('active_company_id')
+    localStorage.removeItem('active_company')
+  }
+}
+
+export function clearInvalidCompany() {
+  try {
+    useCompanyStore().clearCompanyState()
+  } catch {
+    localStorage.removeItem('ta_active_company_id')
+    localStorage.removeItem('ta_active_company')
+    localStorage.removeItem('ta_companies')
+    localStorage.removeItem('active_company_id')
+    localStorage.removeItem('active_company')
   }
 }
 

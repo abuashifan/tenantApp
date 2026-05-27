@@ -18,7 +18,6 @@ import ToneBadge from '@/components/ui/ToneBadge.vue'
 import { useCompanyStore } from '@/stores/companyStore'
 import { useAuthStore } from '@/stores/authStore'
 import { fetchCompanies, fetchPermissions, selectCompany } from '@/services/companyApi'
-import { logout } from '@/services/authApi'
 import { normalizeApiError } from '@/services/api'
 import { invalidateTenantScopedState } from '@/services/tenantWorkspaceState'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
@@ -66,19 +65,7 @@ onMounted(async () => {
 async function handleLogout() {
   loggingOut.value = true
   errorMessage.value = ''
-  try {
-    await logout()
-  } catch (e) {
-    if (normalizeApiError(e).status !== 401) {
-      errorMessage.value = errorText(e, 'Logout gagal.')
-      loggingOut.value = false
-      return
-    }
-  }
-
-  authStore.clearAuth()
-  companyStore.clearActiveCompany()
-  invalidateTenantScopedState()
+  await authStore.logout()
   loggingOut.value = false
   await router.push('/login')
 }
@@ -104,7 +91,7 @@ async function handleContinue() {
       : [...companyStore.companies, activeCompany]
 
     companyStore.setCompanies(merged)
-    companyStore.setActiveCompany(activeCompany.id)
+    companyStore.setActiveCompanyData(activeCompany)
     authStore.setPermissions([])
     invalidateTenantScopedState()
 

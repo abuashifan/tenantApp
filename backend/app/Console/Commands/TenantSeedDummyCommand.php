@@ -55,7 +55,7 @@ class TenantSeedDummyCommand extends Command
 
         try {
             $this->ensureOpenPeriod((int) $company->id, $period);
-            $connections->connect((string) $tenantDatabase->database_path);
+            $connections->connect($tenantDatabase);
             $result = (new TenantDummyDataSeeder())->seed($period);
         } catch (Throwable $e) {
             $this->error('Dummy tenant seed failed: '.$e->getMessage());
@@ -67,7 +67,7 @@ class TenantSeedDummyCommand extends Command
         $trial = $result['trial_balance'];
         $this->info('Tenant dummy accounting cycle seeded successfully.');
         $this->line('Company: '.$company->id.' - '.$company->name);
-        $this->line('Tenant DB: '.$tenantDatabase->database_path);
+        $this->line('Tenant DB: '.$connections->resolveDatabasePath($tenantDatabase));
         $this->line('Period: '.$period.' (open)');
         $this->line('Journal entries: '.$result['journal_entries']);
         $this->line(sprintf('Trial balance: debit %.2f / credit %.2f / balanced %s', $trial['debit'], $trial['credit'], $trial['balanced'] ? 'YES' : 'NO'));
