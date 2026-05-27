@@ -15,7 +15,11 @@ const endDate = ref('2026-01-31')
 const search = ref('')
 const detail = ref<LedgerDetail | null>(null)
 const loading = ref(false)
+const accountsLoading = ref(false)
 const error = ref<string | null>(null)
+const accountsError = ref<string | null>(null)
+const includeOpeningBalance = ref(true)
+const includeZeroBalance = ref(false)
 
 const rows = computed(() => (detail.value?.lines ?? []).filter((line) => {
   const term = search.value.trim().toLowerCase()
@@ -27,12 +31,17 @@ function formatMoney(value: number) {
 }
 
 async function loadAccountOptions() {
-  accounts.value = await listLedgerAccounts({
-    start_date: startDate.value,
-    end_date: endDate.value,
-    include_opening_balance: true,
-    include_zero_balance: false,
-  })
+  accountsLoading.value = true
+  accountsError.value = null
+  try {
+    accounts.value = await listLedgerAccounts({ is_active: true })
+  } catch (cause) {
+    accounts.value = []
+    accountsError.value = reportErrorMessage(cause, 'Unable to load chart of accounts.')
+  } finally {
+    accountsLoading.value = false
+  }
+
   if (!selectedAccountId.value && accounts.value.length) selectedAccountId.value = accounts.value[0]!.account_id
 }
 
@@ -40,13 +49,13 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    await loadAccountOptions()
+    if (!accounts.value.length) await loadAccountOptions()
     detail.value = selectedAccountId.value
       ? await getGeneralLedger(selectedAccountId.value, {
           start_date: startDate.value,
           end_date: endDate.value,
-          include_opening_balance: true,
-          include_zero_balance: false,
+          include_opening_balance: includeOpeningBalance.value,
+          include_zero_balance: includeZeroBalance.value,
         })
       : null
   } catch (cause) {
@@ -78,12 +87,13 @@ onMounted(load)
       <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
         <label class="block space-y-1.5 lg:min-w-[320px] lg:flex-1">
           <span class="text-xs font-bold text-slate-500">Account</span>
-          <select v-model="selectedAccountId" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700">
-            <option :value="null">Select account...</option>
+          <select v-model="selectedAccountId" :disabled="accountsLoading" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 disabled:bg-slate-100">
+            <option :value="null">{{ accountsLoading ? 'Loading accounts...' : 'Select account...' }}</option>
             <option v-for="account in accounts" :key="account.account_id" :value="account.account_id">
-              {{ account.account_code }} - {{ account.account_name }}
+              {{ account.label }}
             </option>
           </select>
+          <span v-if="accountsError" class="block text-xs font-semibold text-rose-600">{{ accountsError }}</span>
         </label>
         <label class="block space-y-1.5 lg:w-[165px]">
           <span class="text-xs font-bold text-slate-500">Start Date</span>
@@ -96,6 +106,14 @@ onMounted(load)
         <label class="block space-y-1.5 lg:min-w-[220px] lg:flex-1">
           <span class="text-xs font-bold text-slate-500">Search</span>
           <input v-model="search" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" placeholder="Search journal no or description..." />
+        </label>
+        <label class="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">
+          <input v-model="includeOpeningBalance" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
+          Opening
+        </label>
+        <label class="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">
+          <input v-model="includeZeroBalance" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
+          Zero
         </label>
         <BaseButton variant="primary" size="md" @click="load">Apply</BaseButton>
       </div>

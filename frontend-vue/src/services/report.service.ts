@@ -8,6 +8,7 @@ export type LedgerAccountOption = {
   account_id: number
   account_code: string
   account_name: string
+  label: string
 }
 
 export type LedgerLine = {
@@ -31,11 +32,19 @@ export type LedgerDetail = {
   lines: LedgerLine[]
 }
 
-type LedgerSummaryResponse = {
-  accounts: Array<{
-    account: { id: number; account_code: string; account_name: string }
-  }>
+type BackendChartOfAccount = {
+  id?: string | number | null
+  code?: string | null
+  name?: string | null
+  account_code?: string | null
+  account_name?: string | null
+  is_active?: boolean | number | string | null
+  is_postable?: boolean | number | string | null
+  is_group?: boolean | number | string | null
+  level?: number | string | null
 }
+
+type BackendListPayload<T> = T[] | { data?: T[]; items?: T[] }
 
 export type TrialBalanceRow = {
   id: string
@@ -162,18 +171,60 @@ export function reportErrorMessage(cause: unknown, fallback = 'Unable to load re
   return fallback
 }
 
+function normalizeList<T>(payload: BackendListPayload<T>) {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload.data)) return payload.data
+  if (Array.isArray(payload.items)) return payload.items
+  return []
+}
+
+function isFalseLike(value: unknown) {
+  return value === false || value === 0 || value === '0' || value === 'false'
+}
+
+function accountLabel(account: BackendChartOfAccount) {
+  const code = String(account.code ?? account.account_code ?? '').trim()
+  const name = String(account.name ?? account.account_name ?? '').trim()
+  return [code, name].filter(Boolean).join(' - ') || 'Unnamed account'
+}
+
+function cleanReportParams(params: ReportParams = {}) {
+  const cleaned: Record<string, string | number> = {}
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null || value === '') continue
+    if (typeof value === 'boolean') {
+      cleaned[key] = value ? 'true' : 'false'
+      continue
+    }
+    cleaned[key] = typeof value === 'number' ? value : String(value)
+  }
+
+  return cleaned
+}
+
 export async function listLedgerAccounts(params: ReportParams = {}) {
-  const response = await api.get<ApiResponse<LedgerSummaryResponse>>('/reports/general-ledger', { params })
-  return unwrap(response.data).accounts.map((row) => ({
-    account_id: row.account.id,
-    account_code: row.account.account_code,
-    account_name: row.account.account_name,
-  }))
+  const response = await api.get<ApiResponse<BackendListPayload<BackendChartOfAccount>>>(
+    '/master-data/chart-of-accounts',
+    { params: cleanReportParams(params) },
+  )
+
+  return normalizeList(unwrap(response.data))
+    .filter((account) => !isFalseLike(account.is_active))
+    .filter((account) => account.is_postable == null || !isFalseLike(account.is_postable))
+    .filter((account) => account.is_group == null || isFalseLike(account.is_group))
+    .map((account) => ({
+      account_id: Number(account.id),
+      account_code: String(account.code ?? account.account_code ?? ''),
+      account_name: String(account.name ?? account.account_name ?? ''),
+      label: accountLabel(account),
+    }))
+    .filter((account) => Number.isFinite(account.account_id))
 }
 
 export async function getGeneralLedger(accountId: number, params: ReportParams = {}) {
   const response = await api.get<ApiResponse<LedgerDetail>>('/reports/general-ledger', {
-    params: { ...params, account_id: accountId },
+    params: cleanReportParams({ ...params, account_id: accountId }),
   })
   const result = unwrap(response.data)
   return {

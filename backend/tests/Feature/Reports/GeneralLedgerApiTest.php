@@ -87,6 +87,10 @@ class GeneralLedgerApiTest extends JournalTestCase
         $res->assertJsonPath('data.valid', true);
         $this->assertCount(1, (array) $res->json('data.lines'));
 
+        $resBool = $this->getJson('/api/reports/general-ledger?account_id='.$accountId.'&start_date=2026-03-01&end_date=2026-03-31&include_opening_balance=true&include_zero_balance=false', $ctx1['headers']);
+        $resBool->assertStatus(200);
+        $resBool->assertJsonPath('data.valid', true);
+
         // Tenant isolation: create another company + tenant DB, same user, request must not see company1 journals.
         $user = $ctx1['user'];
         $company2 = Company::query()->create([
