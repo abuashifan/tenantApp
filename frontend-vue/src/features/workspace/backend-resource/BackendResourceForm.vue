@@ -4,6 +4,7 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import UnsavedChangesDialog from '@/components/dialog/UnsavedChangesDialog.vue'
 import VoidTransactionDialog from '@/components/dialog/VoidTransactionDialog.vue'
 import FormActionBar from '@/components/form/FormActionBar.vue'
 import FormCheckbox from '@/components/form/FormCheckbox.vue'
@@ -81,6 +82,7 @@ const hydrating = ref(false)
 const loadedEntityId = ref<string | number | null>(null)
 const voidDialogOpen = ref(false)
 const pendingVoidAction = ref<FormActionConfig | null>(null)
+const closeConfirmOpen = ref(false)
 
 const readonly = computed(() => props.tab.mode === 'detail' || ['posted', 'void', 'voided', 'cancelled', 'closed', 'finalized'].includes(status.value))
 const title = computed(() => {
@@ -125,6 +127,9 @@ const isProductDetail = computed(() =>
 const inventoryHistoryEnabled = computed(() => Boolean(form.values.is_stock_item))
 const inventoryEntityName = computed(() => String(form.values.product_name ?? numberText.value))
 const canViewInventoryHistory = computed(() => can('inventory.reports.view'))
+const showFooterActions = computed(() => !isProductDetail.value)
+const showHeaderActions = computed(() => !showFooterActions.value)
+const showSummary = computed(() => !isProductDetail.value && Boolean(props.config.lineItems))
 
 function can(permission: string) {
   return auth.permissions.includes('*') || auth.permissions.includes(permission)
@@ -225,6 +230,12 @@ function removeLine(index: number) {
 
 function payload(values: Record<string, unknown>) {
   const result: Record<string, unknown> = { ...values }
+  if (props.config.endpoint === '/master-data/contacts') {
+    const contactType = String(result.contact_type ?? 'other')
+    result.is_customer = contactType === 'customer'
+    result.is_supplier = contactType === 'supplier'
+    result.is_employee = contactType === 'employee'
+  }
   if (props.config.lineItems) {
     const firstLine = lineItems.value.find((line) => Object.keys(line).length > 0) ?? {}
     const priceField = 'estimated_unit_price' in firstLine ? 'estimated_unit_price' : 'amount' in firstLine && !('unit_price' in firstLine) ? 'amount' : 'unit_price'
@@ -321,7 +332,21 @@ function confirmVoid(payload: { reason: string }) {
 }
 
 function close() {
+  if (dirty.value) {
+    closeConfirmOpen.value = true
+    return
+  }
   emit('close')
+}
+
+function discardClose() {
+  closeConfirmOpen.value = false
+  emit('close')
+}
+
+function saveAndCloseFromDialog() {
+  closeConfirmOpen.value = false
+  void save(true)
 }
 </script>
 
@@ -338,7 +363,7 @@ function close() {
             <FormDirtyIndicator :dirty="dirty" />
           </div>
         </template>
-        <template #actions>
+        <template v-if="showHeaderActions" #actions>
           <BaseButton variant="secondary" type="button" @click="close">Cancel</BaseButton>
           <BaseButton v-if="canSave" variant="secondary" type="button" :loading="saving" @click="save(true)">Save & Close</BaseButton>
           <BaseButton v-if="canSave" variant="primary" type="submit" :loading="saving">Save</BaseButton>
@@ -444,7 +469,7 @@ function close() {
           />
         </FormSection>
 
-        <FormSection v-if="!isProductDetail" title="Summary">
+        <FormSection v-if="showSummary" title="Summary">
           <div class="grid gap-3 sm:grid-cols-3">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p class="text-xs font-black uppercase text-slate-500">Line Total</p>
@@ -472,7 +497,7 @@ function close() {
           </div>
         </FormSection>
 
-        <FormActionBar v-if="!isProductDetail">
+        <FormActionBar v-if="showFooterActions">
           <BaseButton variant="secondary" type="button" @click="close">Cancel</BaseButton>
           <BaseButton
             v-for="action in config.actions.filter(visibleAction)"
@@ -501,6 +526,12 @@ function close() {
       :transaction-number="String(numberText)"
       @close="voidDialogOpen = false"
       @confirm="confirmVoid"
+    />
+    <UnsavedChangesDialog
+      :open="closeConfirmOpen"
+      @close="closeConfirmOpen = false"
+      @discard="discardClose"
+      @save="saveAndCloseFromDialog"
     />
   </FormPageShell>
 </template>
