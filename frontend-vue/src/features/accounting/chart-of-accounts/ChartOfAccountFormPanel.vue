@@ -71,6 +71,18 @@ function defaultDraft(): ChartOfAccountDraft {
   }
 }
 
+function draftSnapshot(value: Partial<ChartOfAccountDraft> = {}): ChartOfAccountDraft {
+  const fallback = defaultDraft()
+  return {
+    accountCode: String(value.accountCode ?? fallback.accountCode),
+    accountName: String(value.accountName ?? fallback.accountName),
+    accountType: value.accountType ?? fallback.accountType,
+    parentAccountId: String(value.parentAccountId ?? fallback.parentAccountId),
+    normalBalance: value.normalBalance ?? fallback.normalBalance,
+    isActive: typeof value.isActive === 'boolean' ? value.isActive : fallback.isActive,
+  }
+}
+
 const dirty = computed(() => {
   const tab = Object.values(tabs.secondaryTabsByPrimaryId)
     .flat()
@@ -98,8 +110,8 @@ const hydrating = ref(false)
 
 function currentDraft() {
   const raw = tabs.draftStateBySecondaryTabId[props.secondaryTabId]
-  if (raw && typeof raw === 'object') return raw as ChartOfAccountDraft
-  return defaultDraft()
+  if (raw && typeof raw === 'object') return draftSnapshot(raw as Partial<ChartOfAccountDraft>)
+  return draftSnapshot()
 }
 
 function sameDraft(a: ChartOfAccountDraft, b: ChartOfAccountDraft) {
@@ -133,8 +145,8 @@ watch(
 watch(
   () => form.values,
   (values) => {
-    if (hydrating.value) return
-    const nextDraft = values as ChartOfAccountDraft
+    if (hydrating.value || !props.secondaryTabId) return
+    const nextDraft = draftSnapshot(values as Partial<ChartOfAccountDraft>)
     tabs.updateDraftState(props.secondaryTabId, nextDraft)
     tabs.setSecondaryDirty(props.secondaryTabId, !sameDraft(nextDraft, defaultDraft()))
   },
@@ -149,13 +161,19 @@ const subtitle = computed(() =>
 )
 
 const onSubmit = form.handleSubmit((values) => {
+  const draft = draftSnapshot(values)
+  if (props.secondaryTabId) {
+    tabs.updateDraftState(props.secondaryTabId, draft)
+    tabs.setSecondaryDirty(props.secondaryTabId, !sameDraft(draft, defaultDraft()))
+  }
+
   emit('save', {
-    account_code: values.accountCode,
-    account_name: values.accountName,
-    account_type: values.accountType,
-    parent_account_id: values.parentAccountId ? Number(values.parentAccountId) : null,
-    normal_balance: values.normalBalance,
-    is_active: values.isActive,
+    account_code: draft.accountCode,
+    account_name: draft.accountName,
+    account_type: draft.accountType,
+    parent_account_id: draft.parentAccountId ? Number(draft.parentAccountId) : null,
+    normal_balance: draft.normalBalance,
+    is_active: draft.isActive,
   })
 })
 

@@ -385,6 +385,7 @@ onMounted(load)
     <template #secondary>
       <ChartOfAccountFormPanel
         ref="formPanel"
+        :key="activeSecondary?.id"
         :mode="activeSecondary?.mode === 'edit' ? 'edit' : 'create'"
         :account="editingAccount"
         :accounts="accounts"
