@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue'
+import { computed, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import type { ColumnDef } from '@tanstack/vue-table'
 
+import UnsavedChangesDialog from '@/components/dialog/UnsavedChangesDialog.vue'
 import WorkspaceListPage from '@/components/workspace/WorkspaceListPage.vue'
 import ChartOfAccountFormPanel from '@/features/accounting/chart-of-accounts/ChartOfAccountFormPanel.vue'
 import { chartOfAccountsConfig } from '@/features/accounting/chart-of-accounts/chartOfAccounts.config'
@@ -13,10 +14,19 @@ import {
   type ChartOfAccountRow,
   type SaveChartOfAccountPayload,
 } from '@/features/accounting/chart-of-accounts/chartOfAccounts.service'
+import { normalizeApiError } from '@/services/api'
 import type { WorkspaceListConfig } from '@/types/workspace'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 type CoaNode = ChartOfAccountRow & { hasChildren: boolean; level: number }
+type ChartOfAccountDraft = {
+  accountCode: string
+  accountName: string
+  accountType: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
+  parentAccountId: string
+  normalBalance: 'debit' | 'credit'
+  isActive: boolean
+}
 
 const tabs = useWorkspaceTabsStore()
 tabs.ensureListSecondaryTab(chartOfAccountsConfig.primaryTabId, {
@@ -25,7 +35,11 @@ tabs.ensureListSecondaryTab(chartOfAccountsConfig.primaryTabId, {
 
 const accounts = ref<ChartOfAccountRow[]>([])
 const loading = ref(false)
+const saving = ref(false)
 const error = ref<string | null>(null)
+const formErrors = ref<string[]>([])
+const cancelConfirmOpen = ref(false)
+const formPanel = ref<InstanceType<typeof ChartOfAccountFormPanel> | null>(null)
 const search = ref('')
 const accountType = ref('')
 const activeFilter = ref<'active' | 'inactive' | 'all'>('active')
@@ -38,6 +52,8 @@ const activeSecondaryId = computed(
 )
 const activeSecondary = computed(() => secondaryTabs.value.find((tab) => tab.id === activeSecondaryId.value) ?? null)
 const editingAccount = computed(() => accounts.value.find((row) => row.id === activeSecondary.value?.entityId) ?? null)
+const activeFormDirty = computed(() => activeSecondary.value?.dirty ?? false)
+const registeredSaveHandlerIds = new Set<string>()
 
 const filteredAccounts = computed(() => accounts.value.filter((row) => {
   const term = search.value.trim().toLowerCase()
@@ -86,35 +102,133 @@ function toggleExpand(row: CoaNode) {
 }
 
 function openCreateForm() {
+  formErrors.value = []
   tabs.openCreateSecondaryTab(chartOfAccountsConfig.primaryTabId, { label: chartOfAccountsConfig.createLabel ?? 'Add Account' })
 }
 
 function openEditForm(row: ChartOfAccountRow) {
+  formErrors.value = []
   tabs.openEditSecondaryTab(chartOfAccountsConfig.primaryTabId, { id: row.id, number: row.code })
 }
 
-async function handleSave(payload: Record<string, unknown>) {
-  const savePayload = payload as SaveChartOfAccountPayload
-  error.value = null
-  try {
-    if (activeSecondary.value?.mode === 'edit' && editingAccount.value) {
-      await updateChartOfAccount(editingAccount.value.id, savePayload)
-    } else {
-      await createChartOfAccount(savePayload)
-    }
-    await load()
-    closeActiveForm()
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : 'Unable to save account.'
+function draftPayload(draft: ChartOfAccountDraft): SaveChartOfAccountPayload {
+  return {
+    account_code: draft.accountCode,
+    account_name: draft.accountName,
+    account_type: draft.accountType,
+    parent_account_id: draft.parentAccountId ? Number(draft.parentAccountId) : null,
+    normal_balance: draft.normalBalance,
+    is_active: draft.isActive,
   }
 }
 
+function validateDraft(draft: ChartOfAccountDraft) {
+  const errors: string[] = []
+  if (!draft.accountCode.trim()) errors.push('Account code is required')
+  if (!draft.accountName.trim()) errors.push('Account name is required')
+  return errors
+}
+
+async function saveTab(tabId: string, payload: SaveChartOfAccountPayload, closeAfterSave: boolean) {
+  if (saving.value) return false
+  formErrors.value = []
+  error.value = null
+  saving.value = true
+  const tab = secondaryTabs.value.find((item) => item.id === tabId)
+  try {
+    if (tab?.mode === 'edit' && tab.entityId) {
+      await updateChartOfAccount(tab.entityId, payload)
+    } else {
+      await createChartOfAccount(payload)
+    }
+    await load()
+    tabs.clearDraftState(tabId)
+    if (closeAfterSave) closeActiveForm()
+    return true
+  } catch (cause) {
+    const apiError = normalizeApiError(cause)
+    const fieldErrors = Object.values(apiError.errors ?? {}).flat()
+    formErrors.value = fieldErrors.length ? fieldErrors : [apiError.message || 'Unable to save account.']
+    tabs.activateSecondaryTab(chartOfAccountsConfig.primaryTabId, tabId)
+    return false
+  } finally {
+    saving.value = false
+  }
+}
+
+async function saveDraftTab(tabId: string) {
+  const raw = tabs.draftStateBySecondaryTabId[tabId]
+  if (!raw || typeof raw !== 'object') return false
+  const draft = raw as ChartOfAccountDraft
+  const validationErrors = validateDraft(draft)
+  if (validationErrors.length) {
+    formErrors.value = validationErrors
+    tabs.activateSecondaryTab(chartOfAccountsConfig.primaryTabId, tabId)
+    return false
+  }
+  return await saveTab(tabId, draftPayload(draft), false)
+}
+
+async function handleSave(payload: Record<string, unknown>) {
+  const tab = activeSecondary.value
+  if (!tab) return
+  await saveTab(tab.id, payload as SaveChartOfAccountPayload, true)
+}
+
 function closeActiveForm() {
+  formErrors.value = []
   const tab = activeSecondary.value
   if (!tab?.closable) return
   tabs.clearDraftState(tab.id)
   tabs.closeSecondaryTab(chartOfAccountsConfig.primaryTabId, tab.id)
 }
+
+function requestCancelForm() {
+  if (activeFormDirty.value) {
+    cancelConfirmOpen.value = true
+    return
+  }
+  closeActiveForm()
+}
+
+function discardCancelForm() {
+  cancelConfirmOpen.value = false
+  closeActiveForm()
+}
+
+function saveCancelForm() {
+  cancelConfirmOpen.value = false
+  void formPanel.value?.submit()
+}
+
+function registerSaveHandlers() {
+  const currentIds = new Set(
+    secondaryTabs.value
+      .filter((tab) => tab.closable && (tab.mode === 'create' || tab.mode === 'edit'))
+      .map((tab) => tab.id),
+  )
+
+  for (const tabId of currentIds) {
+    if (registeredSaveHandlerIds.has(tabId)) continue
+    tabs.registerSecondarySaveHandler(tabId, () => saveDraftTab(tabId))
+    registeredSaveHandlerIds.add(tabId)
+  }
+
+  for (const tabId of [...registeredSaveHandlerIds]) {
+    if (currentIds.has(tabId)) continue
+    tabs.unregisterSecondarySaveHandler(tabId)
+    registeredSaveHandlerIds.delete(tabId)
+  }
+}
+
+watch(secondaryTabs, registerSaveHandlers, { immediate: true })
+
+onUnmounted(() => {
+  for (const tabId of registeredSaveHandlerIds) {
+    tabs.unregisterSecondarySaveHandler(tabId)
+  }
+  registeredSaveHandlerIds.clear()
+})
 
 const columns = computed<ColumnDef<CoaNode, unknown>[]>(() => [
   {
@@ -184,12 +298,23 @@ onMounted(load)
     </template>
     <template #secondary>
       <ChartOfAccountFormPanel
+        ref="formPanel"
         :mode="activeSecondary?.mode === 'edit' ? 'edit' : 'create'"
         :account="editingAccount"
         :accounts="accounts"
-        @cancel="closeActiveForm"
+        :secondary-tab-id="activeSecondary?.id ?? ''"
+        :saving="saving"
+        :server-errors="formErrors"
+        @cancel="requestCancelForm"
         @save="handleSave"
       />
     </template>
   </WorkspaceListPage>
+
+  <UnsavedChangesDialog
+    :open="cancelConfirmOpen"
+    @close="cancelConfirmOpen = false"
+    @discard="discardCancelForm"
+    @save="saveCancelForm"
+  />
 </template>

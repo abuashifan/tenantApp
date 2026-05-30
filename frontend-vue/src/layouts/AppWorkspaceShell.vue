@@ -138,8 +138,21 @@ function discardCloseSecondary() {
   closePendingSecondaryId.value = null
 }
 
-function saveCloseSecondary() {
+async function saveCloseSecondary() {
   if (!closePendingSecondaryId.value) return
+  const pendingId = closePendingSecondaryId.value
+  const handled = await tabs.saveSecondaryTab(pendingId)
+  if (handled) {
+    tabs.closeSecondaryTab(activePrimaryId.value, pendingId)
+    closePendingSecondaryId.value = null
+    return
+  }
+
+  if (tabs.hasSecondarySaveHandler(pendingId)) {
+    closePendingSecondaryId.value = null
+    return
+  }
+
   tabs.setSecondaryDirty(closePendingSecondaryId.value, false)
   tabs.closeSecondaryTab(activePrimaryId.value, closePendingSecondaryId.value)
   closePendingSecondaryId.value = null

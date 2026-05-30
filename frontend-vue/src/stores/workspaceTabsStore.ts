@@ -33,6 +33,10 @@ export type WorkspaceTabsState = {
   tenantStateVersion: number
 }
 
+type SecondarySaveHandler = () => boolean | Promise<boolean>
+
+const secondarySaveHandlers = new Map<string, SecondarySaveHandler>()
+
 function now() {
   return Date.now()
 }
@@ -316,6 +320,24 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
     clearDraftState(secondaryTabId: string) {
       delete this.draftStateBySecondaryTabId[secondaryTabId]
       this.setSecondaryDirty(secondaryTabId, false)
+    },
+
+    registerSecondarySaveHandler(secondaryTabId: string, handler: SecondarySaveHandler) {
+      secondarySaveHandlers.set(secondaryTabId, handler)
+    },
+
+    unregisterSecondarySaveHandler(secondaryTabId: string) {
+      secondarySaveHandlers.delete(secondaryTabId)
+    },
+
+    hasSecondarySaveHandler(secondaryTabId: string) {
+      return secondarySaveHandlers.has(secondaryTabId)
+    },
+
+    async saveSecondaryTab(secondaryTabId: string) {
+      const handler = secondarySaveHandlers.get(secondaryTabId)
+      if (!handler) return false
+      return Boolean(await handler())
     },
 
     updateListState(primaryTabId: string, state: unknown) {

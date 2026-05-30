@@ -4,22 +4,23 @@ import { useField, useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 
-import FormActions from '@/components/form/FormActions.vue'
+import FormActionBar from '@/components/form/FormActionBar.vue'
 import FormDirtyIndicator from '@/components/form/FormDirtyIndicator.vue'
 import FormGrid from '@/components/form/FormGrid.vue'
 import FormHeader from '@/components/form/FormHeader.vue'
 import FormInput from '@/components/form/FormInput.vue'
 import FormSection from '@/components/form/FormSection.vue'
 import FormSelect from '@/components/form/FormSelect.vue'
+import FormValidationSummary from '@/components/form/FormValidationSummary.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import { useWorkspaceDraft } from '@/composables/useWorkspaceDraft'
 import type { ChartOfAccountRow } from '@/features/accounting/chart-of-accounts/chartOfAccounts.service'
+import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 type ChartOfAccountDraft = {
   accountCode: string
   accountName: string
   accountType: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
-  parentCode: string
+  parentAccountId: string
   normalBalance: 'debit' | 'credit'
   isActive: boolean
 }
@@ -28,6 +29,9 @@ const props = defineProps<{
   mode: 'create' | 'edit'
   account?: ChartOfAccountRow | null
   accounts: ChartOfAccountRow[]
+  secondaryTabId: string
+  saving?: boolean
+  serverErrors?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -48,11 +52,12 @@ const normalBalanceOptions = [
   { label: 'Credit', value: 'credit' },
 ]
 
+const tabs = useWorkspaceTabsStore()
 const parentOptions = computed(() => [
   { label: 'No parent account', value: '' },
   ...props.accounts
     .filter((account) => account.id !== props.account?.id)
-    .map((account) => ({ label: `${account.code} - ${account.name}`, value: account.code })),
+    .map((account) => ({ label: `${account.code} - ${account.name}`, value: account.id })),
 ])
 
 function defaultDraft(): ChartOfAccountDraft {
@@ -60,14 +65,17 @@ function defaultDraft(): ChartOfAccountDraft {
     accountCode: props.account?.code ?? '',
     accountName: props.account?.name ?? '',
     accountType: props.account?.type ?? 'asset',
-    parentCode: props.account?.parentId ?? '',
+    parentAccountId: props.account?.parentId ?? '',
     normalBalance: props.account?.normalBalance ?? 'debit',
     isActive: props.account?.isActive ?? true,
   }
 }
 
-const { draft, setDraft, dirty, setDirty, secondaryTabId } = useWorkspaceDraft<ChartOfAccountDraft>({
-  defaultDraft,
+const dirty = computed(() => {
+  const tab = Object.values(tabs.secondaryTabsByPrimaryId)
+    .flat()
+    .find((item) => item.id === props.secondaryTabId)
+  return tab?.dirty ?? false
 })
 
 const schema = toTypedSchema(
@@ -75,7 +83,7 @@ const schema = toTypedSchema(
     accountCode: z.string().trim().min(1, 'Account code is required'),
     accountName: z.string().trim().min(1, 'Account name is required'),
     accountType: z.enum(['asset', 'liability', 'equity', 'revenue', 'expense']),
-    parentCode: z.string(),
+    parentAccountId: z.string(),
     normalBalance: z.enum(['debit', 'credit']),
     isActive: z.boolean(),
   }),
@@ -83,16 +91,26 @@ const schema = toTypedSchema(
 
 const form = useForm<ChartOfAccountDraft>({
   validationSchema: schema,
-  initialValues: draft.value,
+  initialValues: currentDraft(),
 })
 const { value: isActive } = useField<boolean>('isActive')
 const hydrating = ref(false)
 
+function currentDraft() {
+  const raw = tabs.draftStateBySecondaryTabId[props.secondaryTabId]
+  if (raw && typeof raw === 'object') return raw as ChartOfAccountDraft
+  return defaultDraft()
+}
+
+function sameDraft(a: ChartOfAccountDraft, b: ChartOfAccountDraft) {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 watch(
-  () => secondaryTabId.value,
+  () => props.secondaryTabId,
   () => {
     hydrating.value = true
-    form.resetForm({ values: draft.value })
+    form.resetForm({ values: currentDraft() })
     setTimeout(() => {
       hydrating.value = false
     }, 0)
@@ -101,20 +119,26 @@ watch(
 )
 
 watch(
-  () => form.values,
-  (values) => {
-    if (hydrating.value) return
-    setDraft(values as ChartOfAccountDraft)
-    setDirty(form.meta.value.dirty)
+  () => props.account?.id,
+  () => {
+    if (tabs.draftStateBySecondaryTabId[props.secondaryTabId]) return
+    hydrating.value = true
+    form.resetForm({ values: defaultDraft() })
+    setTimeout(() => {
+      hydrating.value = false
+    }, 0)
   },
-  { deep: true },
 )
 
 watch(
-  () => form.meta.value.dirty,
-  (value) => {
-    if (!hydrating.value) setDirty(value)
+  () => form.values,
+  (values) => {
+    if (hydrating.value) return
+    const nextDraft = values as ChartOfAccountDraft
+    tabs.updateDraftState(props.secondaryTabId, nextDraft)
+    tabs.setSecondaryDirty(props.secondaryTabId, !sameDraft(nextDraft, defaultDraft()))
   },
+  { deep: true },
 )
 
 const title = computed(() => (props.mode === 'create' ? 'Add Account' : 'Edit Account'))
@@ -129,10 +153,14 @@ const onSubmit = form.handleSubmit((values) => {
     account_code: values.accountCode,
     account_name: values.accountName,
     account_type: values.accountType,
-    parent_account_id: values.parentCode ? Number(values.parentCode) : null,
+    parent_account_id: values.parentAccountId ? Number(values.parentAccountId) : null,
     normal_balance: values.normalBalance,
     is_active: values.isActive,
   })
+})
+
+defineExpose({
+  submit: onSubmit,
 })
 </script>
 
@@ -144,12 +172,9 @@ const onSubmit = form.handleSubmit((values) => {
           <FormDirtyIndicator :dirty="dirty" />
         </div>
       </template>
-
-      <template #actions>
-        <BaseButton variant="secondary" type="button" @click="emit('cancel')">Cancel</BaseButton>
-        <BaseButton variant="primary" type="submit">Save</BaseButton>
-      </template>
     </FormHeader>
+
+    <FormValidationSummary :errors="props.serverErrors ?? []" />
 
     <FormSection title="Account Details" description="Maintain the account classification and hierarchy.">
       <FormGrid :cols="2">
@@ -162,7 +187,7 @@ const onSubmit = form.handleSubmit((values) => {
         <FormInput name="accountName" label="Account Name" placeholder="e.g. Cash" />
         <FormSelect name="accountType" label="Account Type" :options="accountTypeOptions" />
         <FormSelect name="normalBalance" label="Normal Balance" :options="normalBalanceOptions" />
-        <FormSelect name="parentCode" label="Parent Account" :options="parentOptions" />
+        <FormSelect name="parentAccountId" label="Parent Account" :options="parentOptions" />
 
         <label class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">Status</span>
@@ -178,9 +203,9 @@ const onSubmit = form.handleSubmit((values) => {
       </FormGrid>
     </FormSection>
 
-    <FormActions>
-      <BaseButton variant="secondary" type="button" @click="emit('cancel')">Cancel</BaseButton>
-      <BaseButton variant="primary" type="submit">Save Account</BaseButton>
-    </FormActions>
+    <FormActionBar>
+      <BaseButton variant="secondary" type="button" :disabled="props.saving" @click="emit('cancel')">Cancel</BaseButton>
+      <BaseButton variant="primary" type="submit" :loading="props.saving">Save Account</BaseButton>
+    </FormActionBar>
   </form>
 </template>
