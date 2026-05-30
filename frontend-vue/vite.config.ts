@@ -16,6 +16,18 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
     ],
     server: {
+      watch: {
+        ignored: [
+          '**/.eslintcache',
+          '**/.oxlintcache',
+          '**/dist/**',
+          '**/coverage/**',
+          '**/.git/**',
+          '**/.idea/**',
+          '**/.vscode/**',
+          '**/*.tsbuildinfo',
+        ],
+      },
       proxy: {
         '/api': {
           target: env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
