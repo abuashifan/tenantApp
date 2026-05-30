@@ -75,7 +75,9 @@ const list = useWorkspaceList<TRow>({
   endpoint: props.endpoint,
   rows: sourceRows,
   mapRow: props.mapRow,
+  primaryTabId: props.primaryId,
 })
+selectedIds.value = list.selectedIds.value
 const rowsForTable = computed<TRow[]>(() => list.visibleRows.value)
 
 
@@ -102,6 +104,14 @@ watch(
   () => {
     selectedIds.value = []
   },
+)
+
+watch(
+  selectedIds,
+  (ids) => {
+    list.selectedIds.value = ids
+  },
+  { deep: true },
 )
 </script>
 
@@ -152,6 +162,9 @@ watch(
         :empty-description="emptyDescription"
         :selectable="selectable"
         v-model:selected-ids="selectedIds"
+        :pagination="list.pagination.value"
+        @page-change="list.setPage"
+        @per-page-change="(perPage) => { list.pagination.value.perPage = perPage; list.setPage(1) }"
       />
     </div>
 

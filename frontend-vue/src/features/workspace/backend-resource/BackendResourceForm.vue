@@ -63,6 +63,7 @@ function makeDefaultDraft() {
 
 const { draft, setDraft, dirty, setDirty, secondaryTabId } = useWorkspaceDraft<Record<string, unknown>>({
   defaultDraft: makeDefaultDraft,
+  secondaryTabId: computed(() => props.tab.id),
 })
 
 const schema = computed(() => toTypedSchema(formSchema(props.config)))
@@ -155,12 +156,18 @@ function hydrate(values: Record<string, unknown>, markDirty = false) {
 }
 
 async function loadEntity() {
+  const hasDraft = tabs.draftStateBySecondaryTabId[props.tab.id] != null
   if (props.tab.mode === 'create' || !props.tab.entityId) {
-    hydrate({ ...makeDefaultDraft(), ...draft.value })
+    hydrate({ ...makeDefaultDraft(), ...draft.value }, props.tab.dirty)
     return
   }
   if (props.config.hasShow === false) {
-    hydrate({ ...makeDefaultDraft(), ...draft.value })
+    hydrate({ ...makeDefaultDraft(), ...draft.value }, props.tab.dirty)
+    return
+  }
+  if (hasDraft && props.tab.dirty) {
+    hydrate({ ...makeDefaultDraft(), ...draft.value }, true)
+    loadedEntityId.value = props.tab.entityId
     return
   }
   if (loadedEntityId.value === props.tab.entityId) return

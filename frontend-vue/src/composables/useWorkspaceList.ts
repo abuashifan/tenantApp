@@ -4,6 +4,7 @@ import type { SortingState } from '@tanstack/vue-table'
 import { api } from '@/api'
 import type { ApiResponse } from '@/services/apiResponse'
 import { unwrap } from '@/services/apiResponse'
+import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 import type { WorkspaceListConfig, WorkspacePagination } from '@/types/workspace'
 
 type BackendListPayload<TRaw> = TRaw[] | { data?: TRaw[]; items?: TRaw[] }
@@ -25,6 +26,7 @@ export type WorkspaceListOptions<TRow extends { id: string }, TRaw = unknown> = 
   clientFilter?: boolean
   config?: WorkspaceListConfig<TRow>
   fetcher?: WorkspaceFetcher<TRow>
+  primaryTabId?: string
 }
 
 function normalizePayload<TRaw>(payload: BackendListPayload<TRaw>): TRaw[] {
@@ -37,21 +39,44 @@ function normalizePayload<TRaw>(payload: BackendListPayload<TRaw>): TRaw[] {
 export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
   options: WorkspaceListOptions<TRow, TRaw>,
 ) {
+  const tabs = useWorkspaceTabsStore()
+  const savedListState = options.primaryTabId ? tabs.getListState(options.primaryTabId) : null
   const rows = shallowRef<TRow[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
   const filters = ref<WorkspaceListFilters>({
-    search: '',
-    startDate: '',
-    endDate: '',
+    search: savedListState?.search ?? '',
+    startDate: savedListState?.startDate ?? '',
+    endDate: savedListState?.endDate ?? '',
   })
-  const filterValues = ref<Record<string, unknown>>({})
-  const status = ref('')
-  const pagination = ref<WorkspacePagination>({ page: 1, perPage: 10, total: 0 })
-  const sorting = ref<SortingState>([])
-  const selectedIds = ref<string[]>([])
+  const filterValues = ref<Record<string, unknown>>(savedListState?.filters ?? {})
+  const status = ref(savedListState?.status ?? '')
+  const pagination = ref<WorkspacePagination>(savedListState?.pagination ?? { page: 1, perPage: 10, total: 0, lastPage: 1 })
+  const sorting = ref<SortingState>(savedListState?.sorting ?? [])
+  const selectedIds = ref<string[]>(savedListState?.selectedIds ?? [])
 
   const shouldFetchRemote = computed(() => Boolean(options.endpoint || options.fetcher))
+
+  function persistListState(partial: Record<string, unknown> = {}) {
+    if (!options.primaryTabId) return
+    const activeSort = sorting.value[0]
+    tabs.updateListState(options.primaryTabId, {
+      page: pagination.value.page,
+      perPage: pagination.value.perPage,
+      search: filters.value.search,
+      filters: filterValues.value,
+      sortBy: activeSort?.id ?? null,
+      sortDirection: activeSort ? (activeSort.desc ? 'desc' : 'asc') : null,
+      selectedIds: selectedIds.value,
+      startDate: filters.value.startDate,
+      endDate: filters.value.endDate,
+      status: status.value,
+      includeVoid: false,
+      pagination: pagination.value,
+      sorting: sorting.value,
+      ...partial,
+    })
+  }
 
   function requestParams() {
     const params: Record<string, unknown> = { ...filterValues.value }
@@ -99,7 +124,12 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
         const payload = normalizePayload(unwrap(response.data))
         rows.value = options.mapRow ? payload.map(options.mapRow) : (payload as unknown as TRow[])
       }
-      pagination.value.total = rows.value.length
+      pagination.value = {
+        ...pagination.value,
+        total: rows.value.length,
+        lastPage: Math.max(1, Math.ceil(rows.value.length / pagination.value.perPage)),
+      }
+      persistListState({ lastLoadedAt: new Date().toISOString() })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load workspace data.'
       rows.value = []
@@ -125,30 +155,36 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
   function setSearch(value: string) {
     filters.value.search = value
     pagination.value.page = 1
+    persistListState()
   }
 
   function setFilter(key: string, value: unknown) {
     filterValues.value = { ...filterValues.value, [key]: value }
     pagination.value.page = 1
+    persistListState()
   }
 
   function setDateRange(startDate: string, endDate: string) {
     filters.value.startDate = startDate
     filters.value.endDate = endDate
     pagination.value.page = 1
+    persistListState()
   }
 
   function setStatus(value: string) {
     status.value = value
     pagination.value.page = 1
+    persistListState()
   }
 
   function setPage(page: number) {
     pagination.value.page = page
+    persistListState()
   }
 
   function setSorting(nextSorting: SortingState) {
     sorting.value = nextSorting
+    persistListState()
   }
 
   function clearFilters() {
@@ -156,6 +192,7 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
     filterValues.value = {}
     status.value = ''
     pagination.value.page = 1
+    persistListState()
   }
 
   function handleAction(_actionKey: string, _row?: TRow) {
@@ -169,10 +206,20 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
   watch(
     () => options.rows?.value,
     (nextRows) => {
-      if (!shouldFetchRemote.value) rows.value = nextRows ?? []
+      if (!shouldFetchRemote.value) {
+        rows.value = nextRows ?? []
+        pagination.value = {
+          ...pagination.value,
+          total: rows.value.length,
+          lastPage: Math.max(1, Math.ceil(rows.value.length / pagination.value.perPage)),
+        }
+        persistListState()
+      }
     },
     { immediate: true },
   )
+
+  watch(selectedIds, () => persistListState(), { deep: true })
 
   onMounted(fetchRows)
 

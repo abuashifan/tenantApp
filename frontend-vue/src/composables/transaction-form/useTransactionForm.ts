@@ -69,6 +69,7 @@ export function useTransactionForm(options: {
   async function load() {
     if (options.mode === 'create') return
     if (options.entityId == null) return
+    if (options.mode !== 'detail' && draft.hasDraft()) return
     loading.value = true
     error.value = null
     try {

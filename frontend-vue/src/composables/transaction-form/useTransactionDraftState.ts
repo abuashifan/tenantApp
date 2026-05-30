@@ -3,20 +3,29 @@ import type { FormContext } from 'vee-validate'
 
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
+function snapshot<T>(value: T): T {
+  if (value == null || typeof value !== 'object') return value
+  try {
+    return structuredClone(value)
+  } catch {
+    return JSON.parse(JSON.stringify(value)) as T
+  }
+}
+
 export function useTransactionDraftState(secondaryTabId: string, form: FormContext<Record<string, unknown>>) {
   const tabs = useWorkspaceTabsStore()
 
   onMounted(() => {
     const draft = tabs.draftStateBySecondaryTabId[secondaryTabId] as Record<string, unknown> | undefined
     if (draft && typeof draft === 'object') {
-      form.setValues(draft, false)
+      form.setValues(snapshot(draft), false)
     }
   })
 
   watch(
     () => form.values,
     (values) => {
-      tabs.updateDraftState(secondaryTabId, values)
+      tabs.updateDraftState(secondaryTabId, snapshot(values))
       tabs.setSecondaryDirty(secondaryTabId, form.meta.value.dirty)
     },
     { deep: true },
@@ -31,5 +40,10 @@ export function useTransactionDraftState(secondaryTabId: string, form: FormConte
     tabs.clearDraftState(secondaryTabId)
   }
 
-  return { clearDraft }
+  function hasDraft() {
+    const draft = tabs.draftStateBySecondaryTabId[secondaryTabId]
+    return draft != null && typeof draft === 'object'
+  }
+
+  return { clearDraft, hasDraft }
 }
