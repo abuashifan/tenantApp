@@ -129,6 +129,35 @@ function money(row: BackendResourceRow, keys: string[]) {
   return Number.isFinite(amount) ? new Intl.NumberFormat('id-ID').format(amount) : String(raw)
 }
 
+const productQuantityKeys = [
+  'quantity',
+  'stock_quantity',
+  'current_stock',
+  'on_hand_quantity',
+  'quantity_on_hand',
+  'available_quantity',
+  'qty',
+  'inventory_quantity',
+]
+
+function quantity(row: BackendResourceRow, keys = productQuantityKeys) {
+  for (const key of keys) {
+    const raw = row[key]
+    if (raw === null || raw === undefined || raw === '') continue
+    const amount = Number(raw)
+    if (Number.isFinite(amount)) return amount
+  }
+
+  return 0
+}
+
+function quantityText(row: BackendResourceRow, keys = productQuantityKeys) {
+  return new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 4,
+  }).format(quantity(row, keys))
+}
+
 function statusCell(row: BackendResourceRow) {
   const raw = value(row, ['status', 'state', 'is_active'])
   const status = typeof raw === 'boolean' ? (raw ? 'active' : 'inactive') : String(raw)
@@ -140,6 +169,16 @@ function masterDataColumns(): ColumnDef<BackendResourceRow, unknown>[] {
     { id: 'code', accessorFn: (row) => text(row, ['code', 'account_code', 'sku', 'category_code', 'unit_code', 'warehouse_code', 'contact_code', 'mapping_key', 'id']), header: 'Code', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['code', 'account_code', 'sku', 'category_code', 'unit_code', 'warehouse_code', 'contact_code', 'mapping_key', 'id'])) },
     { id: 'name', accessorFn: (row) => text(row, ['name', 'account_name', 'product_name', 'category_name', 'warehouse_name', 'contact_name', 'label']), header: 'Name', cell: ({ row }) => text(row.original, ['name', 'account_name', 'product_name', 'category_name', 'warehouse_name', 'contact_name', 'label']) },
     { id: 'type', accessorFn: (row) => text(row, ['type', 'contact_type', 'account_type', 'category', 'unit_name']), header: 'Type', cell: ({ row }) => text(row.original, ['type', 'contact_type', 'account_type', 'category', 'unit_name']) },
+    { id: 'status', accessorFn: (row) => statusText(row), header: 'Status', cell: ({ row }) => statusCell(row.original) },
+  ]
+}
+
+function productColumns(): ColumnDef<BackendResourceRow, unknown>[] {
+  return [
+    { id: 'code', accessorFn: (row) => text(row, ['product_code', 'code', 'sku', 'id']), header: 'Code', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['product_code', 'code', 'sku', 'id'])) },
+    { id: 'name', accessorFn: (row) => text(row, ['product_name', 'name', 'label']), header: 'Name', cell: ({ row }) => text(row.original, ['product_name', 'name', 'label']) },
+    { id: 'type', accessorFn: (row) => text(row, ['product_type', 'type', 'category', 'unit_name']), header: 'Type', cell: ({ row }) => text(row.original, ['product_type', 'type', 'category', 'unit_name']) },
+    { id: 'quantity', accessorFn: (row) => quantity(row), header: 'Quantity', cell: ({ row }) => h('span', { class: 'block text-right tabular-nums' }, quantityText(row.original)), enableSorting: false },
     { id: 'status', accessorFn: (row) => statusText(row), header: 'Status', cell: ({ row }) => statusCell(row.original) },
   ]
 }
@@ -187,7 +226,8 @@ function settingsColumns(): ColumnDef<BackendResourceRow, unknown>[] {
   ]
 }
 
-function columnsFor(kind: BackendWorkspaceKind) {
+function columnsFor(kind: BackendWorkspaceKind, href: string) {
+  if (href === '/master-data/products') return productColumns()
   if (kind === 'master-data') return masterDataColumns()
   if (kind === 'document') return documentColumns()
   if (kind === 'inventory') return inventoryColumns()
@@ -224,7 +264,7 @@ export function makeBackendResourceConfig(item: SidebarMenuItem): WorkspaceListC
           { label: 'Void', value: 'void', tone: 'danger' },
         ]
       : undefined,
-    columns: columnsFor(capability.kind),
+    columns: columnsFor(capability.kind, item.href),
     rowKey: 'id',
     selectable: Boolean(capability.voidPermission),
     globalActions: capability.voidPermission
