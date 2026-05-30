@@ -154,7 +154,6 @@ class InventorySalesIntegrationService
 
     public function shouldCreateStockFromSalesInvoice(SalesInvoice $invoice): bool
     {
-        if (! (bool) config('inventory.allow_sales_invoice_direct_stock_issue', false)) return false;
         if (! empty($invoice->delivery_order_id)) return false;
         return true;
     }

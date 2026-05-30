@@ -105,6 +105,15 @@ class InventoryWorkflowIntegrationTest extends JournalTestCase
         $this->assertSame(5.0, (float) $bal->quantity_on_hand);
         $this->assertSame(1000.0, (float) $bal->average_cost);
 
+        $bill = app(VendorBillService::class)->createFromGoodsReceipt($gr->refresh()->load('lines'), [
+            'bill_date' => '2026-01-03',
+        ]);
+        app(VendorBillService::class)->post($bill->refresh()->load('lines'));
+
+        $this->assertSame(0, StockMovement::query()->where('source_type', 'vendor_bill')->where('source_id', $bill->id)->count());
+        $bal->refresh();
+        $this->assertSame(5.0, (float) $bal->quantity_on_hand);
+
         // Interim journal is optional, but when mapping exists it should be created.
         $journal = JournalEntry::query()->where('source_type', 'stock_movement')->where('source_id', $movement->id)->first();
         $this->assertNotNull($journal);
@@ -251,7 +260,7 @@ class InventoryWorkflowIntegrationTest extends JournalTestCase
         $this->assertSame(1, StockMovement::query()->where('source_type', 'vendor_bill')->where('source_id', $bill->id)->count());
     }
 
-    public function test_sales_invoice_direct_stock_issue_respects_config_and_sales_return_creates_stock_in(): void
+    public function test_sales_invoice_direct_stock_issue_and_sales_return_creates_stock_in(): void
     {
         $ctx = $this->setUpTenant(role: 'owner');
         $this->setTenantContext($ctx);
@@ -273,8 +282,6 @@ class InventoryWorkflowIntegrationTest extends JournalTestCase
             ],
         ], $ctx['headers'])->assertStatus(201);
         $this->patchJson('/api/inventory/stock-movements/'.((int) $opening->json('data.id')).'/post', [], $ctx['headers'])->assertStatus(200);
-
-        Config::set('inventory.allow_sales_invoice_direct_stock_issue', false);
 
         $inv1 = SalesInvoice::query()->create([
             'invoice_number' => 'INV-001',
@@ -312,9 +319,8 @@ class InventoryWorkflowIntegrationTest extends JournalTestCase
             'sort_order' => 0,
         ]);
         app(SalesInvoiceService::class)->post($inv1->refresh()->load('lines'));
-        $this->assertSame(0, StockMovement::query()->where('source_type', 'sales_invoice')->where('source_id', $inv1->id)->count());
-
-        Config::set('inventory.allow_sales_invoice_direct_stock_issue', true);
+        $firstMovement = StockMovement::query()->where('source_type', 'sales_invoice')->where('source_id', $inv1->id)->firstOrFail();
+        $this->assertSame('sales_out', (string) $firstMovement->movement_type);
 
         $inv2 = SalesInvoice::query()->create([
             'invoice_number' => 'INV-002',
@@ -358,7 +364,7 @@ class InventoryWorkflowIntegrationTest extends JournalTestCase
         $this->assertSame('posted', (string) $movement->status);
 
         $bal = StockBalance::query()->where('product_id', $p->id)->where('warehouse_id', $wh->id)->firstOrFail();
-        $this->assertSame(8.0, (float) $bal->quantity_on_hand);
+        $this->assertSame(7.0, (float) $bal->quantity_on_hand);
 
         $return = app(SalesReturnService::class)->createFromSalesInvoice($inv2->refresh()->load('lines'), [
             'return_date' => '2026-01-04',
@@ -380,7 +386,7 @@ class InventoryWorkflowIntegrationTest extends JournalTestCase
         $this->assertSame('sales_return_in', (string) $returnMovement->movement_type);
 
         $bal->refresh();
-        $this->assertSame(9.0, (float) $bal->quantity_on_hand);
+        $this->assertSame(8.0, (float) $bal->quantity_on_hand);
     }
 
     public function test_purchase_return_creates_purchase_return_out_and_reduces_balance(): void
@@ -472,7 +478,11 @@ class InventoryWorkflowIntegrationTest extends JournalTestCase
 
     public function test_stock_adjustment_and_stock_opname_create_movements_and_update_balances(): void
     {
-        $ctx = $this->setUpTenant(role: 'owner');
+        $ctx = $this->setUpTenant(role: 'owner', accountingSettingOverrides: [
+            'transaction_workflow_mode' => 'draft_approve_post',
+            'auto_post_transactions' => false,
+            'approval_enabled' => true,
+        ]);
         $this->seedInventoryMappings(includeInterim: false);
 
         $unit = Unit::query()->create(['code' => 'PCS', 'name' => 'Pieces', 'precision' => 0, 'is_active' => true]);

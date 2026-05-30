@@ -90,7 +90,8 @@ class StockMovementJournalService
         if ($movement->movement_type === 'adjustment_in') {
             $gain = $this->mappingService->getStockAdjustmentGainAccount();
             if (! $gain) {
-                throw ApiException::make('ACCOUNT_MAPPING_MISSING', 'Required account mapping is missing: inventory.adjustment_gain', 422);
+                $message = $this->mappingService->missingMappingMessage('inventory.adjustment_gain');
+                throw ApiException::make('ACCOUNT_MAPPING_MISSING', $message, 422, ['account_mapping' => [$message]]);
             }
             return $this->createSimpleJournal($movement, [
                 ['account_id' => $inventory, 'description' => 'Inventory', 'debit' => (float) $movement->total_value, 'credit' => 0, 'line_order' => 1],
@@ -100,7 +101,8 @@ class StockMovementJournalService
 
         $loss = $this->mappingService->getStockAdjustmentLossAccount();
         if (! $loss) {
-            throw ApiException::make('ACCOUNT_MAPPING_MISSING', 'Required account mapping is missing: inventory.adjustment_loss', 422);
+            $message = $this->mappingService->missingMappingMessage('inventory.adjustment_loss');
+            throw ApiException::make('ACCOUNT_MAPPING_MISSING', $message, 422, ['account_mapping' => [$message]]);
         }
         return $this->createSimpleJournal($movement, [
             ['account_id' => $loss, 'description' => 'Stock Adjustment Loss', 'debit' => (float) $movement->total_value, 'credit' => 0, 'line_order' => 1],
@@ -113,7 +115,8 @@ class StockMovementJournalService
         $inventory = $this->mappingService->getInventoryAccount();
         $equity = $this->mappingService->getOpeningStockEquityAccount();
         if (! $equity) {
-            throw ApiException::make('ACCOUNT_MAPPING_MISSING', 'Required account mapping is missing: inventory.opening_stock_equity or opening_balance.equity', 422);
+            $message = $this->mappingService->missingMappingMessage('opening_balance.equity');
+            throw ApiException::make('ACCOUNT_MAPPING_MISSING', $message, 422, ['account_mapping' => [$message]]);
         }
 
         return $this->createSimpleJournal($movement, [

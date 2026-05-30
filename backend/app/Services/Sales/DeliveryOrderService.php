@@ -83,7 +83,18 @@ class DeliveryOrderService
 
     public function markReady(DeliveryOrder $deliveryOrder): DeliveryOrder { return $this->transition($deliveryOrder, 'ready', 'ready_by', 'ready_at', ['draft']); }
     public function ship(DeliveryOrder $deliveryOrder): DeliveryOrder { return $this->transition($deliveryOrder, 'shipped', 'shipped_by', 'shipped_at', ['draft', 'ready']); }
-    public function deliver(DeliveryOrder $deliveryOrder): DeliveryOrder { return DB::connection('tenant')->transaction(function () use ($deliveryOrder) { $this->validateRemainingQuantities($deliveryOrder->lines()->get()->toArray(), $deliveryOrder); $deliveryOrder->load('lines', 'salesOrder'); foreach ($deliveryOrder->lines as $line) { if ($line->sales_order_line_id) { $orderLine = SalesOrderLine::query()->findOrFail($line->sales_order_line_id); $orderLine->delivered_quantity = (float) $orderLine->delivered_quantity + (float) $line->quantity; $orderLine->save(); } } $deliveryOrder->status = 'delivered'; $deliveryOrder->delivered_by = auth()->id(); $deliveryOrder->delivered_at = now(); $deliveryOrder->save(); $this->inventoryIntegration->createSalesOutFromDeliveryOrder($deliveryOrder); if ($deliveryOrder->salesOrder) $this->salesOrderService->refreshDeliveryStatus($deliveryOrder->salesOrder); return $deliveryOrder->refresh()->load('lines', 'customer', 'salesOrder'); }); }
+    public function deliver(DeliveryOrder $deliveryOrder): DeliveryOrder
+    {
+        if ($deliveryOrder->status === 'delivered') {
+            $this->inventoryIntegration->createSalesOutFromDeliveryOrder($deliveryOrder);
+            return $deliveryOrder->refresh()->load('lines', 'customer', 'salesOrder');
+        }
+        if (! in_array($deliveryOrder->status, ['draft', 'ready', 'shipped'], true)) {
+            throw ApiException::make('INVALID_DELIVERY_ORDER_STATUS', 'Delivery order cannot be delivered from current status.', 422);
+        }
+
+        return DB::connection('tenant')->transaction(function () use ($deliveryOrder) { $this->validateRemainingQuantities($deliveryOrder->lines()->get()->toArray(), $deliveryOrder); $deliveryOrder->load('lines', 'salesOrder'); foreach ($deliveryOrder->lines as $line) { if ($line->sales_order_line_id) { $orderLine = SalesOrderLine::query()->findOrFail($line->sales_order_line_id); $orderLine->delivered_quantity = (float) $orderLine->delivered_quantity + (float) $line->quantity; $orderLine->save(); } } $deliveryOrder->status = 'delivered'; $deliveryOrder->delivered_by = auth()->id(); $deliveryOrder->delivered_at = now(); $deliveryOrder->save(); $this->inventoryIntegration->createSalesOutFromDeliveryOrder($deliveryOrder); if ($deliveryOrder->salesOrder) $this->salesOrderService->refreshDeliveryStatus($deliveryOrder->salesOrder); return $deliveryOrder->refresh()->load('lines', 'customer', 'salesOrder'); });
+    }
     public function cancel(DeliveryOrder $deliveryOrder, ?string $reason = null): DeliveryOrder { $deliveryOrder->cancel_reason = $reason; return $this->transition($deliveryOrder, 'cancelled', 'cancelled_by', 'cancelled_at', ['draft', 'ready', 'shipped']); }
     public function void(DeliveryOrder $deliveryOrder, ?string $reason = null): DeliveryOrder
     {

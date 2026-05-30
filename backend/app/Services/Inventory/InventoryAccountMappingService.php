@@ -55,7 +55,9 @@ class InventoryAccountMappingService
     {
         $mapping = AccountMapping::query()->where('mapping_key', $key)->where('is_active', true)->first();
         if (! $mapping?->account_id) {
-            throw ApiException::make('ACCOUNT_MAPPING_MISSING', 'Required account mapping is missing: '.$key, 422);
+            throw ApiException::make('ACCOUNT_MAPPING_MISSING', $this->missingMappingMessage($key), 422, [
+                'account_mapping' => [$this->missingMappingMessage($key)],
+            ]);
         }
         return (int) $mapping->account_id;
     }
@@ -65,5 +67,21 @@ class InventoryAccountMappingService
         $mapping = AccountMapping::query()->where('mapping_key', $key)->where('is_active', true)->first();
         return $mapping?->account_id ? (int) $mapping->account_id : null;
     }
-}
 
+    public function missingMappingMessage(string $key): string
+    {
+        $label = match ($key) {
+            AccountMappingKey::INVENTORY_ASSET => 'Inventory Asset',
+            AccountMappingKey::INVENTORY_COGS => 'Inventory COGS',
+            AccountMappingKey::PURCHASE_INVENTORY_INTERIM => 'Purchase Inventory Interim',
+            AccountMappingKey::INVENTORY_ADJUSTMENT_GAIN => 'Stock Adjustment Gain',
+            AccountMappingKey::INVENTORY_ADJUSTMENT_LOSS => 'Stock Adjustment Loss',
+            AccountMappingKey::PURCHASE_RETURN => 'Purchase Return',
+            AccountMappingKey::SALES_RETURN => 'Sales Return',
+            AccountMappingKey::OPENING_BALANCE_EQUITY => 'Opening Balance Equity',
+            default => str($key)->replace(['.', '_'], ' ')->headline()->toString(),
+        };
+
+        return $label.' account mapping is not configured. Set it in Account Mappings before posting inventory transactions.';
+    }
+}

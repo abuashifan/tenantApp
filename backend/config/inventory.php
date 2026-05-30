@@ -9,8 +9,8 @@ return [
     // - vendor_bill: inventory recognized when vendor bill posted (direct receipt)
     'recognize_inventory_on' => 'goods_receipt',
 
-    // Sales stock issue policy (MVP)
-    'allow_sales_invoice_direct_stock_issue' => false,
+    // Phase 12 stock integration issues inventory for direct goods sales invoices.
+    'allow_sales_invoice_direct_stock_issue' => true,
 
     // Purchase direct receipt policy (MVP)
     'allow_vendor_bill_direct_stock_receipt' => true,
