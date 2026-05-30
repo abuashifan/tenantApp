@@ -10,11 +10,17 @@ const props = withDefaults(
     label?: string
     placeholder?: string
     disabled?: boolean
+    min?: number
+    max?: number
+    step?: string | number
   }>(),
   {
     label: '',
     placeholder: '',
     disabled: false,
+    min: undefined,
+    max: undefined,
+    step: undefined,
   },
 )
 
@@ -31,6 +37,9 @@ const model = computed({
     <input
       v-model="model"
       type="number"
+      :min="min"
+      :max="max"
+      :step="step"
       :placeholder="placeholder"
       :disabled="disabled"
       class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:bg-slate-50"

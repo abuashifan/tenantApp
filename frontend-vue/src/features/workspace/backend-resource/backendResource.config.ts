@@ -130,6 +130,7 @@ function money(row: BackendResourceRow, keys: string[]) {
 }
 
 const productQuantityKeys = [
+  'current_quantity',
   'quantity',
   'stock_quantity',
   'current_stock',

@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Models\Tenant\ChartOfAccount;
 use App\Models\Tenant\Product;
 use App\Models\Tenant\ProductCategory;
+use App\Models\Tenant\StockBalance;
 use App\Models\Tenant\Unit;
 
 class ProductService
@@ -22,7 +23,9 @@ class ProductService
             $query->where('product_type', (string) $filters['product_type']);
         }
 
-        return $query->orderBy('product_name')->get();
+        $products = $query->orderBy('product_name')->get();
+
+        return $this->attachStockQuantities($products);
     }
 
     public function create(array $data): Product
@@ -113,5 +116,37 @@ class ProductService
                 }
             }
         }
+    }
+
+    private function attachStockQuantities($products)
+    {
+        $productIds = $products->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($productIds === []) {
+            return $products;
+        }
+
+        $balances = StockBalance::query()
+            ->selectRaw('product_id, SUM(quantity_on_hand) as quantity_on_hand, SUM(quantity_reserved) as quantity_reserved, SUM(quantity_available) as quantity_available, SUM(total_value) as total_value')
+            ->whereIn('product_id', $productIds)
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy(fn ($balance) => (int) $balance->product_id);
+
+        return $products->map(function (Product $product) use ($balances): Product {
+            $balance = $balances->get((int) $product->id);
+            $quantityOnHand = round((float) ($balance?->quantity_on_hand ?? 0), (int) config('inventory.stock_precision', 4));
+            $quantityReserved = round((float) ($balance?->quantity_reserved ?? 0), (int) config('inventory.stock_precision', 4));
+            $quantityAvailable = round((float) ($balance?->quantity_available ?? 0), (int) config('inventory.stock_precision', 4));
+            $totalValue = round((float) ($balance?->total_value ?? 0), (int) config('inventory.amount_precision', 2));
+
+            $product->setAttribute('current_quantity', $quantityOnHand);
+            $product->setAttribute('stock_quantity', $quantityOnHand);
+            $product->setAttribute('quantity_on_hand', $quantityOnHand);
+            $product->setAttribute('quantity_reserved', $quantityReserved);
+            $product->setAttribute('quantity_available', $quantityAvailable);
+            $product->setAttribute('stock_total_value', $totalValue);
+
+            return $product;
+        });
     }
 }

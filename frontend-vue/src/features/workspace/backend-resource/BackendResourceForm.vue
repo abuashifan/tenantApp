@@ -24,9 +24,16 @@ import FormStatusBadge from '@/components/form/FormStatusBadge.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
 import FormTextInput from '@/components/form/FormTextInput.vue'
 import FormValidationSummary from '@/components/form/FormValidationSummary.vue'
+import FormErrorMessage from '@/components/form/FormErrorMessage.vue'
+import TransactionSearchableSelect from '@/components/transaction-form/TransactionSearchableSelect.vue'
 import { useWorkspaceDraft } from '@/composables/useWorkspaceDraft'
 import { calculateTransactionTotals } from '@/composables/useTransactionLineCalculation'
 import InventoryHistoryPanel from '@/features/inventory/history/InventoryHistoryPanel.vue'
+import StockAdjustmentLineItemsTable from '@/features/inventory/stock-adjustments/StockAdjustmentLineItemsTable.vue'
+import {
+  loadStockAdjustmentLookups,
+  type StockAdjustmentLookups,
+} from '@/features/inventory/stock-adjustments/stockAdjustmentLookups.service'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceTabsStore, type SecondaryTab } from '@/stores/workspaceTabsStore'
 import {
@@ -83,6 +90,15 @@ const loadedEntityId = ref<string | number | null>(null)
 const voidDialogOpen = ref(false)
 const pendingVoidAction = ref<FormActionConfig | null>(null)
 const closeConfirmOpen = ref(false)
+const stockAdjustmentLookups = ref<StockAdjustmentLookups>({
+  products: [],
+  warehouses: [],
+  departments: [],
+  projects: [],
+  balances: [],
+  balancesLoaded: false,
+})
+const stockAdjustmentLookupsLoaded = ref(false)
 
 const readonly = computed(() => props.tab.mode === 'detail' || ['posted', 'void', 'voided', 'cancelled', 'closed', 'finalized'].includes(status.value))
 const title = computed(() => {
@@ -119,6 +135,7 @@ const lineTotal = computed(() =>
 const journalDifference = computed(() => totalDebit.value - totalCredit.value)
 const journalBalanced = computed(() => Math.abs(journalDifference.value) < 0.01)
 const isJournal = computed(() => props.config.endpoint === '/journals')
+const isStockAdjustment = computed(() => props.config.endpoint === '/inventory/stock-adjustments')
 const internalTab = ref<'detail' | 'history'>('detail')
 const isProductDetail = computed(() =>
   props.tab.mode === 'detail'
@@ -130,6 +147,31 @@ const canViewInventoryHistory = computed(() => can('inventory.reports.view'))
 const showFooterActions = computed(() => !isProductDetail.value)
 const showHeaderActions = computed(() => !showFooterActions.value)
 const showSummary = computed(() => !isProductDetail.value && Boolean(props.config.lineItems))
+const stockAdjustmentSummary = computed(() => {
+  let totalIncrease = 0
+  let totalDecrease = 0
+  let valueImpact = 0
+
+  lineItems.value.forEach((row) => {
+    const quantity = Math.max(Number(row.quantity) || 0, 0)
+    const unitCost = Math.max(Number(row.unit_cost) || 0, 0)
+    if (row.adjustment_type === 'decrease') {
+      totalDecrease += quantity
+      valueImpact -= quantity * unitCost
+    } else {
+      totalIncrease += quantity
+      valueImpact += quantity * unitCost
+    }
+  })
+
+  return {
+    totalLines: lineItems.value.length,
+    totalIncrease,
+    totalDecrease,
+    netImpact: totalIncrease - totalDecrease,
+    valueImpact,
+  }
+})
 
 function can(permission: string) {
   return auth.permissions.includes('*') || auth.permissions.includes(permission)
@@ -143,6 +185,12 @@ function visibleAction(action: FormActionConfig) {
 
 function fieldReadonly(field: FormFieldConfig) {
   return readonly.value || Boolean(field.readonly)
+}
+
+async function loadStockAdjustmentLookupData() {
+  if (!isStockAdjustment.value || stockAdjustmentLookupsLoaded.value) return
+  stockAdjustmentLookupsLoaded.value = true
+  stockAdjustmentLookups.value = await loadStockAdjustmentLookups()
 }
 
 function activateInternalTab(tab: 'detail' | 'history') {
@@ -201,6 +249,14 @@ watch(
 )
 
 watch(
+  () => isStockAdjustment.value,
+  () => {
+    void loadStockAdjustmentLookupData()
+  },
+  { immediate: true },
+)
+
+watch(
   () => form.values,
   (values) => {
     if (hydrating.value) return
@@ -237,6 +293,22 @@ function payload(values: Record<string, unknown>) {
     result.is_employee = contactType === 'employee'
   }
   if (props.config.lineItems) {
+    if (isStockAdjustment.value) {
+      result[props.config.lineItems.key] = lineItems.value.map((line, index) => ({
+        ...line,
+        product_id: line.product_id === '' ? null : line.product_id,
+        unit_id: line.unit_id === '' ? null : line.unit_id,
+        warehouse_id: line.warehouse_id === '' ? null : line.warehouse_id,
+        department_id: line.department_id === '' ? null : line.department_id,
+        project_id: line.project_id === '' ? null : line.project_id,
+        adjustment_type: line.adjustment_type === 'decrease' ? 'decrease' : 'increase',
+        quantity: Number(line.quantity),
+        unit_cost: line.unit_cost === '' || line.unit_cost == null ? null : Number(line.unit_cost),
+        sort_order: line.sort_order ?? index,
+      }))
+      return result
+    }
+
     const firstLine = lineItems.value.find((line) => Object.keys(line).length > 0) ?? {}
     const priceField = 'estimated_unit_price' in firstLine ? 'estimated_unit_price' : 'amount' in firstLine && !('unit_price' in firstLine) ? 'amount' : 'unit_price'
     const totals = calculateTransactionTotals(lineItems.value, {
@@ -263,6 +335,42 @@ function payload(values: Record<string, unknown>) {
   return result
 }
 
+function setStockAdjustmentFieldError(errors: string[], path: string, message: string) {
+  form.setFieldError(path, message)
+  errors.push(message)
+}
+
+function validateStockAdjustment() {
+  if (!isStockAdjustment.value || !props.config.lineItems) return true
+  const messages: string[] = []
+  const lineItemsKey = props.config.lineItems.key
+
+  if (lineItems.value.length < 1) {
+    setStockAdjustmentFieldError(messages, lineItemsKey, 'Minimal harus ada 1 baris adjustment.')
+  }
+
+  lineItems.value.forEach((line, index) => {
+    const prefix = `${lineItemsKey}.${index}`
+    if (!line.product_id) setStockAdjustmentFieldError(messages, `${prefix}.product_id`, 'Product wajib dipilih.')
+    if (!line.warehouse_id) setStockAdjustmentFieldError(messages, `${prefix}.warehouse_id`, 'Warehouse wajib dipilih.')
+    if (!['increase', 'decrease'].includes(String(line.adjustment_type ?? ''))) {
+      setStockAdjustmentFieldError(messages, `${prefix}.adjustment_type`, 'Adjustment Type wajib dipilih.')
+    }
+    if (!(Number(line.quantity) > 0)) {
+      setStockAdjustmentFieldError(messages, `${prefix}.quantity`, 'Quantity harus lebih besar dari 0.')
+    }
+    if (line.unit_cost !== null && line.unit_cost !== undefined && line.unit_cost !== '' && Number(line.unit_cost) < 0) {
+      setStockAdjustmentFieldError(messages, `${prefix}.unit_cost`, 'Unit Cost tidak boleh negatif.')
+    }
+  })
+
+  if (messages.length) {
+    serverErrors.value = [...new Set(messages)]
+    return false
+  }
+  return true
+}
+
 async function save(closeAfter = false) {
   serverErrors.value = []
   error.value = null
@@ -271,8 +379,9 @@ async function save(closeAfter = false) {
     return
   }
   const valid = await form.validate()
-  if (!valid.valid) {
-    serverErrors.value = Object.values(valid.errors).map(String)
+  const stockAdjustmentValid = validateStockAdjustment()
+  if (!valid.valid || !stockAdjustmentValid) {
+    serverErrors.value = [...new Set([...Object.values(valid.errors).map(String), ...serverErrors.value])]
     return
   }
   saving.value = true
@@ -416,6 +525,21 @@ function saveAndCloseFromDialog() {
                 :label="field.label"
                 :disabled="fieldReadonly(field)"
               />
+              <div v-else-if="isStockAdjustment && field.key === 'warehouse_id'" class="space-y-1">
+                <TransactionSearchableSelect
+                  :name="field.key"
+                  :label="'Warehouse'"
+                  :options="stockAdjustmentLookups.warehouses"
+                  option-value="id"
+                  option-label="label"
+                  placeholder="Select warehouse..."
+                  empty-text="Warehouse tidak ditemukan"
+                  :disabled="fieldReadonly(field)"
+                  selected-font-weight="medium"
+                  option-two-line
+                />
+                <FormErrorMessage :name="field.key" />
+              </div>
               <FormNumberInput
                 v-else-if="field.kind === 'number'"
                 :name="field.key"
@@ -459,7 +583,22 @@ function saveAndCloseFromDialog() {
           :title="config.lineItems.title"
           :description="config.lineItems.description"
         >
+          <StockAdjustmentLineItemsTable
+            v-if="isStockAdjustment"
+            :name="config.lineItems.key"
+            :rows="lineItems"
+            :readonly="readonly"
+            :products="stockAdjustmentLookups.products"
+            :warehouses="stockAdjustmentLookups.warehouses"
+            :departments="stockAdjustmentLookups.departments"
+            :projects="stockAdjustmentLookups.projects"
+            :balances="stockAdjustmentLookups.balances"
+            :balances-loaded="stockAdjustmentLookups.balancesLoaded"
+            @add="addLine"
+            @remove="removeLine"
+          />
           <FormLineItemsTable
+            v-else
             :name="config.lineItems.key"
             :rows="lineItems"
             :columns="config.lineItems.columns"
@@ -470,7 +609,28 @@ function saveAndCloseFromDialog() {
         </FormSection>
 
         <FormSection v-if="showSummary" title="Summary">
-          <div class="grid gap-3 sm:grid-cols-3">
+          <div v-if="isStockAdjustment" class="grid gap-3 sm:grid-cols-4">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs font-black uppercase text-slate-500">Total Lines</p>
+              <p class="mt-1 text-xl font-black tabular-nums text-slate-950">{{ stockAdjustmentSummary.totalLines }}</p>
+            </div>
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p class="text-xs font-black uppercase text-emerald-700">Total Increase Qty</p>
+              <p class="mt-1 text-xl font-black tabular-nums text-slate-950">{{ new Intl.NumberFormat('id-ID').format(stockAdjustmentSummary.totalIncrease) }}</p>
+            </div>
+            <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+              <p class="text-xs font-black uppercase text-rose-700">Total Decrease Qty</p>
+              <p class="mt-1 text-xl font-black tabular-nums text-slate-950">{{ new Intl.NumberFormat('id-ID').format(stockAdjustmentSummary.totalDecrease) }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs font-black uppercase text-slate-500">Net Qty Impact</p>
+              <p class="mt-1 text-xl font-black tabular-nums text-slate-950">{{ new Intl.NumberFormat('id-ID').format(stockAdjustmentSummary.netImpact) }}</p>
+              <p class="mt-1 text-xs font-semibold text-slate-500">
+                Value: {{ new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(stockAdjustmentSummary.valueImpact) }}
+              </p>
+            </div>
+          </div>
+          <div v-else class="grid gap-3 sm:grid-cols-3">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p class="text-xs font-black uppercase text-slate-500">Line Total</p>
               <p class="mt-1 text-xl font-black tabular-nums text-slate-950">{{ new Intl.NumberFormat('id-ID').format(lineTotal) }}</p>
