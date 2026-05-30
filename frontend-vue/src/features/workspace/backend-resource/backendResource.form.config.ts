@@ -184,7 +184,7 @@ export const backendResourceFormConfigs: Record<string, ResourceFormConfig> = {
     numberKeys: ['code', 'id'],
     createPermission: 'units.create',
     editPermission: 'units.edit',
-    sections: [{ title: 'Unit Details', fields: [{ key: 'code', label: 'Code', required: true }, { key: 'name', label: 'Name', required: true }, { key: 'precision', label: 'Precision', kind: 'number' }, { key: 'is_active', label: 'Active', kind: 'checkbox' }] }],
+    sections: [{ title: 'Unit Details', fields: [{ key: 'code', label: 'Code', required: true }, { key: 'name', label: 'Name', required: true }, { key: 'precision', label: 'Precision', kind: 'number', required: true }, { key: 'is_active', label: 'Active', kind: 'checkbox' }] }],
     actions: [],
   },
   '/master-data/product-categories': {

@@ -37,7 +37,9 @@ class ProjectService
     public function create(array $data): Project
     {
         if (Project::query()->where('code', (string) $data['code'])->exists()) {
-            throw ApiException::make('DUPLICATE_PROJECT_CODE', 'Project code already exists.', 422);
+            throw ApiException::make('DUPLICATE_PROJECT_CODE', 'Project code is already in use.', 422, [
+                'code' => ['Code is already in use.'],
+            ]);
         }
 
         return Project::query()->create($data);
@@ -47,7 +49,9 @@ class ProjectService
     {
         if (! empty($data['code']) && $data['code'] !== $project->code) {
             if (Project::query()->where('code', (string) $data['code'])->exists()) {
-                throw ApiException::make('DUPLICATE_PROJECT_CODE', 'Project code already exists.', 422);
+                throw ApiException::make('DUPLICATE_PROJECT_CODE', 'Project code is already in use.', 422, [
+                    'code' => ['Code is already in use.'],
+                ]);
             }
         }
 
@@ -97,4 +101,3 @@ class ProjectService
         return $project->refresh();
     }
 }
-

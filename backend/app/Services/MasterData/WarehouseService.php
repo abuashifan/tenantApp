@@ -21,7 +21,9 @@ class WarehouseService
     public function create(array $data): Warehouse
     {
         if (Warehouse::query()->where('code', (string) $data['code'])->exists()) {
-            throw ApiException::make('DUPLICATE_WAREHOUSE_CODE', 'Warehouse code already exists.', 422);
+            throw ApiException::make('DUPLICATE_WAREHOUSE_CODE', 'Warehouse code is already in use.', 422, [
+                'code' => ['Code is already in use.'],
+            ]);
         }
 
         $warehouse = Warehouse::query()->create($data);
@@ -37,7 +39,9 @@ class WarehouseService
     {
         if (! empty($data['code']) && $data['code'] !== $warehouse->code) {
             if (Warehouse::query()->where('code', (string) $data['code'])->exists()) {
-                throw ApiException::make('DUPLICATE_WAREHOUSE_CODE', 'Warehouse code already exists.', 422);
+                throw ApiException::make('DUPLICATE_WAREHOUSE_CODE', 'Warehouse code is already in use.', 422, [
+                    'code' => ['Code is already in use.'],
+                ]);
             }
         }
 
@@ -81,4 +85,3 @@ class WarehouseService
         return $warehouse->refresh();
     }
 }
-

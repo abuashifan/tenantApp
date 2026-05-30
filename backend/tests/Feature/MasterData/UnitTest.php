@@ -17,7 +17,11 @@ class UnitTest extends MasterDataTestCase
         $this->postJson('/api/master-data/units', [
             'code' => 'PCS',
             'name' => 'Pieces 2',
-        ], $ctx['headers'])->assertStatus(422);
+            'precision' => 0,
+        ], $ctx['headers'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['code'])
+            ->assertDontSee('SQLSTATE');
 
         $this->patchJson('/api/master-data/units/'.$unit['id'], [
             'name' => 'PCS Updated',
@@ -28,5 +32,19 @@ class UnitTest extends MasterDataTestCase
             ->assertStatus(200)
             ->assertJsonPath('data.is_active', false);
     }
-}
 
+    public function test_create_unit_requires_precision_before_database_insert(): void
+    {
+        $ctx = $this->setUpTenant();
+
+        $this->postJson('/api/master-data/units', [
+            'code' => 'BOX',
+            'name' => 'Box',
+        ], $ctx['headers'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Please review the highlighted fields.')
+            ->assertJsonValidationErrors(['precision'])
+            ->assertJsonPath('errors.precision.0', 'Precision is required.')
+            ->assertDontSee('SQLSTATE');
+    }
+}

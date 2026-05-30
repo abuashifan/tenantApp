@@ -30,7 +30,9 @@ class ProductService
         $this->validateBusinessRules($data);
 
         if (! empty($data['product_code']) && Product::query()->where('product_code', (string) $data['product_code'])->exists()) {
-            throw ApiException::make('DUPLICATE_PRODUCT_CODE', 'product_code already exists.', 422);
+            throw ApiException::make('DUPLICATE_PRODUCT_CODE', 'Product code is already in use.', 422, [
+                'product_code' => ['Product Code is already in use.'],
+            ]);
         }
 
         $this->validateRelations($data);
@@ -45,7 +47,9 @@ class ProductService
 
         if (! empty($data['product_code']) && $data['product_code'] !== $product->product_code) {
             if (Product::query()->where('product_code', (string) $data['product_code'])->exists()) {
-                throw ApiException::make('DUPLICATE_PRODUCT_CODE', 'product_code already exists.', 422);
+                throw ApiException::make('DUPLICATE_PRODUCT_CODE', 'Product code is already in use.', 422, [
+                    'product_code' => ['Product Code is already in use.'],
+                ]);
             }
         }
 
@@ -111,4 +115,3 @@ class ProductService
         }
     }
 }
-

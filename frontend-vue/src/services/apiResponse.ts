@@ -1,3 +1,5 @@
+import { normalizeApiError } from '@/services/api'
+
 export type ApiSuccessResponse<TData> = {
   success: true
   message: string
@@ -17,5 +19,6 @@ export type ApiResponse<TData> = ApiSuccessResponse<TData> | ApiErrorResponse
 
 export function unwrap<TData>(payload: ApiResponse<TData>): TData {
   if (payload.success) return payload.data
-  throw new Error(payload.message || 'Request failed')
+  const normalized = normalizeApiError(payload)
+  throw Object.assign(new Error(normalized.message), normalized)
 }

@@ -21,7 +21,9 @@ class UnitService
     public function create(array $data): Unit
     {
         if (Unit::query()->where('code', (string) $data['code'])->exists()) {
-            throw ApiException::make('DUPLICATE_UNIT_CODE', 'Unit code already exists.', 422);
+            throw ApiException::make('DUPLICATE_UNIT_CODE', 'Unit code is already in use.', 422, [
+                'code' => ['Code is already in use.'],
+            ]);
         }
 
         return Unit::query()->create($data);
@@ -31,7 +33,9 @@ class UnitService
     {
         if (! empty($data['code']) && $data['code'] !== $unit->code) {
             if (Unit::query()->where('code', (string) $data['code'])->exists()) {
-                throw ApiException::make('DUPLICATE_UNIT_CODE', 'Unit code already exists.', 422);
+                throw ApiException::make('DUPLICATE_UNIT_CODE', 'Unit code is already in use.', 422, [
+                    'code' => ['Code is already in use.'],
+                ]);
             }
         }
 
@@ -57,4 +61,3 @@ class UnitService
         return $unit->refresh();
     }
 }
-

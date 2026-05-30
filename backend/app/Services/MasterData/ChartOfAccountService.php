@@ -35,7 +35,9 @@ class ChartOfAccountService
 
         $code = (string) $data['account_code'];
         if (ChartOfAccount::query()->where('account_code', $code)->exists()) {
-            throw ApiException::make('DUPLICATE_ACCOUNT_CODE', 'account_code already exists.', 422);
+            throw ApiException::make('DUPLICATE_ACCOUNT_CODE', 'Account code is already in use.', 422, [
+                'account_code' => ['Account Code is already in use.'],
+            ]);
         }
 
         if (! empty($data['parent_account_id'])) {
@@ -59,7 +61,9 @@ class ChartOfAccountService
 
         if (! empty($data['account_code']) && $data['account_code'] !== $account->account_code) {
             if (ChartOfAccount::query()->where('account_code', (string) $data['account_code'])->exists()) {
-                throw ApiException::make('DUPLICATE_ACCOUNT_CODE', 'account_code already exists.', 422);
+                throw ApiException::make('DUPLICATE_ACCOUNT_CODE', 'Account code is already in use.', 422, [
+                    'account_code' => ['Account Code is already in use.'],
+                ]);
             }
         }
 
@@ -122,4 +126,3 @@ class ChartOfAccountService
         }
     }
 }
-

@@ -11,6 +11,7 @@ class ProductTest extends MasterDataTestCase
         $unit = $this->postJson('/api/master-data/units', [
             'code' => 'PCS',
             'name' => 'Pieces',
+            'precision' => 0,
         ], $ctx['headers'])->assertStatus(201)->json('data');
 
         $goods = $this->postJson('/api/master-data/products', [
@@ -47,4 +48,3 @@ class ProductTest extends MasterDataTestCase
             ->assertJsonPath('data.is_active', false);
     }
 }
-

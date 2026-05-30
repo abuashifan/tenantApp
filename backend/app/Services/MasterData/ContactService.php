@@ -25,7 +25,9 @@ class ContactService
     public function create(array $data): Contact
     {
         if (! empty($data['contact_code']) && Contact::query()->where('contact_code', (string) $data['contact_code'])->exists()) {
-            throw ApiException::make('DUPLICATE_CONTACT_CODE', 'contact_code already exists.', 422);
+            throw ApiException::make('DUPLICATE_CONTACT_CODE', 'Contact code is already in use.', 422, [
+                'contact_code' => ['Contact Code is already in use.'],
+            ]);
         }
 
         return Contact::query()->create($data);
@@ -35,7 +37,9 @@ class ContactService
     {
         if (! empty($data['contact_code']) && $data['contact_code'] !== $contact->contact_code) {
             if (Contact::query()->where('contact_code', (string) $data['contact_code'])->exists()) {
-                throw ApiException::make('DUPLICATE_CONTACT_CODE', 'contact_code already exists.', 422);
+                throw ApiException::make('DUPLICATE_CONTACT_CODE', 'Contact code is already in use.', 422, [
+                    'contact_code' => ['Contact Code is already in use.'],
+                ]);
             }
         }
 
@@ -61,4 +65,3 @@ class ContactService
         return $contact->refresh();
     }
 }
-

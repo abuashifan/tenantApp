@@ -24,19 +24,19 @@ export function normalizePayload(payload: unknown): Record<string, unknown> {
 export function extractLaravelErrors(error: unknown) {
   const normalized = normalizeApiError(error)
   const fieldErrors: LaravelFieldErrors = {}
-  const messages: string[] = []
+  const messages = new Set<string>()
 
-  if (normalized.message) messages.push(normalized.message)
+  if (normalized.message) messages.add(normalized.message)
   if (normalized.errors) {
     for (const [key, value] of Object.entries(normalized.errors)) {
       fieldErrors[key] = value
-      messages.push(...value)
+      value.forEach((message) => messages.add(message))
     }
   }
 
-  if (messages.length === 0) messages.push('Request failed.')
+  if (messages.size === 0) messages.add('Request failed.')
 
-  return { fieldErrors, messages }
+  return { fieldErrors, messages: [...messages] }
 }
 
 export async function showBackendResource(endpoint: string, id: string | number) {

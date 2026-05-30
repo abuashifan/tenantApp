@@ -33,7 +33,9 @@ class DepartmentService
     public function create(array $data): Department
     {
         if (Department::query()->where('code', (string) $data['code'])->exists()) {
-            throw ApiException::make('DUPLICATE_DEPARTMENT_CODE', 'Department code already exists.', 422);
+            throw ApiException::make('DUPLICATE_DEPARTMENT_CODE', 'Department code is already in use.', 422, [
+                'code' => ['Code is already in use.'],
+            ]);
         }
 
         return Department::query()->create($data);
@@ -43,7 +45,9 @@ class DepartmentService
     {
         if (! empty($data['code']) && $data['code'] !== $department->code) {
             if (Department::query()->where('code', (string) $data['code'])->exists()) {
-                throw ApiException::make('DUPLICATE_DEPARTMENT_CODE', 'Department code already exists.', 422);
+                throw ApiException::make('DUPLICATE_DEPARTMENT_CODE', 'Department code is already in use.', 422, [
+                    'code' => ['Code is already in use.'],
+                ]);
             }
         }
 
@@ -69,4 +73,3 @@ class DepartmentService
         return $department->refresh();
     }
 }
-

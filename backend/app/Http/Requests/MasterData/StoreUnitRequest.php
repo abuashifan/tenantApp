@@ -16,9 +16,20 @@ class StoreUnitRequest extends FormRequest
         return [
             'code' => ['required', 'string', 'max:30'],
             'name' => ['required', 'string', 'max:100'],
-            'precision' => ['nullable', 'integer', 'min:0', 'max:8'],
+            'precision' => ['required', 'integer', 'min:0', 'max:8'],
             'is_active' => ['nullable', 'boolean'],
         ];
     }
-}
 
+    public function messages(): array
+    {
+        return [
+            'code.required' => 'Code is required.',
+            'name.required' => 'Name is required.',
+            'precision.required' => 'Precision is required.',
+            'precision.integer' => 'Precision must be a number.',
+            'precision.min' => 'Precision must be at least 0.',
+            'precision.max' => 'Precision may not be greater than 8.',
+        ];
+    }
+}
