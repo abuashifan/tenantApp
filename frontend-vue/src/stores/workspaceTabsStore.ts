@@ -1,4 +1,7 @@
 import { defineStore } from 'pinia'
+import type { SortingState } from '@tanstack/vue-table'
+
+import type { WorkspacePagination } from '@/types/workspace'
 
 export type PrimaryTab = {
   id: string
@@ -29,8 +32,25 @@ export type WorkspaceTabsState = {
   secondaryTabsByPrimaryId: Record<string, SecondaryTab[]>
   activeSecondaryTabIdByPrimaryId: Record<string, string>
   draftStateBySecondaryTabId: Record<string, unknown>
-  listStateByPrimaryTabId: Record<string, unknown>
+  listStateByPrimaryTabId: Record<string, WorkspaceListState>
   tenantStateVersion: number
+}
+
+export type WorkspaceListState = {
+  page: number
+  perPage: number
+  search: string
+  filters: Record<string, unknown>
+  sortBy: string | null
+  sortDirection: 'asc' | 'desc' | null
+  selectedIds: string[]
+  startDate: string
+  endDate: string
+  status: string
+  includeVoid: boolean
+  pagination: WorkspacePagination
+  sorting: SortingState
+  lastLoadedAt?: string
 }
 
 type SecondarySaveHandler = () => boolean | Promise<boolean>
@@ -71,6 +91,24 @@ function detailSecondaryId(primaryTabId: string, entityId: string | number) {
 }
 
 const DASHBOARD_PRIMARY_ID = '/dashboard'
+
+function defaultListState(): WorkspaceListState {
+  return {
+    page: 1,
+    perPage: 10,
+    search: '',
+    filters: {},
+    sortBy: null,
+    sortDirection: null,
+    selectedIds: [],
+    startDate: '',
+    endDate: '',
+    status: '',
+    includeVoid: false,
+    pagination: { page: 1, perPage: 10, total: 0, lastPage: 1 },
+    sorting: [],
+  }
+}
 
 export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
   state: (): WorkspaceTabsState => ({
@@ -148,6 +186,7 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
       const secondaries = this.secondaryTabsByPrimaryId[primaryTabId] ?? []
       for (const sec of secondaries) {
         delete this.draftStateBySecondaryTabId[sec.id]
+        secondarySaveHandlers.delete(sec.id)
       }
       delete this.secondaryTabsByPrimaryId[primaryTabId]
       delete this.activeSecondaryTabIdByPrimaryId[primaryTabId]
@@ -289,6 +328,7 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
 
       this.secondaryTabsByPrimaryId[primaryTabId] = tabs.filter((t) => t.id !== secondaryTabId)
       delete this.draftStateBySecondaryTabId[secondaryTabId]
+      secondarySaveHandlers.delete(secondaryTabId)
 
       const currentActive = this.activeSecondaryTabIdByPrimaryId[primaryTabId]
       if (currentActive === secondaryTabId) {
@@ -340,8 +380,37 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
       return Boolean(await handler())
     },
 
-    updateListState(primaryTabId: string, state: unknown) {
-      this.listStateByPrimaryTabId[primaryTabId] = state
+    ensureWorkspaceListState(primaryTabId: string) {
+      if (!this.listStateByPrimaryTabId[primaryTabId]) {
+        this.listStateByPrimaryTabId[primaryTabId] = defaultListState()
+      }
+      return this.listStateByPrimaryTabId[primaryTabId]
+    },
+
+    getListState(primaryTabId: string) {
+      return this.ensureWorkspaceListState(primaryTabId)
+    },
+
+    updateListState(primaryTabId: string, state: Partial<WorkspaceListState>) {
+      this.listStateByPrimaryTabId[primaryTabId] = {
+        ...this.ensureWorkspaceListState(primaryTabId),
+        ...state,
+      }
+    },
+
+    patchListState(primaryTabId: string, partial: Partial<WorkspaceListState>) {
+      this.updateListState(primaryTabId, partial)
+    },
+
+    clearWorkspaceState(primaryTabId: string) {
+      const secondaries = this.secondaryTabsByPrimaryId[primaryTabId] ?? []
+      for (const sec of secondaries) {
+        delete this.draftStateBySecondaryTabId[sec.id]
+        secondarySaveHandlers.delete(sec.id)
+      }
+      delete this.secondaryTabsByPrimaryId[primaryTabId]
+      delete this.activeSecondaryTabIdByPrimaryId[primaryTabId]
+      delete this.listStateByPrimaryTabId[primaryTabId]
     },
 
     closeAllTabs() {
@@ -354,6 +423,7 @@ export const useWorkspaceTabsStore = defineStore('workspaceTabs', {
       this.activeSecondaryTabIdByPrimaryId = {}
       this.draftStateBySecondaryTabId = {}
       this.listStateByPrimaryTabId = {}
+      secondarySaveHandlers.clear()
     },
 
     resetForCompanySwitch() {

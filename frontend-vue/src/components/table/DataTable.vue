@@ -165,7 +165,7 @@ watch(
 watch(
   () => props.pagination,
   (next) => {
-    if (!next || !props.manualPagination) return
+    if (!next) return
     tablePagination.value = { pageIndex: Math.max(0, next.page - 1), pageSize: next.perPage }
   },
   { deep: true },
@@ -218,8 +218,8 @@ const table = useVueTable({
     const pageChanged = next.pageIndex !== tablePagination.value.pageIndex || next.pageSize !== tablePagination.value.pageSize
     const pageSizeChanged = next.pageSize !== tablePagination.value.pageSize
     tablePagination.value = next
-    if (props.manualPagination && pageSizeChanged) emit('perPageChange', next.pageSize)
-    else if (props.manualPagination && pageChanged) emit('pageChange', next.pageIndex + 1)
+    if (pageSizeChanged) emit('perPageChange', next.pageSize)
+    else if (pageChanged) emit('pageChange', next.pageIndex + 1)
     if (props.clearSelectionOnPageChange && pageChanged) {
       setRowSelectionState({})
     }

@@ -15,7 +15,7 @@ import {
   type SaveChartOfAccountPayload,
 } from '@/features/accounting/chart-of-accounts/chartOfAccounts.service'
 import { normalizeApiError } from '@/services/api'
-import type { WorkspaceListConfig } from '@/types/workspace'
+import type { WorkspaceListConfig, WorkspacePagination } from '@/types/workspace'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 
 type CoaNode = ChartOfAccountRow & { hasChildren: boolean; level: number }
@@ -40,9 +40,14 @@ const error = ref<string | null>(null)
 const formErrors = ref<string[]>([])
 const cancelConfirmOpen = ref(false)
 const formPanel = ref<InstanceType<typeof ChartOfAccountFormPanel> | null>(null)
-const search = ref('')
-const accountType = ref('')
-const activeFilter = ref<'active' | 'inactive' | 'all'>('active')
+const savedListState = tabs.getListState(chartOfAccountsConfig.primaryTabId)
+const search = ref(savedListState.search)
+const accountType = ref(String(savedListState.filters.accountType ?? ''))
+const activeFilter = ref<'active' | 'inactive' | 'all'>(
+  savedListState.status === 'inactive' || savedListState.status === 'all' ? savedListState.status : 'active',
+)
+const selectedIds = ref<string[]>(savedListState.selectedIds)
+const pagination = ref<WorkspacePagination>(savedListState.pagination)
 const expandedIds = ref<Set<string>>(new Set())
 const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[chartOfAccountsConfig.primaryTabId] ?? [])
 const activeSecondaryId = computed(
@@ -82,11 +87,41 @@ function flattenTree(rows: ChartOfAccountRow[]) {
 
 const tableRows = computed(() => flattenTree(filteredAccounts.value))
 
+function persistListState(partial: Partial<ReturnType<typeof tabs.getListState>> = {}) {
+  tabs.updateListState(chartOfAccountsConfig.primaryTabId, {
+    page: pagination.value.page,
+    perPage: pagination.value.perPage,
+    search: search.value,
+    filters: { accountType: accountType.value },
+    sortBy: null,
+    sortDirection: null,
+    selectedIds: selectedIds.value,
+    startDate: '',
+    endDate: '',
+    status: activeFilter.value,
+    includeVoid: false,
+    pagination: pagination.value,
+    sorting: [],
+    ...partial,
+  })
+}
+
+function resetListPage() {
+  pagination.value = { ...pagination.value, page: 1 }
+  selectedIds.value = []
+}
+
 async function load() {
   loading.value = true
   error.value = null
   try {
     accounts.value = await listChartOfAccounts()
+    pagination.value = {
+      ...pagination.value,
+      total: tableRows.value.length,
+      lastPage: Math.max(1, Math.ceil(tableRows.value.length / pagination.value.perPage)),
+    }
+    persistListState({ lastLoadedAt: new Date().toISOString() })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Endpoint belum tersedia'
   } finally {
@@ -109,6 +144,36 @@ function openCreateForm() {
 function openEditForm(row: ChartOfAccountRow) {
   formErrors.value = []
   tabs.openEditSecondaryTab(chartOfAccountsConfig.primaryTabId, { id: row.id, number: row.code })
+}
+
+function updateSearch(value: string) {
+  search.value = value
+  resetListPage()
+  persistListState()
+}
+
+function updateAccountType(value: string) {
+  accountType.value = value
+  resetListPage()
+  persistListState()
+}
+
+function updateActiveFilter(value: 'active' | 'inactive' | 'all') {
+  activeFilter.value = value
+  resetListPage()
+  persistListState()
+}
+
+function updatePage(page: number) {
+  pagination.value = { ...pagination.value, page }
+  selectedIds.value = []
+  persistListState()
+}
+
+function updatePerPage(perPage: number) {
+  pagination.value = { ...pagination.value, page: 1, perPage }
+  selectedIds.value = []
+  persistListState()
 }
 
 function draftPayload(draft: ChartOfAccountDraft): SaveChartOfAccountPayload {
@@ -250,11 +315,30 @@ const columns = computed<ColumnDef<CoaNode, unknown>[]>(() => [
 
 const config = computed<WorkspaceListConfig<CoaNode>>(() => ({ ...chartOfAccountsConfig, columns: columns.value, rowKey: 'id' }))
 
+watch(
+  tableRows,
+  (rows) => {
+    pagination.value = {
+      ...pagination.value,
+      total: rows.length,
+      lastPage: Math.max(1, Math.ceil(rows.length / pagination.value.perPage)),
+    }
+    if (pagination.value.page > (pagination.value.lastPage ?? 1)) {
+      pagination.value = { ...pagination.value, page: pagination.value.lastPage ?? 1 }
+    }
+    persistListState()
+  },
+  { immediate: true },
+)
+
+watch(selectedIds, () => persistListState(), { deep: true })
+
 onMounted(load)
 </script>
 
 <template>
   <WorkspaceListPage
+    v-model:selected-ids="selectedIds"
     :config="config"
     :rows="tableRows"
     :loading="loading"
@@ -263,9 +347,11 @@ onMounted(load)
     :start-date="''"
     :end-date="''"
     :status="''"
-    :selected-ids="[]"
+    :pagination="pagination"
     @refresh="load"
-    @search="search = $event"
+    @search="updateSearch"
+    @page-change="updatePage"
+    @per-page-change="updatePerPage"
     @action-click="(payload) => (payload.key === 'create' ? openCreateForm() : undefined)"
   >
     <template #toolbar-right>
@@ -277,7 +363,7 @@ onMounted(load)
       <div class="grid gap-3 sm:grid-cols-2">
         <label class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">Account Type</span>
-          <select v-model="accountType" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700">
+          <select :value="accountType" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700" @change="updateAccountType(($event.target as HTMLSelectElement).value)">
             <option value="">All</option>
             <option value="asset">Asset</option>
             <option value="liability">Liability</option>
@@ -288,7 +374,7 @@ onMounted(load)
         </label>
         <label class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">Status</span>
-          <select v-model="activeFilter" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700">
+          <select :value="activeFilter" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700" @change="updateActiveFilter(($event.target as HTMLSelectElement).value as 'active' | 'inactive' | 'all')">
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="all">All</option>

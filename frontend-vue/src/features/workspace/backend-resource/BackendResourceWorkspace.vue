@@ -47,6 +47,42 @@ const filterGuidance = computed(() => {
   return ''
 })
 
+function currentPrimaryId() {
+  return config.value?.primaryTabId ?? menuItem.value?.href ?? tabs.activePrimaryTabId
+}
+
+function persistListState(partial: Parameters<typeof tabs.updateListState>[1] = {}) {
+  const activeSort = sorting.value[0]
+  tabs.updateListState(currentPrimaryId(), {
+    page: pagination.value.page,
+    perPage: pagination.value.perPage,
+    search: search.value,
+    filters: {},
+    sortBy: activeSort?.id ?? null,
+    sortDirection: activeSort ? (activeSort.desc ? 'desc' : 'asc') : null,
+    selectedIds: selectedIds.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
+    status: status.value,
+    includeVoid: includeVoid.value,
+    pagination: pagination.value,
+    sorting: sorting.value,
+    ...partial,
+  })
+}
+
+function hydrateListState(primaryTabId: string) {
+  const state = tabs.getListState(primaryTabId)
+  search.value = state.search
+  startDate.value = state.startDate
+  endDate.value = state.endDate
+  status.value = state.status
+  includeVoid.value = state.includeVoid
+  sorting.value = state.sorting
+  pagination.value = state.pagination
+  selectedIds.value = state.selectedIds
+}
+
 function rowText(row: BackendResourceRow) {
   return Object.values(row)
     .filter((value) => typeof value !== 'object')
@@ -88,6 +124,7 @@ function supportsRemote(feature: 'remoteSearch' | 'remoteFilters' | 'remoteSort'
 function resetPageAndSelection() {
   pagination.value.page = 1
   selectedIds.value = []
+  persistListState()
 }
 
 function requestParams() {
@@ -132,6 +169,8 @@ async function load() {
     rows.value = result.rows
     responsePaginated.value = result.pagination != null
     if (result.pagination) pagination.value = result.pagination
+    else pagination.value = { ...pagination.value, total: rows.value.length, lastPage: Math.max(1, Math.ceil(rows.value.length / pagination.value.perPage)) }
+    persistListState({ lastLoadedAt: new Date().toISOString() })
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : 'Unable to load workspace data.'
   } finally {
@@ -142,6 +181,7 @@ async function load() {
 function updateSearch(value: string) {
   search.value = value
   resetPageAndSelection()
+  persistListState()
   if (supportsRemote('remoteSearch')) void load()
 }
 
@@ -149,39 +189,43 @@ function updateDates(range: { startDate: string; endDate: string }) {
   startDate.value = range.startDate
   endDate.value = range.endDate
   resetPageAndSelection()
+  persistListState()
   if (supportsRemote('remoteFilters') || capability.value?.requiredDateFilter) void load()
 }
 
 function updateStatus(value: string) {
   status.value = value
   resetPageAndSelection()
+  persistListState()
   if (supportsRemote('remoteFilters')) void load()
 }
 
 function updateIncludeVoid(value: boolean) {
   includeVoid.value = value
   resetPageAndSelection()
+  persistListState()
   if (supportsRemote('remoteFilters')) void load()
 }
 
 function updatePage(page: number) {
-  if (!effectiveRemote.value) return
   pagination.value.page = page
   selectedIds.value = []
-  void load()
+  persistListState()
+  if (effectiveRemote.value) void load()
 }
 
 function updatePerPage(perPage: number) {
-  if (!effectiveRemote.value) return
   pagination.value.perPage = perPage
   resetPageAndSelection()
-  void load()
+  persistListState()
+  if (effectiveRemote.value) void load()
 }
 
 function updateSort(value: SortingState) {
   if (!effectiveRemote.value || !supportsRemote('remoteSort')) return
   sorting.value = value
   resetPageAndSelection()
+  persistListState()
   void load()
 }
 
@@ -239,6 +283,7 @@ async function confirmBulkVoid(payload: { reason: string }) {
   operationNotice.value = `${successCount} transaction(s) voided; ${failures.length} failed.`
   error.value = failures.join(' | ') || null
   bulkVoidLoading.value = false
+  persistListState()
 }
 
 watch(
@@ -246,18 +291,29 @@ watch(
   () => {
     if (!menuItem.value) return
     tabs.ensureListSecondaryTab(menuItem.value.href)
-    search.value = ''
-    startDate.value = ''
-    endDate.value = ''
-    status.value = ''
-    includeVoid.value = false
-    sorting.value = []
-    pagination.value = { page: 1, perPage: 10, total: 0, lastPage: 1 }
+    hydrateListState(menuItem.value.href)
     responsePaginated.value = false
-    selectedIds.value = []
     void load()
   },
   { immediate: true },
+)
+
+watch(selectedIds, () => persistListState(), { deep: true })
+
+watch(
+  filteredRows,
+  (rows) => {
+    if (effectiveRemote.value) return
+    pagination.value = {
+      ...pagination.value,
+      total: rows.length,
+      lastPage: Math.max(1, Math.ceil(rows.length / pagination.value.perPage)),
+    }
+    if (pagination.value.page > (pagination.value.lastPage ?? 1)) {
+      pagination.value = { ...pagination.value, page: pagination.value.lastPage ?? 1 }
+    }
+    persistListState()
+  },
 )
 </script>
 
@@ -275,7 +331,7 @@ watch(
     :status="status"
     :include-void="includeVoid"
     :show-include-void="Boolean(capability?.includeVoidFilter)"
-    :pagination="effectiveRemote ? pagination : undefined"
+    :pagination="pagination"
     :remote-pagination="effectiveRemote"
     :sorting="sorting"
     :remote-sort="effectiveRemote && supportsRemote('remoteSort')"
