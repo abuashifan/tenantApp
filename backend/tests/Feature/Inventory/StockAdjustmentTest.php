@@ -20,7 +20,11 @@ class StockAdjustmentTest extends JournalTestCase
 {
     public function test_create_update_approve_post_void_adjustment_flow(): void
     {
-        $ctx = $this->setUpTenant(role: 'warehouse');
+        $ctx = $this->setUpTenant(role: 'warehouse', accountingSettingOverrides: [
+            'transaction_workflow_mode' => 'draft_approve_post',
+            'auto_post_transactions' => false,
+            'approval_enabled' => true,
+        ]);
         $this->seedInventoryMappings();
 
         $unit = Unit::query()->create(['code' => 'PCS', 'name' => 'Pieces', 'precision' => 0, 'is_active' => true]);
@@ -61,7 +65,11 @@ class StockAdjustmentTest extends JournalTestCase
 
     public function test_cannot_decrease_more_than_available_when_negative_disabled(): void
     {
-        $ctx = $this->setUpTenant(role: 'warehouse');
+        $ctx = $this->setUpTenant(role: 'warehouse', accountingSettingOverrides: [
+            'transaction_workflow_mode' => 'draft_then_post',
+            'auto_post_transactions' => false,
+            'approval_enabled' => false,
+        ]);
         $this->seedInventoryMappings();
         Config::set('inventory.allow_negative_stock', false);
 
@@ -76,7 +84,6 @@ class StockAdjustmentTest extends JournalTestCase
             ],
         ], $ctx['headers'])->assertStatus(201);
         $id = (int) $adj->json('data.id');
-        $this->patchJson('/api/inventory/stock-adjustments/'.$id.'/approve', [], $ctx['headers'])->assertStatus(200);
         $res = $this->patchJson('/api/inventory/stock-adjustments/'.$id.'/post', [], $ctx['headers']);
         $res->assertStatus(422);
         $res->assertJsonPath('code', 'INSUFFICIENT_STOCK');
@@ -84,7 +91,11 @@ class StockAdjustmentTest extends JournalTestCase
 
     public function test_period_lock_blocks_posting_adjustment(): void
     {
-        $ctx = $this->setUpTenant(role: 'warehouse');
+        $ctx = $this->setUpTenant(role: 'warehouse', accountingSettingOverrides: [
+            'transaction_workflow_mode' => 'draft_approve_post',
+            'auto_post_transactions' => false,
+            'approval_enabled' => true,
+        ]);
         $this->seedInventoryMappings();
 
         $companyId = (int) $ctx['company']->id;
@@ -115,6 +126,92 @@ class StockAdjustmentTest extends JournalTestCase
         $res->assertJsonPath('code', 'TRANSACTION_PERIOD_LOCKED');
     }
 
+    public function test_simple_auto_post_without_approval_posts_adjustment_on_create(): void
+    {
+        $ctx = $this->setUpTenant(role: 'warehouse', accountingSettingOverrides: [
+            'transaction_workflow_mode' => 'simple_auto_post',
+            'auto_post_transactions' => true,
+            'approval_enabled' => false,
+        ]);
+        $this->seedInventoryMappings();
+
+        $unit = Unit::query()->create(['code' => 'PCS', 'name' => 'Pieces', 'precision' => 0, 'is_active' => true]);
+        $wh = Warehouse::query()->create(['code' => 'WH1', 'name' => 'Main', 'is_default' => true, 'is_active' => true]);
+        $p = Product::query()->create(['product_code' => 'SKU1', 'product_name' => 'Item', 'product_type' => 'goods', 'unit_id' => $unit->id, 'is_stock_item' => true, 'is_active' => true]);
+
+        $res = $this->postJson('/api/inventory/stock-adjustments', [
+            'adjustment_date' => '2026-01-10',
+            'reason' => 'Auto post',
+            'lines' => [
+                ['product_id' => $p->id, 'warehouse_id' => $wh->id, 'unit_id' => $unit->id, 'adjustment_type' => 'increase', 'quantity' => 12, 'unit_cost' => 1000],
+            ],
+        ], $ctx['headers'])->assertStatus(201);
+
+        $res->assertJsonPath('data.status', 'posted');
+
+        $balance = StockBalance::query()->where('product_id', $p->id)->where('warehouse_id', $wh->id)->firstOrFail();
+        $this->assertSame(12.0, (float) $balance->quantity_on_hand);
+        $this->assertDatabaseHas('stock_movements', [
+            'source_type' => 'stock_adjustment',
+            'source_id' => (int) $res->json('data.id'),
+            'status' => 'posted',
+        ], 'tenant');
+    }
+
+    public function test_manual_post_without_approval_allows_draft_to_post(): void
+    {
+        $ctx = $this->setUpTenant(role: 'warehouse', accountingSettingOverrides: [
+            'transaction_workflow_mode' => 'draft_then_post',
+            'auto_post_transactions' => false,
+            'approval_enabled' => false,
+        ]);
+        $this->seedInventoryMappings();
+
+        $unit = Unit::query()->create(['code' => 'PCS', 'name' => 'Pieces', 'precision' => 0, 'is_active' => true]);
+        $wh = Warehouse::query()->create(['code' => 'WH1', 'name' => 'Main', 'is_default' => true, 'is_active' => true]);
+        $p = Product::query()->create(['product_code' => 'SKU1', 'product_name' => 'Item', 'product_type' => 'goods', 'unit_id' => $unit->id, 'is_stock_item' => true, 'is_active' => true]);
+
+        $res = $this->postJson('/api/inventory/stock-adjustments', [
+            'adjustment_date' => '2026-01-10',
+            'lines' => [
+                ['product_id' => $p->id, 'warehouse_id' => $wh->id, 'unit_id' => $unit->id, 'adjustment_type' => 'increase', 'quantity' => 5, 'unit_cost' => 1000],
+            ],
+        ], $ctx['headers'])->assertStatus(201);
+
+        $res->assertJsonPath('data.status', 'draft');
+
+        $this->patchJson('/api/inventory/stock-adjustments/'.$res->json('data.id').'/post', [], $ctx['headers'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'posted');
+    }
+
+    public function test_approval_with_auto_post_posts_after_approval_without_bypassing_draft(): void
+    {
+        $ctx = $this->setUpTenant(role: 'warehouse', accountingSettingOverrides: [
+            'transaction_workflow_mode' => 'simple_auto_post',
+            'auto_post_transactions' => true,
+            'approval_enabled' => true,
+        ]);
+        $this->seedInventoryMappings();
+
+        $unit = Unit::query()->create(['code' => 'PCS', 'name' => 'Pieces', 'precision' => 0, 'is_active' => true]);
+        $wh = Warehouse::query()->create(['code' => 'WH1', 'name' => 'Main', 'is_default' => true, 'is_active' => true]);
+        $p = Product::query()->create(['product_code' => 'SKU1', 'product_name' => 'Item', 'product_type' => 'goods', 'unit_id' => $unit->id, 'is_stock_item' => true, 'is_active' => true]);
+
+        $res = $this->postJson('/api/inventory/stock-adjustments', [
+            'adjustment_date' => '2026-01-10',
+            'lines' => [
+                ['product_id' => $p->id, 'warehouse_id' => $wh->id, 'unit_id' => $unit->id, 'adjustment_type' => 'increase', 'quantity' => 7, 'unit_cost' => 1000],
+            ],
+        ], $ctx['headers'])->assertStatus(201);
+
+        $res->assertJsonPath('data.status', 'draft');
+
+        $this->patchJson('/api/inventory/stock-adjustments/'.$res->json('data.id').'/approve', [], $ctx['headers'])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'posted');
+    }
+
     public function test_permission_denied(): void
     {
         $ctx = $this->setUpTenant(role: 'viewer');
@@ -139,4 +236,3 @@ class StockAdjustmentTest extends JournalTestCase
         AccountMapping::query()->create(['mapping_key' => AccountMappingKey::INVENTORY_ADJUSTMENT_LOSS, 'module' => 'inventory', 'account_id' => $loss->id, 'is_active' => true]);
     }
 }
-

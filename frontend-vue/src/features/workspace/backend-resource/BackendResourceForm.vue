@@ -34,7 +34,12 @@ import {
   loadStockAdjustmentLookups,
   type StockAdjustmentLookups,
 } from '@/features/inventory/stock-adjustments/stockAdjustmentLookups.service'
+import {
+  getCompanyWorkflowSettings,
+  type CompanyWorkflowSettings,
+} from '@/services/settings/companySettings.service'
 import { useAuthStore } from '@/stores/authStore'
+import { useCompanyStore } from '@/stores/companyStore'
 import { useWorkspaceTabsStore, type SecondaryTab } from '@/stores/workspaceTabsStore'
 import {
   createBackendResource,
@@ -63,6 +68,7 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
+const company = useCompanyStore()
 const tabs = useWorkspaceTabsStore()
 
 function makeDefaultDraft() {
@@ -99,6 +105,8 @@ const stockAdjustmentLookups = ref<StockAdjustmentLookups>({
   balancesLoaded: false,
 })
 const stockAdjustmentLookupsLoaded = ref(false)
+const companyWorkflowSettings = ref<CompanyWorkflowSettings | null>(null)
+const companySettingsLoadedForCompany = ref<string | number | null>(null)
 
 const readonly = computed(() => props.tab.mode === 'detail' || ['posted', 'void', 'voided', 'cancelled', 'closed', 'finalized'].includes(status.value))
 const title = computed(() => {
@@ -147,6 +155,15 @@ const canViewInventoryHistory = computed(() => can('inventory.reports.view'))
 const showFooterActions = computed(() => !isProductDetail.value)
 const showHeaderActions = computed(() => !showFooterActions.value)
 const showSummary = computed(() => !isProductDetail.value && Boolean(props.config.lineItems))
+const approvalEnabled = computed(() => companyWorkflowSettings.value?.approval_enabled ?? true)
+const autoPostTransactions = computed(() => companyWorkflowSettings.value?.auto_post_transactions ?? false)
+const workflowMode = computed(() => companyWorkflowSettings.value?.transaction_workflow_mode ?? null)
+const allowVoidTransactions = computed(() => companyWorkflowSettings.value?.allow_void_transactions ?? true)
+const autoPostOnCreate = computed(() =>
+  !approvalEnabled.value
+  && autoPostTransactions.value
+  && workflowMode.value === 'simple_auto_post',
+)
 const stockAdjustmentSummary = computed(() => {
   let totalIncrease = 0
   let totalDecrease = 0
@@ -179,6 +196,10 @@ function can(permission: string) {
 
 function visibleAction(action: FormActionConfig) {
   if (!props.tab.entityId || !can(action.permission)) return false
+  if (action.key === 'approve' && !approvalEnabled.value) return false
+  if (action.key === 'void' && !allowVoidTransactions.value) return false
+  if (action.key === 'post' && approvalEnabled.value && status.value === 'draft') return false
+  if (action.key === 'post' && autoPostOnCreate.value && status.value === 'draft') return false
   if (action.visibleStatuses?.length && !action.visibleStatuses.includes(status.value)) return false
   return true
 }
@@ -191,6 +212,18 @@ async function loadStockAdjustmentLookupData() {
   if (!isStockAdjustment.value || stockAdjustmentLookupsLoaded.value) return
   stockAdjustmentLookupsLoaded.value = true
   stockAdjustmentLookups.value = await loadStockAdjustmentLookups()
+}
+
+async function loadCompanyWorkflowSettings() {
+  const activeCompanyId = company.activeCompanyId
+  if (companySettingsLoadedForCompany.value === activeCompanyId) return
+  companySettingsLoadedForCompany.value = activeCompanyId
+  companyWorkflowSettings.value = null
+  try {
+    companyWorkflowSettings.value = await getCompanyWorkflowSettings()
+  } catch {
+    companyWorkflowSettings.value = null
+  }
 }
 
 function activateInternalTab(tab: 'detail' | 'history') {
@@ -252,6 +285,14 @@ watch(
   () => isStockAdjustment.value,
   () => {
     void loadStockAdjustmentLookupData()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => company.activeCompanyId,
+  () => {
+    void loadCompanyWorkflowSettings()
   },
   { immediate: true },
 )
@@ -480,6 +521,13 @@ function saveAndCloseFromDialog() {
       </FormHeader>
 
       <FormValidationSummary :errors="serverErrors" />
+
+      <div
+        v-if="autoPostOnCreate && tab.mode !== 'detail' && canSave"
+        class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800"
+      >
+        Auto post aktif: transaksi akan langsung diposting setelah disimpan.
+      </div>
 
       <nav v-if="isProductDetail" class="flex items-end gap-1 border-b border-slate-200 pt-1">
         <button

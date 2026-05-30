@@ -38,6 +38,23 @@ class CompanySettingController extends Controller
         );
     }
 
+    public function workflow(): JsonResponse
+    {
+        $company = $this->tenantContext->company();
+        if (! $company) {
+            return $this->errorResponse('Active company context not found.', 422);
+        }
+
+        $accounting = $this->service->getOrCreateAccountingSetting($company);
+
+        return $this->successResponse([
+            'transaction_workflow_mode' => $accounting->transaction_workflow_mode,
+            'auto_post_transactions' => (bool) $accounting->auto_post_transactions,
+            'approval_enabled' => (bool) $accounting->approval_enabled,
+            'allow_void_transactions' => (bool) $accounting->allow_void_transactions,
+        ], 'Company workflow settings retrieved successfully');
+    }
+
     public function updateAccounting(UpdateCompanyAccountingSettingRequest $request): JsonResponse
     {
         $company = $this->tenantContext->company();

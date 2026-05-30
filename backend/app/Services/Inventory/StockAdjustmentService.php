@@ -9,6 +9,7 @@ use App\Models\Tenant\StockAdjustmentLine;
 use App\Models\Tenant\StockMovement;
 use App\Services\Audit\AuditLogService;
 use App\Services\DocumentNumbering\DocumentNumberService;
+use App\Services\Settings\CompanySettingService;
 use App\Services\Tenant\TenantContext;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
@@ -24,6 +25,7 @@ class StockAdjustmentService
         private readonly InventoryQuantityService $qtyService,
         private readonly StockMovementValidationService $movementValidation,
         private readonly AuditLogService $auditLogService,
+        private readonly CompanySettingService $companySettingService,
     ) {
     }
 
@@ -47,8 +49,10 @@ class StockAdjustmentService
 
         $date = (string) $data['adjustment_date'];
         $lines = (array) $data['lines'];
+        $workflow = $this->companySettingService->getOrCreateAccountingSetting($company);
+        $shouldAutoPost = $this->shouldAutoPostOnCreate($workflow);
 
-        return DB::connection('tenant')->transaction(function () use ($company, $data, $date, $lines) {
+        return DB::connection('tenant')->transaction(function () use ($company, $data, $date, $lines, $shouldAutoPost) {
             $adj = StockAdjustment::query()->create([
                 'adjustment_number' => $this->documentNumberService->generate($company, DocumentType::STOCK_ADJUSTMENT, $date),
                 'adjustment_date' => $date,
@@ -73,6 +77,10 @@ class StockAdjustmentService
                 'record_id' => $adj->id,
                 'record_number' => $adj->adjustment_number,
             ], tenant: true);
+
+            if ($shouldAutoPost) {
+                return $this->post($adj->refresh()->load('lines'));
+            }
 
             return $adj->refresh()->load('lines.product', 'lines.warehouse');
         });
@@ -136,12 +144,19 @@ class StockAdjustmentService
             'record_number' => $adjustment->adjustment_number,
         ], tenant: true);
 
+        if ($this->shouldAutoPostAfterApproval()) {
+            return $this->post($adjustment->refresh()->load('lines'));
+        }
+
         return $adjustment->refresh()->load('lines');
     }
 
     public function post(StockAdjustment $adjustment): StockAdjustment
     {
-        if ($adjustment->status !== 'approved') {
+        $requiresApproval = $this->approvalRequired();
+        $allowedStatuses = $requiresApproval ? ['approved'] : ['draft', 'approved'];
+
+        if (! in_array((string) $adjustment->status, $allowedStatuses, true)) {
             throw ApiException::make('INVALID_STOCK_ADJUSTMENT_STATUS', 'Stock adjustment cannot be posted.', 422);
         }
 
@@ -170,6 +185,35 @@ class StockAdjustmentService
 
             return $adjustment->refresh()->load('lines', 'stockMovement');
         });
+    }
+
+    private function approvalRequired(): bool
+    {
+        $company = $this->tenantContext->company();
+        if (! $company) return true;
+
+        $workflow = $this->companySettingService->getOrCreateAccountingSetting($company);
+
+        return (bool) $workflow->approval_enabled || $workflow->transaction_workflow_mode === 'draft_approve_post';
+    }
+
+    private function shouldAutoPostOnCreate(object $workflow): bool
+    {
+        if ((bool) $workflow->approval_enabled) return false;
+
+        return $workflow->transaction_workflow_mode === 'simple_auto_post'
+            && (bool) $workflow->auto_post_transactions;
+    }
+
+    private function shouldAutoPostAfterApproval(): bool
+    {
+        $company = $this->tenantContext->company();
+        if (! $company) return false;
+
+        $workflow = $this->companySettingService->getOrCreateAccountingSetting($company);
+
+        return (bool) $workflow->approval_enabled
+            && (bool) $workflow->auto_post_transactions;
     }
 
     public function void(StockAdjustment $adjustment, ?string $reason = null): StockAdjustment

@@ -60,6 +60,21 @@ class CompanySettingTest extends TestCase
             ->assertJsonPath('data.modules.inventory_enabled', false);
     }
 
+    public function test_authenticated_company_user_can_get_workflow_settings_without_settings_permission(): void
+    {
+        [$user, $company] = $this->seedAccessForUser('warehouse');
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/settings/company/workflow', ['X-Company-ID' => (string) $company->id])
+            ->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.transaction_workflow_mode', 'simple_auto_post')
+            ->assertJsonPath('data.auto_post_transactions', true)
+            ->assertJsonPath('data.approval_enabled', false)
+            ->assertJsonPath('data.allow_void_transactions', true);
+    }
+
     public function test_user_cannot_access_another_company_settings(): void
     {
         [$userA] = $this->seedAccessForUser();
@@ -111,7 +126,7 @@ class CompanySettingTest extends TestCase
     /**
      * @return array{0: User, 1: Company}
      */
-    private function seedAccessForUser(): array
+    private function seedAccessForUser(string $role = 'owner'): array
     {
         $user = User::factory()->create(['status' => 'active']);
 
@@ -127,7 +142,7 @@ class CompanySettingTest extends TestCase
         CompanyUser::query()->create([
             'company_id' => $company->id,
             'user_id' => $user->id,
-            'role' => 'owner',
+            'role' => $role,
             'status' => 'active',
             'joined_at' => now(),
         ]);

@@ -42,8 +42,18 @@ export type CompanySettings = {
   modules: CompanyModuleSettings
 }
 
+export type CompanyWorkflowSettings = Pick<
+  CompanyAccountingSettings,
+  'transaction_workflow_mode' | 'auto_post_transactions' | 'approval_enabled' | 'allow_void_transactions'
+>
+
 export async function getCompanySettings() {
   const response = await api.get<ApiResponse<CompanySettings>>('/settings/company')
+  return unwrap(response.data)
+}
+
+export async function getCompanyWorkflowSettings() {
+  const response = await api.get<ApiResponse<CompanyWorkflowSettings>>('/settings/company/workflow')
   return unwrap(response.data)
 }
 

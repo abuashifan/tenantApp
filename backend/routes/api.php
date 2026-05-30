@@ -85,6 +85,7 @@ Route::middleware(['auth:sanctum', 'company.access'])->group(function () {
 
     Route::get('/auth/permissions', [PermissionController::class, 'index']);
 
+    Route::get('/settings/company/workflow', [CompanySettingController::class, 'workflow']);
     Route::get('/settings/company', [CompanySettingController::class, 'show'])
         ->middleware('permission:settings.company.view');
     Route::patch('/settings/company/accounting', [CompanySettingController::class, 'updateAccounting'])
