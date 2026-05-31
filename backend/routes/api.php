@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Accounting\PeriodLockController;
 use App\Http\Controllers\Api\Companies\CompanyController;
 use App\Http\Controllers\Api\Settings\CompanySettingController;
 use App\Http\Controllers\Api\Tenant\TenantContextTestController;
+use App\Http\Controllers\Api\Transactions\SourceDocumentPickerController;
 use App\Http\Controllers\Api\MasterData\AccountMappingController;
 use App\Http\Controllers\Api\MasterData\ChartOfAccountController;
 use App\Http\Controllers\Api\MasterData\ContactController;
@@ -355,6 +356,9 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('reports')->group(
 });
 
 Route::middleware(['auth:sanctum', 'company.access'])->prefix('sales')->group(function () {
+    Route::get('/source-documents/availability', [SourceDocumentPickerController::class, 'availability'])->middleware('permission:sales.orders.view');
+    Route::get('/source-documents', [SourceDocumentPickerController::class, 'index'])->middleware('permission:sales.orders.view');
+
     Route::get('/ar/customer-summary', [AccountsReceivableController::class, 'customerSummary'])->middleware('permission:sales.ar.view');
     Route::get('/ar/customers/{customerId}/ledger', [AccountsReceivableController::class, 'customerLedger'])->middleware('permission:sales.ar.view');
     Route::get('/ar/invoices/{invoiceId}/ledger', [AccountsReceivableController::class, 'invoiceLedger'])->middleware('permission:sales.ar.view');
@@ -447,6 +451,9 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('sales')->group(fu
 });
 
 Route::middleware(['auth:sanctum', 'company.access'])->prefix('purchase')->group(function () {
+    Route::get('/source-documents/availability', [SourceDocumentPickerController::class, 'availability'])->middleware('permission:purchase.orders.view');
+    Route::get('/source-documents', [SourceDocumentPickerController::class, 'index'])->middleware('permission:purchase.orders.view');
+
     Route::get('/ap/vendor-summary', [AccountsPayableController::class, 'vendorSummary'])->middleware('permission:purchase.ap.view');
     Route::get('/ap/vendors/{vendorId}/ledger', [AccountsPayableController::class, 'vendorLedger'])->middleware('permission:purchase.ap.view');
     Route::get('/ap/bills/{billId}/ledger', [AccountsPayableController::class, 'billLedger'])->middleware('permission:purchase.ap.view');

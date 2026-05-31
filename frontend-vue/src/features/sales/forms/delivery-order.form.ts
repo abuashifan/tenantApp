@@ -51,6 +51,10 @@ export const deliveryOrderFormConfig: TransactionFormConfig<DeliveryOrderValues>
     cancel: 'sales.delivery_orders.cancel',
     void: 'sales.delivery_orders.void',
   },
+  sourceOptions: [
+    { key: 'sales-order', label: 'Sales Order', sourceType: 'sales_order' },
+    { key: 'proforma-invoice', label: 'Faktur Sementara', sourceType: 'proforma_invoice' },
+  ],
   actions: [
     { key: 'ready', label: 'Ready', permission: 'sales.delivery_orders.ship', whenStatusIn: ['draft'] },
     { key: 'ship', label: 'Ship', permission: 'sales.delivery_orders.ship', whenStatusIn: ['ready'] },

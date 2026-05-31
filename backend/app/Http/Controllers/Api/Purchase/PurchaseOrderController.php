@@ -20,7 +20,15 @@ class PurchaseOrderController extends Controller
     public function __construct(private readonly PurchaseOrderService $service) {}
 
     public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Purchase orders retrieved successfully'); }
-    public function store(StorePurchaseOrderRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Purchase order created successfully', 201); }
+    public function store(StorePurchaseOrderRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        if (($data['source_type'] ?? null) === 'purchase_request' && ! empty($data['source_id'])) {
+            return $this->successResponse($this->service->createFromPurchaseRequest(PurchaseRequest::query()->findOrFail((int) $data['source_id']), $data), 'Purchase order created from purchase request successfully', 201);
+        }
+
+        return $this->successResponse($this->service->create($data), 'Purchase order created successfully', 201);
+    }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Purchase order retrieved successfully'); }
     public function update(UpdatePurchaseOrderRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(PurchaseOrder::query()->findOrFail($id), $request->validated()), 'Purchase order updated successfully'); }
     public function createFromPurchaseRequest(Request $request, int $purchaseRequestId): JsonResponse { return $this->successResponse($this->service->createFromPurchaseRequest(PurchaseRequest::query()->findOrFail($purchaseRequestId), $request->all()), 'Purchase order created from purchase request successfully', 201); }

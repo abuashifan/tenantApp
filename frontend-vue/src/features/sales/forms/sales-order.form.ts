@@ -49,6 +49,9 @@ export const salesOrderFormConfig: TransactionFormConfig<SalesOrderValues> = {
     cancel: 'sales.orders.cancel',
     close: 'sales.orders.confirm',
   },
+  sourceOptions: [
+    { key: 'sales-quotation', label: 'Sales Quotation', sourceType: 'sales_quotation' },
+  ],
   actions: [
     { key: 'approve', label: 'Approve', permission: 'sales.orders.approve', whenStatusIn: ['draft'], variant: 'primary' },
     { key: 'confirm', label: 'Confirm', permission: 'sales.orders.confirm', whenStatusIn: ['approved'], variant: 'primary' },

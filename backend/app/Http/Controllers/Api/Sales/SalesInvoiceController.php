@@ -31,7 +31,12 @@ class SalesInvoiceController extends Controller
 
     public function store(StoreSalesInvoiceRequest $request): JsonResponse
     {
-        return $this->successResponse($this->service->create($request->validated()), 'Sales invoice created successfully', 201);
+        $data = $request->validated();
+        if (($data['source_type'] ?? null) === 'delivery_order' && ! empty($data['source_id'])) {
+            return $this->successResponse($this->service->createFromDeliveryOrder(DeliveryOrder::query()->findOrFail((int) $data['source_id']), $data), 'Sales invoice created from delivery order successfully', 201);
+        }
+
+        return $this->successResponse($this->service->create($data), 'Sales invoice created successfully', 201);
     }
 
     public function show(int $id): JsonResponse

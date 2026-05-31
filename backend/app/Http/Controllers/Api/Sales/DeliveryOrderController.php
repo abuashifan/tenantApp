@@ -18,7 +18,15 @@ class DeliveryOrderController extends Controller
     use ApiResponse;
     public function __construct(private readonly DeliveryOrderService $service) {}
     public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Delivery orders retrieved successfully'); }
-    public function store(StoreDeliveryOrderRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Delivery order created successfully', 201); }
+    public function store(StoreDeliveryOrderRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        if (($data['source_type'] ?? null) === 'sales_order' && ! empty($data['source_id'])) {
+            return $this->successResponse($this->service->createFromSalesOrder(SalesOrder::query()->findOrFail((int) $data['source_id']), $data), 'Delivery order created from sales order successfully', 201);
+        }
+
+        return $this->successResponse($this->service->create($data), 'Delivery order created successfully', 201);
+    }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Delivery order retrieved successfully'); }
     public function update(UpdateDeliveryOrderRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(DeliveryOrder::query()->findOrFail($id), $request->validated()), 'Delivery order updated successfully'); }
     public function createFromSalesOrder(Request $request, int $salesOrderId): JsonResponse { return $this->successResponse($this->service->createFromSalesOrder(SalesOrder::query()->findOrFail($salesOrderId), $request->all()), 'Delivery order created from sales order successfully', 201); }

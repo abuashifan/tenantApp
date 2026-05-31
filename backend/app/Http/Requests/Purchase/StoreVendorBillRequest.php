@@ -54,6 +54,8 @@ class StoreVendorBillRequest extends FormRequest
             'lines.*.department_id' => ['nullable', 'integer'],
             'lines.*.project_id' => ['nullable', 'integer'],
             'lines.*.expense_account_id' => ['nullable', 'integer'],
+            'lines.*.source_line_type' => ['nullable', 'string'],
+            'lines.*.source_line_id' => ['nullable', 'integer'],
         ];
     }
 }

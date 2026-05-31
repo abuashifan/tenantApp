@@ -10,6 +10,7 @@ use App\Models\Tenant\DeliveryOrder;
 use App\Models\Tenant\DeliveryOrderLine;
 use App\Models\Tenant\JournalEntry;
 use App\Models\Tenant\ProformaInvoice;
+use App\Models\Tenant\ProformaInvoiceLine;
 use App\Models\Tenant\SalesInvoice;
 use App\Models\Tenant\SalesOrder;
 use App\Models\Tenant\SalesOrderLine;
@@ -563,7 +564,10 @@ class SalesInvoiceService
                 throw ApiException::make('INVOICE_QUANTITY_EXCEEDS_REMAINING', 'Invoice quantity exceeds remaining delivered quantity.', 422);
             }
             $orderLine = $line->sales_order_line_id ? SalesOrderLine::query()->find($line->sales_order_line_id) : null;
-            if (! $orderLine) {
+            $proformaLine = ! $orderLine && $line->source_line_type === 'proforma_invoice_line' && $line->source_line_id
+                ? ProformaInvoiceLine::query()->find($line->source_line_id)
+                : null;
+            if (! $orderLine && ! $proformaLine) {
                 throw ApiException::make('DELIVERY_ORDER_PRICING_SOURCE_MISSING', 'Unable to resolve delivery line price from its sales order source.', 422);
             }
 
@@ -575,11 +579,11 @@ class SalesInvoiceService
                 'description' => $line->description,
                 'quantity' => $quantity,
                 'unit_id' => $line->unit_id,
-                'unit_price' => $orderLine->unit_price,
-                'discount_type' => $orderLine->discount_type,
-                'discount_value' => $orderLine->discount_value,
-                'tax_id' => $orderLine->tax_id,
-                'tax_rate' => $orderLine->tax_rate,
+                'unit_price' => $orderLine?->unit_price ?? $proformaLine?->unit_price ?? 0,
+                'discount_type' => $orderLine?->discount_type ?? $proformaLine?->discount_type,
+                'discount_value' => $orderLine?->discount_value ?? $proformaLine?->discount_value,
+                'tax_id' => $orderLine?->tax_id ?? $proformaLine?->tax_id,
+                'tax_rate' => $orderLine?->tax_rate ?? $proformaLine?->tax_rate,
                 'warehouse_id' => $line->warehouse_id,
                 'department_id' => $line->department_id,
                 'project_id' => $line->project_id,

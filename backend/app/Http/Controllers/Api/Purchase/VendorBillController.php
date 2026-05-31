@@ -20,7 +20,15 @@ class VendorBillController extends Controller
     use ApiResponse;
     public function __construct(private readonly VendorBillService $service) {}
     public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Vendor bills retrieved successfully'); }
-    public function store(StoreVendorBillRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Vendor bill created successfully', 201); }
+    public function store(StoreVendorBillRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        if (($data['source_type'] ?? null) === 'goods_receipt' && ! empty($data['source_id'])) {
+            return $this->successResponse($this->service->createFromGoodsReceipt(GoodsReceipt::query()->findOrFail((int) $data['source_id']), $data), 'Vendor bill created from goods receipt successfully', 201);
+        }
+
+        return $this->successResponse($this->service->create($data), 'Vendor bill created successfully', 201);
+    }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Vendor bill retrieved successfully'); }
     public function update(UpdateVendorBillRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(VendorBill::query()->findOrFail($id), $request->validated()), 'Vendor bill updated successfully'); }
     public function createFromPurchaseOrder(Request $request, int $purchaseOrderId): JsonResponse { return $this->successResponse($this->service->createFromPurchaseOrder(PurchaseOrder::query()->findOrFail($purchaseOrderId), $request->all()), 'Vendor bill created from purchase order successfully', 201); }

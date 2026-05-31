@@ -40,6 +40,9 @@ export const goodsReceiptFormConfig: TransactionFormConfig<GoodsReceiptValues> =
     cancel: 'purchase.goods_receipts.cancel',
     void: 'purchase.goods_receipts.void',
   },
+  sourceOptions: [
+    { key: 'purchase-order', label: 'Purchase Order', sourceType: 'purchase_order' },
+  ],
   actions: [
     { key: 'receive', label: 'Receive', permission: 'purchase.goods_receipts.receive', whenStatusIn: ['draft'], variant: 'primary', requiresConfirm: true },
     { key: 'cancel', label: 'Cancel', permission: 'purchase.goods_receipts.cancel', whenStatusIn: ['draft'], variant: 'danger', requiresConfirm: true },

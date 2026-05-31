@@ -6,6 +6,7 @@ export type TransactionFormMode = 'create' | 'edit' | 'detail'
 export type TransactionSourceOption = {
   key: string
   label: string
+  sourceType?: string
 }
 
 export type TransactionActionKey =

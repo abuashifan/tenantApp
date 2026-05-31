@@ -53,9 +53,7 @@ export const salesInvoiceFormConfig: TransactionFormConfig<SalesInvoiceValues> =
     void: 'sales.invoices.void',
   },
   sourceOptions: [
-    { key: 'sales-order', label: 'From Sales Order' },
-    { key: 'delivery-order', label: 'From Delivery Order' },
-    { key: 'proforma', label: 'From Proforma Invoice' },
+    { key: 'delivery-order', label: 'Delivery Order', sourceType: 'delivery_order' },
   ],
   actions: [
     { key: 'approve', label: 'Approve', permission: 'sales.invoices.approve', whenStatusIn: ['draft'] },

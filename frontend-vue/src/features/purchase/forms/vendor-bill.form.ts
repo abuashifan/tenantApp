@@ -52,8 +52,7 @@ export const vendorBillFormConfig: TransactionFormConfig<VendorBillValues> = {
     void: 'purchase.bills.void',
   },
   sourceOptions: [
-    { key: 'purchase-order', label: 'From Purchase Order' },
-    { key: 'goods-receipt', label: 'From Goods Receipt' },
+    { key: 'goods-receipt', label: 'Goods Receipt', sourceType: 'goods_receipt' },
   ],
   actions: [
     { key: 'approve', label: 'Approve', permission: 'purchase.bills.approve', whenStatusIn: ['draft'] },

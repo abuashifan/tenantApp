@@ -18,7 +18,15 @@ class SalesOrderController extends Controller
     use ApiResponse;
     public function __construct(private readonly SalesOrderService $service) {}
     public function index(Request $request): JsonResponse { return $this->listResponse($this->service->list($request->query()), $request, 'Sales orders retrieved successfully'); }
-    public function store(StoreSalesOrderRequest $request): JsonResponse { return $this->successResponse($this->service->create($request->validated()), 'Sales order created successfully', 201); }
+    public function store(StoreSalesOrderRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        if (($data['source_type'] ?? null) === 'sales_quotation' && ! empty($data['source_id'])) {
+            return $this->successResponse($this->service->createFromQuotation(SalesQuotation::query()->findOrFail((int) $data['source_id']), $data), 'Sales order created from quotation successfully', 201);
+        }
+
+        return $this->successResponse($this->service->create($data), 'Sales order created successfully', 201);
+    }
     public function show(int $id): JsonResponse { return $this->successResponse($this->service->find($id), 'Sales order retrieved successfully'); }
     public function update(UpdateSalesOrderRequest $request, int $id): JsonResponse { return $this->successResponse($this->service->update(SalesOrder::query()->findOrFail($id), $request->validated()), 'Sales order updated successfully'); }
     public function createFromQuotation(Request $request, int $quotationId): JsonResponse { return $this->successResponse($this->service->createFromQuotation(SalesQuotation::query()->findOrFail($quotationId), $request->all()), 'Sales order created from quotation successfully', 201); }

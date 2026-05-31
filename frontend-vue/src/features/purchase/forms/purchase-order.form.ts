@@ -49,6 +49,9 @@ export const purchaseOrderFormConfig: TransactionFormConfig<PurchaseOrderValues>
     close: 'purchase.orders.confirm',
     cancel: 'purchase.orders.cancel',
   },
+  sourceOptions: [
+    { key: 'purchase-request', label: 'Purchase Request', sourceType: 'purchase_request' },
+  ],
   actions: [
     { key: 'approve', label: 'Approve', permission: 'purchase.orders.approve', whenStatusIn: ['draft'] },
     { key: 'confirm', label: 'Confirm', permission: 'purchase.orders.confirm', whenStatusIn: ['approved'], variant: 'primary' },

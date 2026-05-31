@@ -46,6 +46,10 @@ export const proformaInvoiceFormConfig: TransactionFormConfig<ProformaInvoiceVal
     accept: 'sales.proformas.issue',
     cancel: 'sales.proformas.cancel',
   },
+  sourceOptions: [
+    { key: 'sales-quotation', label: 'Sales Quotation', sourceType: 'sales_quotation' },
+    { key: 'sales-order', label: 'Sales Order', sourceType: 'sales_order' },
+  ],
   actions: [
     { key: 'issue', label: 'Issue', permission: 'sales.proformas.issue', whenStatusIn: ['draft'], variant: 'primary' },
     { key: 'accept', label: 'Accept', permission: 'sales.proformas.issue', whenStatusIn: ['issued'], variant: 'primary' },

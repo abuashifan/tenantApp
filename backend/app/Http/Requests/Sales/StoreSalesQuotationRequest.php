@@ -32,6 +32,10 @@ class StoreSalesQuotationRequest extends FormRequest
             'tax_included' => ['nullable', 'boolean'],
             'header_discount_type' => ['nullable', 'in:percent,fixed_amount'],
             'header_discount_value' => ['nullable', 'numeric', 'min:0'],
+            'source_type' => ['nullable', 'string'],
+            'source_id' => ['nullable', 'integer'],
+            'source_number' => ['nullable', 'string'],
+            'source_revision' => ['nullable', 'integer'],
             'notes' => ['nullable', 'string'],
             'internal_notes' => ['nullable', 'string'],
             'lines' => ['required', 'array', 'min:1'],
@@ -47,6 +51,8 @@ class StoreSalesQuotationRequest extends FormRequest
             'lines.*.warehouse_id' => ['nullable', 'integer'],
             'lines.*.department_id' => ['nullable', 'integer'],
             'lines.*.project_id' => ['nullable', 'integer'],
+            'lines.*.source_line_type' => ['nullable', 'string'],
+            'lines.*.source_line_id' => ['nullable', 'integer'],
         ];
     }
 }

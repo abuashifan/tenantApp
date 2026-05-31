@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import VoidTransactionDialog from '@/components/dialog/VoidTransactionDialog.vue'
+import SourceDocumentPickerModal from '@/components/transaction-form/SourceDocumentPickerModal.vue'
 import TransactionActionBar from '@/components/transaction-form/TransactionActionBar.vue'
 import TransactionDateFields from '@/components/transaction-form/TransactionDateFields.vue'
 import TransactionCashBankAmountFields from '@/components/transaction-form/TransactionCashBankAmountFields.vue'
@@ -22,6 +23,7 @@ import { useTransactionTotals } from '@/composables/transaction-form/useTransact
 import { toErrorMessage } from '@/composables/transaction-form/useTransactionValidation'
 import type { RuntimeTransactionFormConfig, TransactionActionConfig, TransactionConversionConfig } from '@/composables/transaction-form/types'
 import { usePermission } from '@/composables/usePermission'
+import { checkSourceDocumentAvailability, type SourceDocument } from '@/services/transaction/sourceDocuments.service'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 import type { SecondaryTab } from '@/stores/workspaceTabsStore'
 
@@ -47,6 +49,9 @@ const voidDialogOpen = ref(false)
 const conversionLoading = ref(false)
 const conversionNotice = ref<string | null>(null)
 const conversionError = ref<string | null>(null)
+const sourcePickerOpen = ref(false)
+const activeSourceKey = ref<string | null>(null)
+const promptedSourceKeys = ref(new Set<string>())
 useTransactionTotals(tx.form, { priceField: props.config.lineProduct?.priceField })
 
 const partnerName =
@@ -64,12 +69,46 @@ const formTitle = computed(() => props.tab?.entityNumber ?? props.config.title)
 const displayedStatus = computed(() => tx.status.value || 'Draft')
 const sourceType = computed(() => String(tx.form.values.source_type ?? '') || null)
 const sourceNumber = computed(() => String(tx.form.values.source_number ?? '') || null)
+const sourceOptions = computed(() => props.config.sourceOptions ?? [])
+const activeSourceOption = computed(() => sourceOptions.value.find((option) => option.key === activeSourceKey.value) ?? sourceOptions.value[0] ?? null)
+const activeSourceType = computed(() => activeSourceOption.value?.sourceType ?? activeSourceOption.value?.key.replace(/-/g, '_') ?? '')
+const currentPartnerId = computed<string | number | null>(() => {
+  const value = partnerName ? tx.form.values[partnerName] : null
+  return typeof value === 'string' || typeof value === 'number' ? value : null
+})
 const visibleLifecycleActions = computed(() =>
   props.config.actions.filter((action) => {
     if (action.key === 'save' || !entityId) return false
     if (!can(action.permission)) return false
     return !action.whenStatusIn || action.whenStatusIn.includes((tx.status.value ?? '').toLowerCase())
   }),
+)
+
+watch(
+  () => currentPartnerId.value,
+  async (partnerId) => {
+    if (mode !== 'create' || sourceOptions.value.length === 0 || !partnerId) return
+    const option = sourceOptions.value[0]
+    if (!option) return
+    const sourceType = option.sourceType ?? option.key.replace(/-/g, '_')
+    const promptKey = `${props.config.documentType}:${sourceType}:${partnerId}`
+    if (promptedSourceKeys.value.has(promptKey)) return
+    promptedSourceKeys.value.add(promptKey)
+    try {
+      const availability = await checkSourceDocumentAvailability({
+        moduleKey: props.config.moduleKey,
+        targetType: props.config.documentType,
+        sourceType,
+        partnerId: String(partnerId),
+      })
+      if (availability.available && window.confirm(`Pelanggan/Vendor ini memiliki ${option.label}. Apakah Anda ingin menggunakan dokumen tersebut?`)) {
+        activeSourceKey.value = option.key
+        sourcePickerOpen.value = true
+      }
+    } catch {
+      // Availability check is only a convenience prompt; manual picker remains available.
+    }
+  },
 )
 const visibleConversions = computed(() =>
   (props.config.conversions ?? []).filter((conversion) => {
@@ -129,6 +168,52 @@ async function runConversion(conversion: TransactionConversionConfig) {
     conversionLoading.value = false
   }
 }
+
+function openSourcePicker(key: string) {
+  activeSourceKey.value = key
+  sourcePickerOpen.value = true
+}
+
+function isBlankLine(line: Record<string, unknown>) {
+  return !line.product_id && !line.description && Number(line.unit_price ?? 0) === 0 && Number(line.quantity ?? 0) <= 1
+}
+
+function normalizeImportedLine(line: Record<string, unknown>, index: number) {
+  return {
+    ...line,
+    product_id: line.product_id == null ? '' : String(line.product_id),
+    unit_id: line.unit_id == null ? null : String(line.unit_id),
+    warehouse_id: line.warehouse_id == null ? null : String(line.warehouse_id),
+    department_id: line.department_id == null ? null : String(line.department_id),
+    project_id: line.project_id == null ? null : String(line.project_id),
+    expense_account_id: line.expense_account_id == null ? null : String(line.expense_account_id),
+    quantity: Number(line.remaining_quantity ?? line.quantity ?? 0),
+    unit_price: Number(line.unit_price ?? line.estimated_unit_price ?? 0),
+    discount_amount: Number(line.discount_amount ?? 0),
+    tax_amount: Number(line.tax_amount ?? 0),
+    line_total: Number(line.line_total ?? 0),
+    sort_order: index,
+  }
+}
+
+function applySourceDocument(document: SourceDocument) {
+  const header = document.header ?? {}
+  for (const [key, value] of Object.entries(header)) {
+    if (value !== undefined && Object.prototype.hasOwnProperty.call(tx.form.values, key)) {
+      tx.form.setFieldValue(key, value == null ? null : String(value))
+    }
+  }
+  tx.form.setFieldValue('source_type', document.source_type)
+  tx.form.setFieldValue('source_id', document.source_id)
+  tx.form.setFieldValue('source_number', document.source_number ?? document.document_number ?? '')
+  tx.form.setFieldValue('source_revision', document.source_revision ?? null)
+
+  const currentLines = Array.isArray(tx.form.values.lines) ? (tx.form.values.lines as Record<string, unknown>[]) : []
+  const keptLines = currentLines.filter((line) => !isBlankLine(line))
+  const importedLines = document.lines.map((line, index) => normalizeImportedLine(line as Record<string, unknown>, keptLines.length + index))
+  tx.form.setFieldValue('lines', [...keptLines, ...importedLines])
+  sourcePickerOpen.value = false
+}
 </script>
 
 <template>
@@ -150,6 +235,19 @@ async function runConversion(conversion: TransactionConversionConfig) {
       </template>
 
       <TransactionSourceInfoCard :source-type="sourceType" :source-number="sourceNumber" />
+
+      <div v-if="sourceOptions.length && !tx.isReadonly.value" class="flex flex-wrap gap-2">
+        <BaseButton
+          v-for="option in sourceOptions"
+          :key="option.key"
+          variant="secondary"
+          size="sm"
+          type="button"
+          @click="openSourcePicker(option.key)"
+        >
+          Ambil {{ option.label }}
+        </BaseButton>
+      </div>
 
       <div class="grid gap-3 lg:grid-cols-4">
         <TransactionPartnerSelector
@@ -234,6 +332,17 @@ async function runConversion(conversion: TransactionConversionConfig) {
       :transaction-number="formTitle"
       @close="voidDialogOpen = false"
       @confirm="confirmVoid"
+    />
+    <SourceDocumentPickerModal
+      v-if="activeSourceOption"
+      :open="sourcePickerOpen"
+      :module-key="config.moduleKey"
+      :target-type="config.documentType"
+      :source-type="activeSourceType"
+      :source-label="activeSourceOption.label"
+      :partner-id="currentPartnerId"
+      @close="sourcePickerOpen = false"
+      @select="applySourceDocument"
     />
   </form>
 </template>
