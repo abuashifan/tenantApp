@@ -41,6 +41,7 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
 import { useWorkspaceTabsStore, type SecondaryTab } from '@/stores/workspaceTabsStore'
+import { normalizeDateFields, prepareDateForPayload } from '@/utils/date'
 import {
   createBackendResource,
   extractLaravelErrors,
@@ -159,6 +160,9 @@ const canViewInventoryHistory = computed(() => can('inventory.reports.view'))
 const showFooterActions = computed(() => !isProductDetail.value)
 const showHeaderActions = computed(() => !showFooterActions.value)
 const showSummary = computed(() => !isProductDetail.value && Boolean(props.config.lineItems))
+const dateFieldKeys = computed(() =>
+  props.config.sections.flatMap((section) => section.fields.filter((field) => field.kind === 'date').map((field) => field.key)),
+)
 const approvalEnabled = computed(() => companyWorkflowSettings.value?.approval_enabled ?? true)
 const autoPostTransactions = computed(() => companyWorkflowSettings.value?.auto_post_transactions ?? false)
 const workflowMode = computed(() => companyWorkflowSettings.value?.transaction_workflow_mode ?? null)
@@ -236,9 +240,10 @@ function activateInternalTab(tab: 'detail' | 'history') {
 }
 
 function hydrate(values: Record<string, unknown>, markDirty = false) {
+  const normalizedValues = normalizeDateFields(values, dateFieldKeys.value)
   hydrating.value = true
-  form.resetForm({ values })
-  setDraft(values)
+  form.resetForm({ values: normalizedValues })
+  setDraft(normalizedValues)
   setDirty(markDirty)
   setTimeout(() => {
     hydrating.value = false
@@ -331,6 +336,9 @@ function removeLine(index: number) {
 
 function payload(values: Record<string, unknown>) {
   const result: Record<string, unknown> = { ...values }
+  for (const key of dateFieldKeys.value) {
+    result[key] = prepareDateForPayload(result[key])
+  }
   if (props.config.endpoint === '/master-data/projects' && props.tab.mode === 'create') {
     delete result.status
   }

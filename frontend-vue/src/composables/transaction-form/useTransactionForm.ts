@@ -7,6 +7,7 @@ import { applyLaravelValidationErrors, toErrorMessage } from '@/composables/tran
 import { useTransactionDraftState } from '@/composables/transaction-form/useTransactionDraftState'
 import { calculateTransactionTotals } from '@/composables/useTransactionLineCalculation'
 import type { RuntimeTransactionFormConfig, TransactionFormMode } from '@/composables/transaction-form/types'
+import { KNOWN_DATE_FIELDS, normalizeDateFields, prepareDateForPayload } from '@/utils/date'
 
 export function useTransactionForm(options: {
   config: RuntimeTransactionFormConfig
@@ -27,6 +28,12 @@ export function useTransactionForm(options: {
 
   const draft = useTransactionDraftState(options.secondaryTabId, form)
 
+  function normalizedResponseData(raw: unknown) {
+    const res = raw as { data?: ApiResponse<Record<string, unknown>> }
+    const data = res.data?.data
+    return data && typeof data === 'object' ? normalizeDateFields(data, KNOWN_DATE_FIELDS) : null
+  }
+
   function normalizeLineValue(value: unknown) {
     return value === '' || value === undefined ? null : value
   }
@@ -34,6 +41,11 @@ export function useTransactionForm(options: {
   function makePayload() {
     const payload = { ...form.values }
     const priceField = options.config.lineProduct?.priceField ?? 'unit_price'
+    for (const key of KNOWN_DATE_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(payload, key)) {
+        payload[key] = prepareDateForPayload(payload[key])
+      }
+    }
 
     if (Array.isArray(payload.lines)) {
       const totals = calculateTransactionTotals(payload.lines as Record<string, unknown>[], {
@@ -74,11 +86,10 @@ export function useTransactionForm(options: {
     error.value = null
     try {
       const raw = await options.config.apiService.get(options.entityId)
-      const res = raw as { data?: ApiResponse<Record<string, unknown>> }
-      const data = res.data?.data
-      if (data && typeof data === 'object') {
-        form.setValues(data, false)
-        status.value = String((data as Record<string, unknown>).status ?? '')
+      const normalizedData = normalizedResponseData(raw)
+      if (normalizedData) {
+        form.setValues(normalizedData, false)
+        status.value = String(normalizedData.status ?? '')
       }
     } catch (cause) {
       error.value = toErrorMessage(cause)
@@ -96,12 +107,19 @@ export function useTransactionForm(options: {
     loading.value = true
     try {
       const payload = makePayload()
+      let raw: unknown
       if (options.mode === 'edit' && options.entityId != null) {
-        await options.config.apiService.update(options.entityId, payload)
+        raw = await options.config.apiService.update(options.entityId, payload)
       } else {
-        await options.config.apiService.create(payload)
+        raw = await options.config.apiService.create(payload)
       }
-      form.resetForm({ values: form.values })
+      const savedData = normalizedResponseData(raw)
+      if (savedData) {
+        form.resetForm({ values: savedData })
+        status.value = String(savedData.status ?? '')
+      } else {
+        form.resetForm({ values: payload })
+      }
       draft.clearDraft()
       return true
     } catch (cause) {

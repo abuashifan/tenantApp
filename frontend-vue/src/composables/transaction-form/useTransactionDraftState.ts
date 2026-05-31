@@ -2,6 +2,7 @@ import { onMounted, watch } from 'vue'
 import type { FormContext } from 'vee-validate'
 
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
+import { KNOWN_DATE_FIELDS, normalizeDateFields } from '@/utils/date'
 
 function snapshot<T>(value: T): T {
   if (value == null || typeof value !== 'object') return value
@@ -18,7 +19,7 @@ export function useTransactionDraftState(secondaryTabId: string, form: FormConte
   onMounted(() => {
     const draft = tabs.draftStateBySecondaryTabId[secondaryTabId] as Record<string, unknown> | undefined
     if (draft && typeof draft === 'object') {
-      form.setValues(snapshot(draft), false)
+      form.setValues(normalizeDateFields(snapshot(draft), KNOWN_DATE_FIELDS), false)
     }
   })
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Field } from 'vee-validate'
+import FormDateInput from '@/components/form/FormDateInput.vue'
 
 withDefaults(
   defineProps<{
@@ -18,25 +18,7 @@ withDefaults(
 </script>
 
 <template>
-  <label class="block space-y-1.5">
-    <span class="text-xs font-bold text-slate-500">{{ dateLabel }}</span>
-    <Field
-      :name="dateName"
-      as="input"
-      type="date"
-      :disabled="readonly"
-      class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:bg-slate-50"
-    />
-  </label>
+  <FormDateInput :name="dateName" :label="dateLabel" :disabled="readonly" />
 
-  <label v-if="dueDateName" class="block space-y-1.5">
-    <span class="text-xs font-bold text-slate-500">{{ dueDateLabel }}</span>
-    <Field
-      :name="dueDateName"
-      as="input"
-      type="date"
-      :disabled="readonly"
-      class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:bg-slate-50"
-    />
-  </label>
+  <FormDateInput v-if="dueDateName" :name="dueDateName" :label="dueDateLabel" :disabled="readonly" />
 </template>

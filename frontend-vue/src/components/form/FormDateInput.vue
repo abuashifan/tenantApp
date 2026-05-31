@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useField } from 'vee-validate'
 
 import FormField from '@/components/form/FormField.vue'
+import { toDateInputValue } from '@/utils/date'
 
 const props = withDefaults(
   defineProps<{
@@ -19,8 +20,8 @@ const props = withDefaults(
 const { value, handleBlur, setValue } = useField<string>(() => props.name)
 
 const model = computed({
-  get: () => value.value ?? '',
-  set: (v: string) => setValue(v),
+  get: () => toDateInputValue(value.value),
+  set: (v: string) => setValue(toDateInputValue(v)),
 })
 </script>
 
