@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="TRow extends { id: string }">
 import { computed, ref, watch } from 'vue'
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, SortingState } from '@tanstack/vue-table'
 
 import DataTable from '@/components/table/DataTable.vue'
 import DataTableToolbar from '@/components/table/DataTableToolbar.vue'
@@ -31,6 +31,7 @@ const props = withDefaults(
     showDateFilters?: boolean
     reloadKey?: string | number
     clearSelectionKey?: string | number
+    defaultSorting?: SortingState
   }>(),
   {
     rows: () => [],
@@ -76,6 +77,7 @@ const list = useWorkspaceList<TRow>({
   rows: sourceRows,
   mapRow: props.mapRow,
   primaryTabId: props.primaryId,
+  defaultSorting: props.defaultSorting,
 })
 selectedIds.value = list.selectedIds.value
 const rowsForTable = computed<TRow[]>(() => list.visibleRows.value)
@@ -163,6 +165,7 @@ watch(
         :selectable="selectable"
         v-model:selected-ids="selectedIds"
         :pagination="list.pagination.value"
+        :sorting="list.sorting.value"
         @page-change="list.setPage"
         @per-page-change="(perPage) => { list.pagination.value.perPage = perPage; list.setPage(1) }"
       />

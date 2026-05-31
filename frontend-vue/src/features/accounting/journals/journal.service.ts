@@ -27,6 +27,12 @@ export type JournalListRow = {
 
 type BackendListPayload<T> = T[] | { data?: T[]; items?: T[] }
 
+function cleanQueryParams(params: JournalListParams) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+  )
+}
+
 function normalizeList<T>(payload: BackendListPayload<T>) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload.data)) return payload.data
@@ -54,7 +60,9 @@ export function mapJournalEntry(row: BackendJournalEntry): JournalListRow {
 }
 
 export async function listJournals(params: JournalListParams = {}) {
-  const response = await api.get<ApiResponse<BackendListPayload<BackendJournalEntry>>>('/journals', { params })
+  const response = await api.get<ApiResponse<BackendListPayload<BackendJournalEntry>>>('/journals', {
+    params: cleanQueryParams(params),
+  })
   return normalizeList(unwrap(response.data)).map(mapJournalEntry)
 }
 

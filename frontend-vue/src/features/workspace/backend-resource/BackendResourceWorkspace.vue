@@ -37,6 +37,11 @@ const bulkVoidLoading = ref(false)
 const operationNotice = ref<string | null>(null)
 const requestedRemote = computed(() => capability.value?.paginationMode === 'remote')
 const effectiveRemote = computed(() => requestedRemote.value && responsePaginated.value)
+const defaultSorting = computed<SortingState>(() => {
+  if (!capability.value?.dateFilter) return []
+  if (!['document', 'inventory'].includes(capability.value.kind)) return []
+  return [{ id: 'date', desc: true }]
+})
 const filterGuidance = computed(() => {
   if (capability.value?.requiredDateFilter === 'range' && (!startDate.value || !endDate.value)) {
     return 'Select a start date and end date to load this report.'
@@ -78,7 +83,7 @@ function hydrateListState(primaryTabId: string) {
   endDate.value = state.endDate
   status.value = state.status
   includeVoid.value = state.includeVoid
-  sorting.value = state.sorting
+  sorting.value = state.sorting.length ? state.sorting : defaultSorting.value
   pagination.value = state.pagination
   selectedIds.value = state.selectedIds
 }

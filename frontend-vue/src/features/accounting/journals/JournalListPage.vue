@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, SortingState } from '@tanstack/vue-table'
 import { Plus, RefreshCw, Slash } from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -19,6 +19,8 @@ const statusOptions = [
   { label: 'Posted', value: 'posted' },
   { label: 'Void', value: 'void' },
 ]
+const defaultStatuses = statusOptions.map((option) => option.value)
+const defaultJournalSorting: SortingState = [{ id: 'journal_date', desc: true }]
 
 const tabs = useWorkspaceTabsStore()
 const auth = useAuthStore()
@@ -34,9 +36,9 @@ const rows = ref<JournalListRow[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const search = ref('')
-const startDate = ref('2026-01-01')
-const endDate = ref('2026-01-31')
-const statuses = ref<string[]>(['posted'])
+const startDate = ref('')
+const endDate = ref('')
+const statuses = ref<string[]>([...defaultStatuses])
 
 const activeSecondaryId = computed(
   () => tabs.activeSecondaryTabIdByPrimaryId[journalListConfig.primaryTabId] ?? `${journalListConfig.primaryTabId}::list`,
@@ -81,6 +83,14 @@ function canVoidJournal(row: JournalListRow) {
   return row.status === 'posted'
 }
 
+function sortJournalRows(rows: JournalListRow[]) {
+  return [...rows].sort((a, b) => {
+    const dateCompare = b.journal_date.localeCompare(a.journal_date)
+    if (dateCompare !== 0) return dateCompare
+    return b.journal_number.localeCompare(a.journal_number)
+  })
+}
+
 function clearSelection() {
   selectedIds.value = []
 }
@@ -120,13 +130,15 @@ async function load() {
   error.value = null
   try {
     const status = statuses.value.length === 1 ? statuses.value[0] : undefined
-    rows.value = await listJournals({
+    rows.value = sortJournalRows(await listJournals({
       search: search.value || undefined,
       date_from: startDate.value || undefined,
       date_to: endDate.value || undefined,
       status,
       include_void: statuses.value.includes('void'),
-    })
+      sort_by: 'journal_date',
+      sort_direction: 'desc',
+    }))
     selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => row.id === id && canVoidJournal(row)))
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Endpoint belum tersedia'
@@ -143,9 +155,9 @@ function applyFilters() {
 
 function resetFilters() {
   search.value = ''
-  startDate.value = '2026-01-01'
-  endDate.value = '2026-01-31'
-  statuses.value = ['posted']
+  startDate.value = ''
+  endDate.value = ''
+  statuses.value = [...defaultStatuses]
   statusSelect.value?.close()
   clearSelection()
   void load()
@@ -328,6 +340,7 @@ onMounted(load)
       :clear-selection-on-page-change="true"
       :compact="true"
       :fill-available="true"
+      :sorting="defaultJournalSorting"
       :show-meta="true"
       meta-title="Journal List"
       empty-title="No journals"

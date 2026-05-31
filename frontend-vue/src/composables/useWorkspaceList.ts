@@ -27,6 +27,7 @@ export type WorkspaceListOptions<TRow extends { id: string }, TRaw = unknown> = 
   config?: WorkspaceListConfig<TRow>
   fetcher?: WorkspaceFetcher<TRow>
   primaryTabId?: string
+  defaultSorting?: SortingState
 }
 
 function normalizePayload<TRaw>(payload: BackendListPayload<TRaw>): TRaw[] {
@@ -52,7 +53,7 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
   const filterValues = ref<Record<string, unknown>>(savedListState?.filters ?? {})
   const status = ref(savedListState?.status ?? '')
   const pagination = ref<WorkspacePagination>(savedListState?.pagination ?? { page: 1, perPage: 10, total: 0, lastPage: 1 })
-  const sorting = ref<SortingState>(savedListState?.sorting ?? [])
+  const sorting = ref<SortingState>(savedListState?.sorting?.length ? savedListState.sorting : (options.defaultSorting ?? []))
   const selectedIds = ref<string[]>(savedListState?.selectedIds ?? [])
 
   const shouldFetchRemote = computed(() => Boolean(options.endpoint || options.fetcher))

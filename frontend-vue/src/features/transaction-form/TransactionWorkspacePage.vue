@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue'
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, SortingState } from '@tanstack/vue-table'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
@@ -34,6 +34,7 @@ const bulkVoidOpen = ref(false)
 const bulkVoidLoading = ref(false)
 const reloadKey = ref(0)
 const clearSelectionKey = ref(0)
+const defaultSorting: SortingState = [{ id: 'date', desc: true }]
 const actionNotice = ref<string | null>(null)
 const actionError = ref<string | null>(null)
 const voidAction = computed(() => props.config.actions.find((action) => action.key === 'void'))
@@ -201,6 +202,7 @@ async function confirmBulkVoid(payload: { reason: string }) {
     :show-void="canBulkVoid"
     :reload-key="reloadKey"
     :clear-selection-key="clearSelectionKey"
+    :default-sorting="defaultSorting"
     @create="openCreate"
     @void="openBulkVoid"
   >
