@@ -110,6 +110,11 @@ export const journalListConfig: WorkspaceListConfig<JournalListRow> = {
       },
     },
   ],
+  globalActions: [
+    { key: 'void', label: 'Void', variant: 'danger', permission: 'journal.void' },
+  ],
+  isRowSelectable: (row) => row.status === 'posted',
+  clearSelectionOnPageChange: true,
   emptyTitle: 'No journals',
   emptyDescription: 'No journal entries match your filter.',
 }

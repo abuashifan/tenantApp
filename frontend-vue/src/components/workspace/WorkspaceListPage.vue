@@ -30,6 +30,7 @@ const props = withDefaults(
     includeVoid?: boolean
     showIncludeVoid?: boolean
     selectedIds?: string[]
+    showFilterActions?: boolean
   }>(),
   {
     rows: () => [],
@@ -42,6 +43,7 @@ const props = withDefaults(
     includeVoid: false,
     showIncludeVoid: false,
     selectedIds: () => [],
+    showFilterActions: false,
   },
 )
 
@@ -55,6 +57,8 @@ const emit = defineEmits<{
   pageChange: [page: number]
   perPageChange: [perPage: number]
   sortChange: [sorting: SortingState]
+  applyFilters: []
+  resetFilters: []
   rowClick: [row: TRow]
   actionClick: [payload: { key: string; row?: TRow }]
   bulkActionClick: [payload: { key: string; selectedIds: string[] }]
@@ -112,8 +116,14 @@ function handleRowAction(key: string, row: TRow) {
 }
 
 function executeRowAction(key: string, row: TRow) {
-  if (key === 'edit') openEditTab(row)
-  if (key === 'detail' || key === 'open') openDetailTab(row)
+  if (key === 'edit') {
+    openEditTab(row)
+    return
+  }
+  if (key === 'detail' || key === 'open') {
+    openDetailTab(row)
+    return
+  }
   emit('actionClick', { key, row })
 }
 
@@ -141,11 +151,14 @@ function confirmPendingAction() {
         :start-date="startDate"
         :end-date="endDate"
         :selected-count="selectedIds.length"
+        :show-filter-actions="showFilterActions"
         embedded
         @update:search="emit('search', $event)"
         @update:start-date="emit('dateChange', { startDate: $event, endDate })"
         @update:end-date="emit('dateChange', { startDate, endDate: $event })"
         @toggle-filters="filtersOpen = !filtersOpen"
+        @apply-filters="emit('applyFilters')"
+        @reset-filters="emit('resetFilters')"
         @create="openCreateTab"
         @refresh="emit('refresh')"
         @action-click="emit('bulkActionClick', { key: $event, selectedIds })"
@@ -198,6 +211,7 @@ function confirmPendingAction() {
         :rows="rows"
         :loading="loading"
         :selectable="config.selectable !== false"
+        :is-row-selectable="config.isRowSelectable"
         :selected-ids="selectedIds"
         :empty-title="config.emptyTitle"
         :empty-description="config.emptyDescription"
@@ -205,6 +219,7 @@ function confirmPendingAction() {
         :remote-pagination="remotePagination"
         :sorting="sorting"
         :remote-sort="remoteSort"
+        :clear-selection-on-page-change="config.clearSelectionOnPageChange"
         @update:selected-ids="emit('update:selectedIds', $event)"
         @row-click="emit('rowClick', $event)"
         @page-change="emit('pageChange', $event)"

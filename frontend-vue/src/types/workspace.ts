@@ -87,6 +87,7 @@ export type WorkspaceListConfig<T = unknown> = {
   rowKey: keyof T | ((row: T) => string | number)
   globalActions?: WorkspaceGlobalAction[]
   rowActions?: WorkspaceRowAction<T>[]
+  isRowSelectable?: (row: T) => boolean
   permissions?: {
     view?: string
     create?: string
@@ -103,4 +104,5 @@ export type WorkspaceListConfig<T = unknown> = {
   emptyTitle?: string
   emptyDescription?: string
   selectable?: boolean
+  clearSelectionOnPageChange?: boolean
 }

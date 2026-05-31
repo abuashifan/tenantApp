@@ -16,6 +16,8 @@ defineProps<{
   remotePagination?: boolean
   sorting?: SortingState
   remoteSort?: boolean
+  isRowSelectable?: (row: TRow) => boolean
+  clearSelectionOnPageChange?: boolean
 }>()
 
 defineEmits<{
@@ -33,6 +35,7 @@ defineEmits<{
     :data="rows"
     :loading="loading"
     :selectable="selectable"
+    :is-row-selectable="isRowSelectable"
     :selected-ids="selectedIds"
     :empty-title="emptyTitle"
     :empty-description="emptyDescription"
@@ -40,7 +43,7 @@ defineEmits<{
     :manual-pagination="remotePagination"
     :sorting="sorting"
     :manual-sorting="remoteSort"
-    :clear-selection-on-page-change="remotePagination"
+    :clear-selection-on-page-change="clearSelectionOnPageChange ?? remotePagination"
     show-page-size
     @update:selected-ids="$emit('update:selectedIds', $event)"
     @row-click="$emit('rowClick', $event)"

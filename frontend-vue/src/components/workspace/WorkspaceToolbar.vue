@@ -16,6 +16,7 @@ const props = defineProps<{
   endDate: string
   selectedCount: number
   embedded?: boolean
+  showFilterActions?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -23,6 +24,8 @@ const emit = defineEmits<{
   'update:startDate': [value: string]
   'update:endDate': [value: string]
   toggleFilters: []
+  applyFilters: []
+  resetFilters: []
   create: []
   refresh: []
   actionClick: [key: string]
@@ -39,6 +42,11 @@ watch(
 )
 
 watch(localSearch, (value) => emitDebouncedSearch(value))
+
+function applyFilters() {
+  emit('update:search', localSearch.value)
+  emit('applyFilters')
+}
 </script>
 
 <template>
@@ -81,6 +89,11 @@ watch(localSearch, (value) => emitDebouncedSearch(value))
         @refresh="emit('refresh')"
         @action-click="emit('actionClick', $event)"
       />
+    </div>
+
+    <div v-if="showFilterActions" class="flex justify-end gap-2">
+      <BaseButton variant="secondary" size="sm" @click="emit('resetFilters')">Reset</BaseButton>
+      <BaseButton variant="primary" size="sm" @click="applyFilters">Apply</BaseButton>
     </div>
 
     <slot name="toolbar-bottom" />

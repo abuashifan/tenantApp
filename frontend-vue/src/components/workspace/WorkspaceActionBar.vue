@@ -44,6 +44,7 @@ const visibleActions = computed(() =>
       :key="action.key"
       :variant="action.variant === 'danger' ? 'danger' : 'secondary'"
       size="md"
+      :disabled="selectedCount === 0 && action.variant === 'danger'"
       @click="emit('actionClick', action.key)"
     >
       <Download v-if="action.icon === 'export'" class="h-4 w-4" />
