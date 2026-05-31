@@ -51,14 +51,6 @@ export type ResourceFormConfig = {
   skippedReason?: string
 }
 
-const statusOptions = [
-  { label: 'Draft', value: 'draft' },
-  { label: 'Approved', value: 'approved' },
-  { label: 'Posted', value: 'posted' },
-  { label: 'Void', value: 'void' },
-  { label: 'Cancelled', value: 'cancelled' },
-]
-
 const discountOptions = [
   { label: 'Percent', value: 'percent' },
   { label: 'Fixed Amount', value: 'fixed_amount' },
@@ -232,7 +224,7 @@ export const backendResourceFormConfigs: Record<string, ResourceFormConfig> = {
     numberKeys: ['code', 'id'],
     createPermission: 'projects.create',
     editPermission: 'projects.edit',
-    sections: [{ title: 'Project Details', fields: [{ key: 'code', label: 'Code', required: true }, { key: 'name', label: 'Name', required: true }, { key: 'start_date', label: 'Start Date', kind: 'date' }, { key: 'end_date', label: 'End Date', kind: 'date' }, { key: 'status', label: 'Status', kind: 'select', options: statusOptions }, { key: 'is_active', label: 'Active', kind: 'checkbox' }] }],
+    sections: [{ title: 'Project Details', fields: [{ key: 'code', label: 'Code', required: true }, { key: 'name', label: 'Name', required: true }, { key: 'start_date', label: 'Start Date', kind: 'date' }, { key: 'end_date', label: 'End Date', kind: 'date' }, { key: 'is_active', label: 'Active', kind: 'checkbox' }] }],
     actions: [],
   },
   '/settings/account-mappings': {

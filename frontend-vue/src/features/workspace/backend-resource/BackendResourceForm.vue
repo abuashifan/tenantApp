@@ -115,7 +115,11 @@ const title = computed(() => {
   return `${props.config.title} Detail`
 })
 const numberText = computed(() => props.config.numberKeys.map((key) => form.values[key]).find((value) => value != null && String(value) !== '') ?? props.tab.entityNumber ?? 'AUTO')
-const status = computed(() => String(form.values[props.config.statusKey ?? 'status'] ?? (props.tab.mode === 'create' ? 'draft' : 'draft')).toLowerCase())
+const statusFieldKey = computed(() => props.config.statusKey ?? 'status')
+const rawStatus = computed(() => form.values[statusFieldKey.value])
+const hasBackendStatus = computed(() => rawStatus.value != null && String(rawStatus.value) !== '')
+const status = computed(() => String(rawStatus.value ?? 'draft').toLowerCase())
+const showStatusBadge = computed(() => props.tab.mode !== 'create' || hasBackendStatus.value)
 const canSave = computed(() => {
   if (readonly.value) return false
   const permission = props.tab.mode === 'edit' ? props.config.editPermission : props.config.createPermission
@@ -327,6 +331,9 @@ function removeLine(index: number) {
 
 function payload(values: Record<string, unknown>) {
   const result: Record<string, unknown> = { ...values }
+  if (props.config.endpoint === '/master-data/projects' && props.tab.mode === 'create') {
+    delete result.status
+  }
   if (props.config.endpoint === '/master-data/contacts') {
     const contactType = String(result.contact_type ?? 'other')
     result.is_customer = contactType === 'customer'
@@ -508,7 +515,7 @@ function saveAndCloseFromDialog() {
       <FormHeader :title="title" :subtitle="`Document ${numberText}`">
         <template #meta>
           <div v-if="!isProductDetail" class="mt-3 flex flex-wrap items-center gap-2">
-            <FormStatusBadge :status="status" />
+            <FormStatusBadge v-if="showStatusBadge" :status="status" />
             <span class="rounded-xl bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{{ tab.mode }}</span>
             <FormDirtyIndicator :dirty="dirty" />
           </div>
