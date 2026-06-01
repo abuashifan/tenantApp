@@ -94,8 +94,8 @@ export const sidebarMenuGroups: SidebarMenuGroup[] = [
     items: [
       item('sales', 'sales-quotations', 'Sales Quotations', '/sales/quotations', '/sales/quotations', 'sales.quotations.view'),
       item('sales', 'sales-orders', 'Sales Orders', '/sales/orders', '/sales/orders', 'sales.orders.view'),
-      item('sales', 'delivery-orders', 'Delivery Orders', '/sales/delivery-orders', '/sales/delivery-orders', 'sales.delivery_orders.view'),
       item('sales', 'proforma-invoices', 'Proforma Invoices', '/sales/proformas', '/sales/proformas', 'sales.proformas.view'),
+      item('sales', 'delivery-orders', 'Delivery Orders', '/sales/delivery-orders', '/sales/delivery-orders', 'sales.delivery_orders.view'),
       item('sales', 'sales-invoices', 'Sales Invoices', '/sales/invoices', '/sales/invoices', 'sales.invoices.view'),
       item('sales', 'billing-invoices', 'Billing Invoices', '/sales/billings', '/sales/billings', 'sales.billings.view'),
       item('sales', 'customer-deposits', 'Customer Deposits', '/sales/customer-deposits', '/sales/customer-deposits', 'sales.deposits.view'),

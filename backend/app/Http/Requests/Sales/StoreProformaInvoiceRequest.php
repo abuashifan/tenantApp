@@ -19,6 +19,7 @@ class StoreProformaInvoiceRequest extends StoreSalesQuotationRequest
         }];
         $rules['sales_quotation_id'] = ['nullable', 'integer'];
         $rules['sales_order_id'] = ['nullable', 'integer'];
+        $rules['source_type'] = ['nullable', 'in:sales_quotation,sales_order'];
 
         return $rules;
     }

@@ -51,67 +51,6 @@ class ProformaInvoiceTest extends SalesTestCase
             ->assertJsonPath('data.header_discount_amount', 25);
     }
 
-    public function test_create_from_delivery_order(): void
-    {
-        $ctx = $this->setUpTenant();
-        $order = $this->createSalesOrder($ctx, [
-            'is_taxable' => true,
-            'lines' => [[
-                'description' => 'Delivered goods',
-                'quantity' => 3,
-                'unit_price' => 150,
-                'discount_type' => 'percent',
-                'discount_value' => 10,
-                'tax_rate' => 11,
-            ]],
-        ]);
-        $delivery = $this->postJson('/api/sales/delivery-orders/from-sales-order/'.$order['id'], [], $ctx['headers'])
-            ->assertStatus(201)
-            ->json('data');
-
-        $this->postJson('/api/sales/proformas/from-delivery-order/'.$delivery['id'], [], $ctx['headers'])
-            ->assertStatus(201)
-            ->assertJsonPath('data.sales_order_id', $order['id'])
-            ->assertJsonPath('data.source_type', 'delivery_order')
-            ->assertJsonPath('data.source_id', $delivery['id'])
-            ->assertJsonPath('data.source_number', $delivery['delivery_number'])
-            ->assertJsonPath('data.lines.0.source_line_type', 'delivery_order_line')
-            ->assertJsonPath('data.lines.0.source_line_id', $delivery['lines'][0]['id'])
-            ->assertJsonPath('data.lines.0.unit_price', 150);
-
-        $this->assertSame(0, DB::connection('tenant')->table('journal_entries')->count());
-        $this->assertSame(0, StockMovement::query()->count());
-    }
-
-    public function test_store_with_delivery_order_source_creates_proforma_from_delivery_order(): void
-    {
-        $ctx = $this->setUpTenant();
-        $order = $this->createSalesOrder($ctx);
-        $delivery = $this->postJson('/api/sales/delivery-orders/from-sales-order/'.$order['id'], [], $ctx['headers'])
-            ->assertStatus(201)
-            ->json('data');
-
-        $this->postJson('/api/sales/proformas', [
-            'customer_id' => $delivery['customer_id'],
-            'proforma_date' => '2026-05-20',
-            'source_type' => 'delivery_order',
-            'source_id' => $delivery['id'],
-            'source_number' => $delivery['delivery_number'],
-            'source_revision' => $delivery['revision_no'],
-            'lines' => [[
-                'description' => $delivery['lines'][0]['description'],
-                'quantity' => $delivery['lines'][0]['quantity'],
-                'unit_price' => 100,
-                'source_line_type' => 'delivery_order_line',
-                'source_line_id' => $delivery['lines'][0]['id'],
-            ]],
-        ], $ctx['headers'])
-            ->assertStatus(201)
-            ->assertJsonPath('data.source_type', 'delivery_order')
-            ->assertJsonPath('data.source_id', $delivery['id'])
-            ->assertJsonPath('data.lines.0.source_line_type', 'delivery_order_line');
-    }
-
     public function test_copy_discount_and_tax_preview(): void
     {
         $ctx = $this->setUpTenant();
@@ -131,6 +70,18 @@ class ProformaInvoiceTest extends SalesTestCase
             ->assertStatus(201)
             ->assertJsonPath('data.line_discount_total', 10)
             ->assertJsonPath('data.tax_total', 9.9);
+    }
+
+    public function test_delivery_order_is_not_supported_as_proforma_source(): void
+    {
+        $ctx = $this->setUpTenant();
+
+        $this->postJson('/api/sales/proformas', $this->proformaPayload([
+            'source_type' => 'delivery_order',
+            'source_id' => 1,
+        ]), $ctx['headers'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('source_type');
     }
 
     public function test_issue_accept_and_cancel_proforma(): void
@@ -165,14 +116,6 @@ class ProformaInvoiceTest extends SalesTestCase
         $ctx = $this->setUpTenant('viewer');
 
         $this->postJson('/api/sales/proformas', $this->proformaPayload(), $ctx['headers'])
-            ->assertStatus(403);
-    }
-
-    public function test_permission_denied_for_delivery_order_conversion_viewer(): void
-    {
-        $ctx = $this->setUpTenant('viewer');
-
-        $this->postJson('/api/sales/proformas/from-delivery-order/1', [], $ctx['headers'])
             ->assertStatus(403);
     }
 

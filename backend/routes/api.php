@@ -403,7 +403,6 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('sales')->group(fu
     Route::patch('/proformas/{id}', [ProformaInvoiceController::class, 'update'])->middleware('permission:sales.proformas.edit');
     Route::post('/proformas/from-quotation/{quotationId}', [ProformaInvoiceController::class, 'createFromQuotation'])->middleware('permission:sales.proformas.convert');
     Route::post('/proformas/from-sales-order/{salesOrderId}', [ProformaInvoiceController::class, 'createFromSalesOrder'])->middleware('permission:sales.proformas.convert');
-    Route::post('/proformas/from-delivery-order/{deliveryOrderId}', [ProformaInvoiceController::class, 'createFromDeliveryOrder'])->middleware('permission:sales.proformas.create');
     Route::patch('/proformas/{id}/issue', [ProformaInvoiceController::class, 'issue'])->middleware('permission:sales.proformas.issue');
     Route::patch('/proformas/{id}/accept', [ProformaInvoiceController::class, 'accept'])->middleware('permission:sales.proformas.issue');
     Route::patch('/proformas/{id}/cancel', [ProformaInvoiceController::class, 'cancel'])->middleware('permission:sales.proformas.cancel');
