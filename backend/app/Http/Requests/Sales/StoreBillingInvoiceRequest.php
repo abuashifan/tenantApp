@@ -12,6 +12,7 @@ class StoreBillingInvoiceRequest extends FormRequest
     {
         return [
             'billing_date' => ['required', 'date_format:Y-m-d'],
+            'payment_term_id' => ['nullable', 'integer', 'exists:tenant.payment_terms,id'],
             'due_date' => ['nullable', 'date_format:Y-m-d', function (string $attribute, mixed $value, Closure $fail): void {
                 $billingDate = $this->input('billing_date');
                 if (is_string($billingDate) && is_string($value) && $value < $billingDate) {

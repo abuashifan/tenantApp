@@ -15,6 +15,7 @@ class CompanyAccountingSetting extends Model
     protected $fillable = [
         'company_id',
         'base_currency',
+        'default_payment_term_id',
         'amount_precision',
         'quantity_precision',
         'rounding_method',
@@ -39,6 +40,7 @@ class CompanyAccountingSetting extends Model
     protected $casts = [
         'amount_precision' => 'integer',
         'quantity_precision' => 'integer',
+        'default_payment_term_id' => 'integer',
         'auto_post_transactions' => 'boolean',
         'allow_edit_transactions' => 'boolean',
         'allow_edit_posted_transactions' => 'boolean',

@@ -19,4 +19,5 @@ class BillingInvoice extends Model
     public function lines(): HasMany { return $this->hasMany(BillingInvoiceLine::class, 'billing_invoice_id')->orderBy('sort_order'); }
     public function customer(): BelongsTo { return $this->belongsTo(Contact::class, 'customer_id'); }
     public function salesInvoice(): BelongsTo { return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id'); }
+    public function paymentTerm(): BelongsTo { return $this->belongsTo(PaymentTerm::class, 'payment_term_id'); }
 }

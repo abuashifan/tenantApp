@@ -11,6 +11,12 @@ export type FormFieldConfig = {
   placeholder?: string
   required?: boolean
   options?: { label: string; value: string }[]
+  remoteOptions?: {
+    endpoint: string
+    labelKey?: string
+    valueKey?: string
+    params?: Record<string, unknown>
+  }
   readonly?: boolean
 }
 
@@ -161,9 +167,31 @@ export const backendResourceFormConfigs: Record<string, ResourceFormConfig> = {
           { key: 'contact_code', label: 'Contact Code', required: true },
           { key: 'name', label: 'Name', required: true },
           { key: 'contact_type', label: 'Type', kind: 'select', options: contactTypeOptions, required: true },
+          { key: 'payment_term_id', label: 'Payment Term', kind: 'select', remoteOptions: { endpoint: '/master-data/payment-terms', labelKey: 'name', valueKey: 'id', params: { is_active: true } } },
           { key: 'email', label: 'Email' },
           { key: 'phone', label: 'Phone' },
           { key: 'address', label: 'Address', kind: 'textarea' },
+          { key: 'is_active', label: 'Active', kind: 'checkbox' },
+        ],
+      },
+    ],
+    actions: [],
+  },
+  '/master-data/payment-terms': {
+    title: 'Payment Term',
+    endpoint: '/master-data/payment-terms',
+    numberKeys: ['code', 'id'],
+    createPermission: 'payment_terms.create',
+    editPermission: 'payment_terms.edit',
+    sections: [
+      {
+        title: 'Payment Term Details',
+        fields: [
+          { key: 'code', label: 'Code', required: true },
+          { key: 'name', label: 'Name', required: true },
+          { key: 'days', label: 'Days', kind: 'number' },
+          { key: 'is_custom', label: 'Custom', kind: 'checkbox' },
+          { key: 'sort_order', label: 'Sort Order', kind: 'number' },
           { key: 'is_active', label: 'Active', kind: 'checkbox' },
         ],
       },

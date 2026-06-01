@@ -46,6 +46,9 @@ export function useTransactionForm(options: {
         payload[key] = prepareDateForPayload(payload[key])
       }
     }
+    if (Object.prototype.hasOwnProperty.call(payload, 'payment_term_id') && payload.payment_term_id === '') {
+      payload.payment_term_id = null
+    }
 
     if (Array.isArray(payload.lines)) {
       const totals = calculateTransactionTotals(payload.lines as Record<string, unknown>[], {

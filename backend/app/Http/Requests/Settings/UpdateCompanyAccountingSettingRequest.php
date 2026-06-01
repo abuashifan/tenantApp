@@ -16,6 +16,7 @@ class UpdateCompanyAccountingSettingRequest extends FormRequest
     {
         return [
             'base_currency' => ['nullable', 'string', 'size:3'],
+            'default_payment_term_id' => ['nullable', 'integer', 'exists:tenant.payment_terms,id'],
             'amount_precision' => ['nullable', 'integer', 'min:0', 'max:6'],
             'quantity_precision' => ['nullable', 'integer', 'min:0', 'max:8'],
             'rounding_method' => ['nullable', 'in:half_up,half_down,bankers,floor,ceil'],

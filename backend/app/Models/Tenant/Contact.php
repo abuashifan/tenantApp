@@ -4,6 +4,7 @@ namespace App\Models\Tenant;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Contact extends Model
 {
@@ -17,6 +18,7 @@ class Contact extends Model
         'contact_code',
         'name',
         'contact_type',
+        'payment_term_id',
         'is_customer',
         'is_supplier',
         'is_employee',
@@ -36,6 +38,11 @@ class Contact extends Model
         'is_active' => 'boolean',
         'metadata' => 'array',
     ];
+
+    public function paymentTerm(): BelongsTo
+    {
+        return $this->belongsTo(PaymentTerm::class, 'payment_term_id');
+    }
 
     public function scopeActive($query)
     {
@@ -67,4 +74,3 @@ class Contact extends Model
         return (bool) $this->is_active;
     }
 }
-

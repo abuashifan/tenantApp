@@ -11,10 +11,13 @@ import {
   getCompanySettings,
   updateCompanyAccountingSettings,
   updateCompanyModuleSettings,
+  updateCompanyTransactionDefaults,
   type CompanyAccountingSettings,
   type CompanyModuleSettings,
   type CompanySettings,
+  type CompanyTransactionDefaults,
 } from '@/services/settings/companySettings.service'
+import { paymentTermsService, type PaymentTerm } from '@/services/master-data/paymentTerms.service'
 import { useCompanyStore } from '@/stores/companyStore'
 import type { ApiError, ValidationErrors } from '@/types/api'
 
@@ -41,15 +44,21 @@ const loading = ref(false)
 const loadError = ref('')
 const accountingSaving = ref(false)
 const moduleSaving = ref(false)
+const transactionDefaultSaving = ref(false)
 const accountingError = ref('')
 const moduleError = ref('')
+const transactionDefaultError = ref('')
 const accountingNotice = ref('')
 const moduleNotice = ref('')
+const transactionDefaultNotice = ref('')
 const accountingErrors = ref<ValidationErrors>({})
 const moduleErrors = ref<ValidationErrors>({})
+const transactionDefaultErrors = ref<ValidationErrors>({})
+const paymentTerms = ref<PaymentTerm[]>([])
 
 const accountingDraft = reactive<CompanyAccountingSettings>({
   base_currency: 'IDR',
+  default_payment_term_id: null,
   amount_precision: 2,
   quantity_precision: 4,
   rounding_method: 'half_up',
@@ -69,6 +78,10 @@ const accountingDraft = reactive<CompanyAccountingSettings>({
   max_backdate_days: null,
   allow_future_transactions: false,
   max_future_days: 0,
+})
+
+const transactionDefaultDraft = reactive<CompanyTransactionDefaults>({
+  default_payment_term_id: null,
 })
 
 const moduleDraft = reactive<CompanyModuleSettings>({
@@ -129,6 +142,9 @@ function validationFrom(reason: unknown) {
 
 function setDraft(next: CompanySettings) {
   Object.assign(accountingDraft, next.accounting)
+  Object.assign(transactionDefaultDraft, next.transaction_defaults ?? {
+    default_payment_term_id: next.accounting.default_payment_term_id,
+  })
   Object.assign(moduleDraft, next.modules)
 }
 
@@ -138,8 +154,16 @@ async function load(clearNotices = true) {
   if (clearNotices) {
     accountingNotice.value = ''
     moduleNotice.value = ''
+    transactionDefaultNotice.value = ''
   }
   try {
+    try {
+      const paymentTermsResponse = await paymentTermsService.list({ is_active: true })
+      const paymentTermsPayload = paymentTermsResponse.data as { data?: PaymentTerm[] }
+      paymentTerms.value = Array.isArray(paymentTermsPayload.data) ? paymentTermsPayload.data : []
+    } catch {
+      paymentTerms.value = []
+    }
     const next = await getCompanySettings()
     settings.value = next
     setDraft(next)
@@ -201,6 +225,24 @@ async function saveModules() {
     moduleError.value = messageFrom(reason, 'Unable to save module settings.')
   } finally {
     moduleSaving.value = false
+  }
+}
+
+async function saveTransactionDefaults() {
+  if (!canEdit.value) return
+  transactionDefaultSaving.value = true
+  transactionDefaultError.value = ''
+  transactionDefaultNotice.value = ''
+  transactionDefaultErrors.value = {}
+  try {
+    await updateCompanyTransactionDefaults({ ...transactionDefaultDraft })
+    await load(false)
+    transactionDefaultNotice.value = 'Transaction defaults saved.'
+  } catch (reason) {
+    transactionDefaultErrors.value = validationFrom(reason)
+    transactionDefaultError.value = messageFrom(reason, 'Unable to save transaction defaults.')
+  } finally {
+    transactionDefaultSaving.value = false
   }
 }
 
@@ -349,6 +391,37 @@ onMounted(load)
           </div>
         </form>
 
+        <div class="space-y-4">
+          <form class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" @submit.prevent="saveTransactionDefaults">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <h2 class="text-base font-black text-slate-950">Transaction Defaults</h2>
+              <span v-if="!canEdit" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">Read only</span>
+            </div>
+
+            <p v-if="transactionDefaultError" class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{{ transactionDefaultError }}</p>
+            <p v-if="transactionDefaultNotice" class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{{ transactionDefaultNotice }}</p>
+
+            <label class="mt-4 block space-y-1.5 text-sm font-bold text-slate-700">
+              <span>Default Payment Term</span>
+              <select
+                v-model="transactionDefaultDraft.default_payment_term_id"
+                :disabled="!canEdit || transactionDefaultSaving"
+                class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 outline-none focus:border-[#24a1db] disabled:bg-slate-50"
+              >
+                <option :value="null">Net 7 fallback</option>
+                <option v-for="term in paymentTerms" :key="term.id" :value="term.id">{{ term.name }}</option>
+              </select>
+              <span v-if="fieldError(transactionDefaultErrors, 'default_payment_term_id')" class="block text-xs text-rose-600">{{ fieldError(transactionDefaultErrors, 'default_payment_term_id') }}</span>
+            </label>
+
+            <div v-if="canEdit" class="mt-5 flex justify-end border-t border-slate-100 pt-4">
+              <BaseButton type="submit" :loading="transactionDefaultSaving">
+                <Save class="h-4 w-4" />
+                Save Defaults
+              </BaseButton>
+            </div>
+          </form>
+
         <form class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" @submit.prevent="saveModules">
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <h2 class="text-base font-black text-slate-950">Module Settings</h2>
@@ -386,6 +459,7 @@ onMounted(load)
             </BaseButton>
           </div>
         </form>
+        </div>
       </div>
     </template>
   </section>

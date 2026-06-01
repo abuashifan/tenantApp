@@ -48,7 +48,6 @@ export const proformaInvoiceFormConfig: TransactionFormConfig<ProformaInvoiceVal
   },
   sourceOptions: [
     { key: 'sales-order', label: 'Sales Order', sourceType: 'sales_order' },
-    { key: 'sales-quotation', label: 'Sales Quotation', sourceType: 'sales_quotation' },
   ],
   actions: [
     { key: 'issue', label: 'Issue', permission: 'sales.proformas.issue', whenStatusIn: ['draft'], variant: 'primary' },

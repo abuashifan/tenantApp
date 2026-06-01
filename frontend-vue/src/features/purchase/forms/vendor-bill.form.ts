@@ -8,6 +8,7 @@ export type VendorBillValues = {
   bill_number?: string | null
   vendor_id: string
   bill_date: string
+  payment_term_id?: string | number | null
   due_date?: string | null
   purchase_order_id?: string | null
   goods_receipt_id?: string | null
@@ -64,6 +65,7 @@ export const vendorBillFormConfig: TransactionFormConfig<VendorBillValues> = {
   validationSchema: z.object({
     vendor_id: z.string().min(1),
     bill_date: z.string().min(1),
+    payment_term_id: z.union([z.string(), z.number()]).optional().nullable(),
     due_date: z.string().optional().nullable(),
     lines: z.array(z.object({ description: z.string().min(1), quantity: z.coerce.number().gt(0), unit_price: z.coerce.number().min(0) })).min(1),
   }),
@@ -72,6 +74,7 @@ export const vendorBillFormConfig: TransactionFormConfig<VendorBillValues> = {
       bill_number: null,
       vendor_id: '',
       bill_date: '',
+      payment_term_id: null,
       due_date: null,
       purchase_order_id: null,
       goods_receipt_id: null,

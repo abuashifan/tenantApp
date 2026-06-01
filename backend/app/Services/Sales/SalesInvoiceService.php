@@ -21,6 +21,7 @@ use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Inventory\InventorySalesIntegrationService;
 use App\Services\Sales\Concerns\HandlesSalesDocuments;
 use App\Services\Tenant\TenantContext;
+use App\Services\Transactions\PaymentTermDueDateService;
 use App\Services\Transactions\TransactionDateGuardService;
 use App\Services\Transactions\TransactionVoidEffectService;
 use App\Support\DocumentNumbering\DocumentType;
@@ -35,6 +36,7 @@ class SalesInvoiceService
         private readonly TenantContext $tenantContext,
         private readonly DocumentNumberService $documentNumberService,
         private readonly SalesCalculationService $calculationService,
+        private readonly PaymentTermDueDateService $paymentTermDueDateService,
         private readonly TransactionDateGuardService $dateGuardService,
         private readonly InventorySalesIntegrationService $inventoryIntegration,
         private readonly TransactionVoidEffectService $voidEffectService,
@@ -44,7 +46,7 @@ class SalesInvoiceService
 
     public function list(array $filters = []): Collection
     {
-        $query = SalesInvoice::query()->with('customer');
+        $query = SalesInvoice::query()->with('customer', 'paymentTerm');
         if (! empty($filters['status'])) {
             $query->where('status', (string) $filters['status']);
         }
@@ -54,7 +56,7 @@ class SalesInvoiceService
 
     public function find(int $id): SalesInvoice
     {
-        return SalesInvoice::query()->with('lines.product', 'customer', 'salesOrder', 'deliveryOrder', 'proformaInvoice')->findOrFail($id);
+        return SalesInvoice::query()->with('lines.product', 'customer', 'paymentTerm', 'salesOrder', 'deliveryOrder', 'proformaInvoice')->findOrFail($id);
     }
 
     public function create(array $data): SalesInvoice
@@ -65,6 +67,7 @@ class SalesInvoiceService
         }
 
         $this->ensureCustomerExists((int) $data['customer_id']);
+        $data = $this->paymentTermDueDateService->apply($data, 'invoice_date', (int) $data['customer_id']);
 
         return DB::connection('tenant')->transaction(function () use ($company, $data) {
             $lines = $this->normalizeLines((array) $data['lines'], fn (array $line): array => [
@@ -88,7 +91,7 @@ class SalesInvoiceService
             ]));
             $invoice->lines()->createMany($totals['lines']);
 
-            $invoice = $invoice->refresh()->load('lines', 'customer');
+            $invoice = $invoice->refresh()->load('lines', 'customer', 'paymentTerm');
             $this->auditSales($this->auditLogService, 'sales_invoice.created', 'sales', $invoice, 'invoice_number');
 
             return $invoice;
@@ -100,6 +103,12 @@ class SalesInvoiceService
         if ($invoice->status !== 'draft') {
             throw ApiException::make('SALES_INVOICE_NOT_EDITABLE', 'Sales invoice status is not editable.', 422);
         }
+
+        $data = $this->paymentTermDueDateService->apply(
+            array_merge(['invoice_date' => $invoice->invoice_date?->toDateString()], $data),
+            'invoice_date',
+            (int) ($data['customer_id'] ?? $invoice->customer_id)
+        );
 
         return DB::connection('tenant')->transaction(function () use ($invoice, $data) {
             $lines = $this->normalizeLines((array) ($data['lines'] ?? $invoice->lines()->get()->toArray()), fn (array $line): array => [
@@ -122,7 +131,7 @@ class SalesInvoiceService
             $invoice->lines()->delete();
             $invoice->lines()->createMany($totals['lines']);
 
-            return $invoice->refresh()->load('lines', 'customer');
+            return $invoice->refresh()->load('lines', 'customer', 'paymentTerm');
         });
     }
 

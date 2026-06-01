@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { FileText, History, Save, Search } from 'lucide-vue-next'
 
+import FormDateInput from '@/components/form/FormDateInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import VoidTransactionDialog from '@/components/dialog/VoidTransactionDialog.vue'
 import SourceDocumentPickerModal from '@/components/transaction-form/SourceDocumentPickerModal.vue'
 import TransactionActionBar from '@/components/transaction-form/TransactionActionBar.vue'
-import TransactionDateFields from '@/components/transaction-form/TransactionDateFields.vue'
 import TransactionCashBankAmountFields from '@/components/transaction-form/TransactionCashBankAmountFields.vue'
 import TransactionFormHeader from '@/components/transaction-form/TransactionFormHeader.vue'
 import TransactionFormSection from '@/components/transaction-form/TransactionFormSection.vue'
@@ -14,6 +14,7 @@ import TransactionFormShell from '@/components/transaction-form/TransactionFormS
 import TransactionLineTable from '@/components/transaction-form/TransactionLineTable.vue'
 import TransactionNotesPanel from '@/components/transaction-form/TransactionNotesPanel.vue'
 import TransactionPartnerSelector from '@/components/transaction-form/TransactionPartnerSelector.vue'
+import TransactionSearchableSelect from '@/components/transaction-form/TransactionSearchableSelect.vue'
 import TransactionTotalsPanel from '@/components/transaction-form/TransactionTotalsPanel.vue'
 import TransactionValidationSummary from '@/components/transaction-form/TransactionValidationSummary.vue'
 
@@ -23,9 +24,13 @@ import { useTransactionTotals } from '@/composables/transaction-form/useTransact
 import { toErrorMessage } from '@/composables/transaction-form/useTransactionValidation'
 import type { RuntimeTransactionFormConfig, TransactionActionConfig, TransactionConversionConfig } from '@/composables/transaction-form/types'
 import { usePermission } from '@/composables/usePermission'
+import { contactsService } from '@/services/master-data/contacts.service'
+import { paymentTermsService, type PaymentTerm } from '@/services/master-data/paymentTerms.service'
+import { getCompanySettings } from '@/services/settings/companySettings.service'
 import { checkSourceDocumentAvailability, type SourceDocument } from '@/services/transaction/sourceDocuments.service'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
 import type { SecondaryTab } from '@/stores/workspaceTabsStore'
+import type { ApiResponse } from '@/types/api'
 
 const props = defineProps<{
   config: RuntimeTransactionFormConfig
@@ -53,6 +58,10 @@ const sourcePickerOpen = ref(false)
 const activeSourceKey = ref<string | null>(null)
 const activeFormTab = ref<'details' | 'more'>('details')
 const promptedSourceKeys = ref(new Set<string>())
+const paymentTerms = ref<PaymentTerm[]>([])
+const defaultPaymentTermId = ref<string | number | null>(null)
+const dueDateTouched = ref(false)
+const applyingDueDate = ref(false)
 useTransactionTotals(tx.form, { priceField: props.config.lineProduct?.priceField })
 
 const partnerName =
@@ -66,17 +75,14 @@ const needsCashBankAndAmount =
 
 const supportsInternalNotes = computed(() => Object.prototype.hasOwnProperty.call(tx.form.values, 'internal_notes'))
 const supportsValidUntil = computed(() => Object.prototype.hasOwnProperty.call(tx.form.values, 'valid_until'))
+const supportsDueDate = computed(() => Object.prototype.hasOwnProperty.call(tx.form.values, 'due_date'))
+const supportsPaymentTerm = computed(() => supportsDueDate.value && Object.prototype.hasOwnProperty.call(tx.form.values, 'payment_term_id'))
 const formTitle = computed(() => props.tab?.entityNumber ?? props.config.title)
 const documentNumber = computed(() => {
   const value = tx.form.values[props.config.numberField] ?? props.tab?.entityNumber
   const text = value == null ? '' : String(value).trim()
   return text || (mode === 'create' ? 'Generated on Save' : '-')
 })
-const documentDate = computed(() => {
-  const value = tx.form.values[props.config.dateField]
-  return value == null || value === '' ? '-' : String(value).slice(0, 10)
-})
-const displayedStatus = computed(() => tx.status.value || 'Draft')
 const sourceType = computed(() => String(tx.form.values.source_type ?? '') || null)
 const sourceNumber = computed(() => String(tx.form.values.source_number ?? '') || null)
 const currencyCode = computed(() => String(tx.form.values.currency_code ?? 'IDR'))
@@ -86,6 +92,18 @@ const activeSourceType = computed(() => activeSourceOption.value?.sourceType ?? 
 const currentPartnerId = computed<string | number | null>(() => {
   const value = partnerName ? tx.form.values[partnerName] : null
   return typeof value === 'string' || typeof value === 'number' ? value : null
+})
+const paymentTermOptions = computed(() =>
+  paymentTerms.value.map((term) => ({
+    value: String(term.id),
+    label: term.name,
+    code: term.code,
+    name: term.name,
+  })),
+)
+const selectedPaymentTerm = computed(() => {
+  const id = tx.form.values.payment_term_id
+  return paymentTerms.value.find((term) => String(term.id) === String(id ?? '')) ?? null
 })
 const visibleLifecycleActions = computed(() =>
   props.config.actions.filter((action) => {
@@ -98,6 +116,9 @@ const visibleLifecycleActions = computed(() =>
 watch(
   () => currentPartnerId.value,
   async (partnerId) => {
+    if (mode === 'create' && supportsPaymentTerm.value) {
+      await applyPartnerPaymentTerm(partnerId)
+    }
     if (mode !== 'create' || sourceOptions.value.length === 0 || !partnerId) return
     const option = sourceOptions.value[0]
     if (!option) return
@@ -121,6 +142,29 @@ watch(
     }
   },
 )
+
+watch(
+  () => tx.form.values[props.config.dateField],
+  () => {
+    if (mode === 'create') applyDueDateFromPaymentTerm(false)
+  },
+)
+
+watch(
+  () => tx.form.values.payment_term_id,
+  (next, previous) => {
+    if (!supportsPaymentTerm.value || next === previous) return
+    if (mode === 'create') applyDueDateFromPaymentTerm(true)
+  },
+)
+
+watch(
+  () => tx.form.values.due_date,
+  (next, previous) => {
+    if (!supportsDueDate.value || applyingDueDate.value || next === previous) return
+    dueDateTouched.value = true
+  },
+)
 const visibleConversions = computed(() =>
   (props.config.conversions ?? []).filter((conversion) => {
     if (!entityId || !can(conversion.permission)) return false
@@ -132,6 +176,112 @@ const formTabs = [
   { key: 'details', label: 'Rincian' },
   { key: 'more', label: 'Informasi Lainnya' },
 ] as const
+
+function todayDateValue() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function emptyValue(value: unknown) {
+  return value === null || value === undefined || value === ''
+}
+
+function addDays(date: string, days: number) {
+  const parsed = new Date(`${date}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return ''
+  parsed.setDate(parsed.getDate() + days)
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const day = String(parsed.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function setAutoDueDate(value: string) {
+  applyingDueDate.value = true
+  tx.form.setFieldValue('due_date', value)
+  window.setTimeout(() => {
+    applyingDueDate.value = false
+  }, 0)
+}
+
+function applyDueDateFromPaymentTerm(force: boolean) {
+  if (!supportsPaymentTerm.value || tx.isReadonly.value) return
+  if (!force && dueDateTouched.value) return
+  const term = selectedPaymentTerm.value
+  if (!term || term.days === null) return
+  const dateValue = tx.form.values[props.config.dateField]
+  if (typeof dateValue !== 'string' || dateValue === '') return
+  setAutoDueDate(addDays(dateValue, term.days))
+}
+
+function setPaymentTerm(paymentTermId: string | number | null, forceDueDate: boolean) {
+  if (!supportsPaymentTerm.value || paymentTermId == null || paymentTermId === '') return
+  tx.form.setFieldValue('payment_term_id', String(paymentTermId))
+  applyDueDateFromPaymentTerm(forceDueDate)
+}
+
+function fallbackPaymentTermId() {
+  const companyDefault = defaultPaymentTermId.value
+  if (companyDefault != null && companyDefault !== '') return companyDefault
+  return paymentTerms.value.find((term) => term.code === 'NET_7')?.id ?? null
+}
+
+async function applyPartnerPaymentTerm(partnerId: string | number | null) {
+  if (!supportsPaymentTerm.value) return
+  let paymentTermId: string | number | null = null
+  if (partnerId) {
+    try {
+      const response = await contactsService.get(partnerId)
+      const payload = response.data as ApiResponse<Record<string, unknown>>
+      const contact = payload.data
+      paymentTermId = contact?.payment_term_id as string | number | null
+    } catch {
+      paymentTermId = null
+    }
+  }
+  setPaymentTerm(paymentTermId ?? fallbackPaymentTermId(), !dueDateTouched.value)
+}
+
+function onPartnerSelected(contact: { payment_term_id?: string | number | null }) {
+  if (!supportsPaymentTerm.value) return
+  setPaymentTerm(contact.payment_term_id ?? fallbackPaymentTermId(), !dueDateTouched.value)
+}
+
+async function loadPaymentTermDefaults() {
+  if (!supportsPaymentTerm.value) return
+  try {
+    const [termsResponse, settings] = await Promise.all([
+      paymentTermsService.list({ is_active: true }),
+      getCompanySettings(),
+    ])
+    const termsPayload = termsResponse.data as ApiResponse<PaymentTerm[]>
+    paymentTerms.value = Array.isArray(termsPayload.data) ? termsPayload.data : []
+    defaultPaymentTermId.value = settings.transaction_defaults?.default_payment_term_id ?? settings.accounting.default_payment_term_id ?? null
+    if (mode === 'create' && emptyValue(tx.form.values.payment_term_id)) {
+      setPaymentTerm(fallbackPaymentTermId(), true)
+    } else if (mode === 'create') {
+      applyDueDateFromPaymentTerm(false)
+    }
+  } catch {
+    paymentTerms.value = []
+    defaultPaymentTermId.value = null
+  }
+}
+
+function ensureDefaultDate() {
+  if (mode !== 'create') return
+  const currentValue = tx.form.values[props.config.dateField]
+  if (currentValue !== null && currentValue !== undefined && currentValue !== '') return
+  tx.form.resetForm({ values: { ...tx.form.values, [props.config.dateField]: todayDateValue() } })
+}
+
+onMounted(() => {
+  ensureDefaultDate()
+  void loadPaymentTermDefaults()
+})
 
 function sourceLabel(type?: string | null) {
   if (!type) return '-'
@@ -237,6 +387,7 @@ function applySourceDocument(document: SourceDocument) {
   const keptLines = currentLines.filter((line) => !isBlankLine(line))
   const importedLines = document.lines.map((line, index) => normalizeImportedLine(line as Record<string, unknown>, keptLines.length + index))
   tx.form.setFieldValue('lines', [...keptLines, ...importedLines])
+  if (mode === 'create') void applyPartnerPaymentTerm(currentPartnerId.value)
   sourcePickerOpen.value = false
 }
 </script>
@@ -257,7 +408,7 @@ function applySourceDocument(document: SourceDocument) {
             </div>
           </TransactionFormHeader>
 
-          <div class="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-2 sm:grid-cols-4">
+          <div class="grid gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-2" :class="supportsPaymentTerm ? 'grid-cols-2 xl:grid-cols-4' : 'grid-cols-2'">
             <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
               <div class="flex items-center gap-1.5 text-[11px] font-bold uppercase text-slate-500">
                 <FileText class="h-3.5 w-3.5" />
@@ -266,16 +417,31 @@ function applySourceDocument(document: SourceDocument) {
               <p class="mt-1 truncate text-sm font-black text-slate-950" :title="documentNumber">{{ documentNumber }}</p>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-              <p class="text-[11px] font-bold uppercase text-slate-500">Date</p>
-              <p class="mt-1 truncate text-sm font-bold tabular-nums text-slate-900">{{ documentDate }}</p>
+              <FormDateInput
+                :name="config.dateField"
+                label="Date"
+                :disabled="tx.isReadonly.value"
+                compact
+              />
             </div>
-            <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-              <p class="text-[11px] font-bold uppercase text-slate-500">Status</p>
-              <p class="mt-1 truncate text-sm font-bold capitalize text-slate-900">{{ displayedStatus }}</p>
+            <div v-if="supportsPaymentTerm" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+              <FormDateInput
+                name="due_date"
+                label="Due Date"
+                :disabled="tx.isReadonly.value"
+                compact
+              />
             </div>
-            <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-              <p class="text-[11px] font-bold uppercase text-slate-500">Mode</p>
-              <p class="mt-1 truncate text-sm font-bold capitalize text-slate-900">{{ mode }}</p>
+            <div v-if="supportsPaymentTerm" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+              <TransactionSearchableSelect
+                name="payment_term_id"
+                label="Payment Term"
+                :options="paymentTermOptions"
+                placeholder="Payment term..."
+                :readonly="tx.isReadonly.value"
+                compact
+                selected-display-mode="name"
+              />
             </div>
           </div>
         </div>
@@ -325,20 +491,15 @@ function applySourceDocument(document: SourceDocument) {
               :name="partnerName"
               :readonly="tx.isReadonly.value"
               compact
+              @select="onPartnerSelected"
             />
-            <TransactionDateFields
-              :date-name="config.dateField"
-              :due-date-name="supportsValidUntil ? 'valid_until' : undefined"
-              due-date-label="Valid Until"
-              :readonly="tx.isReadonly.value"
+            <FormDateInput
+              v-if="supportsValidUntil"
+              name="valid_until"
+              label="Valid Until"
+              :disabled="tx.isReadonly.value"
               compact
             />
-            <label class="block space-y-1.5">
-              <span class="text-xs font-bold text-slate-500">Status</span>
-              <span class="flex h-9 w-full items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs capitalize text-slate-900">
-                {{ displayedStatus }}
-              </span>
-            </label>
           </div>
 
           <TransactionFormSection v-if="needsCashBankAndAmount" title="Payment">

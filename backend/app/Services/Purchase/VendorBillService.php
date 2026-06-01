@@ -19,6 +19,7 @@ use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Inventory\InventoryPurchaseIntegrationService;
 use App\Services\Purchase\Concerns\HandlesPurchaseDocuments;
 use App\Services\Tenant\TenantContext;
+use App\Services\Transactions\PaymentTermDueDateService;
 use App\Services\Transactions\TransactionDateGuardService;
 use App\Services\Transactions\TransactionVoidEffectService;
 use App\Support\DocumentNumbering\DocumentType;
@@ -33,6 +34,7 @@ class VendorBillService
         private readonly TenantContext $tenantContext,
         private readonly DocumentNumberService $documentNumberService,
         private readonly PurchaseCalculationService $calculationService,
+        private readonly PaymentTermDueDateService $paymentTermDueDateService,
         private readonly TransactionDateGuardService $dateGuardService,
         private readonly VendorDepositService $depositService,
         private readonly InventoryPurchaseIntegrationService $inventoryIntegration,
@@ -43,7 +45,7 @@ class VendorBillService
 
     public function list(array $filters = []): Collection
     {
-        $query = VendorBill::query()->with('vendor');
+        $query = VendorBill::query()->with('vendor', 'paymentTerm');
         if (! empty($filters['status'])) $query->where('status', (string) $filters['status']);
         if (! empty($filters['vendor_id'])) $query->where('vendor_id', (int) $filters['vendor_id']);
         return $query->orderByDesc('bill_date')->orderByDesc('id')->get();
@@ -51,7 +53,7 @@ class VendorBillService
 
     public function find(int $id): VendorBill
     {
-        return VendorBill::query()->with('lines.product', 'vendor', 'purchaseOrder', 'goodsReceipt')->findOrFail($id);
+        return VendorBill::query()->with('lines.product', 'vendor', 'paymentTerm', 'purchaseOrder', 'goodsReceipt')->findOrFail($id);
     }
 
     public function create(array $data): VendorBill
@@ -59,6 +61,7 @@ class VendorBillService
         $company = $this->tenantContext->company();
         if (! $company) throw ApiException::make('COMPANY_NOT_FOUND', 'Company context not resolved.', 422);
         $this->ensureVendorExists((int) $data['vendor_id']);
+        $data = $this->paymentTermDueDateService->apply($data, 'bill_date', (int) $data['vendor_id']);
 
         return DB::connection('tenant')->transaction(function () use ($company, $data) {
             $lines = $this->normalizePurchaseLines((array) $data['lines'], fn (array $line): array => [
@@ -79,7 +82,7 @@ class VendorBillService
                 'updated_by' => auth()->id(),
             ]));
             $bill->lines()->createMany($totals['lines']);
-            $bill = $bill->refresh()->load('lines', 'vendor');
+            $bill = $bill->refresh()->load('lines', 'vendor', 'paymentTerm');
             $this->auditPurchase($this->auditLogService, 'vendor_bill.created', $bill, 'bill_number');
             return $bill;
         });
@@ -88,6 +91,12 @@ class VendorBillService
     public function update(VendorBill $bill, array $data): VendorBill
     {
         if ($bill->status !== 'draft') throw ApiException::make('VENDOR_BILL_NOT_EDITABLE', 'Vendor bill status is not editable.', 422);
+        $data = $this->paymentTermDueDateService->apply(
+            array_merge(['bill_date' => $bill->bill_date?->toDateString()], $data),
+            'bill_date',
+            (int) ($data['vendor_id'] ?? $bill->vendor_id)
+        );
+
         return DB::connection('tenant')->transaction(function () use ($bill, $data) {
             $lines = $this->normalizePurchaseLines((array) ($data['lines'] ?? $bill->lines()->get()->toArray()), fn (array $line): array => [
                 'purchase_order_line_id' => $line['purchase_order_line_id'] ?? null,
@@ -104,7 +113,7 @@ class VendorBillService
             ]))->save();
             $bill->lines()->delete();
             $bill->lines()->createMany($totals['lines']);
-            $bill = $bill->refresh()->load('lines', 'vendor');
+            $bill = $bill->refresh()->load('lines', 'vendor', 'paymentTerm');
             $this->auditPurchase($this->auditLogService, 'vendor_bill.updated', $bill, 'bill_number');
             return $bill;
         });

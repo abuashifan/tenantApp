@@ -127,7 +127,7 @@ class PermissionCatalogService
         return match ($module) {
             'settings' => 'Info Perusahaan',
             'access' => 'Access Management',
-            'master_data', 'coa', 'contacts', 'products', 'units', 'warehouses', 'departments', 'projects' => 'Master Data',
+            'master_data', 'coa', 'contacts', 'products', 'units', 'warehouses', 'departments', 'projects', 'payment_terms' => 'Master Data',
             'journal', 'accounting', 'fiscal_year' => 'Buku Besar',
             'sales' => 'Penjualan',
             'purchase' => 'Pembelian',

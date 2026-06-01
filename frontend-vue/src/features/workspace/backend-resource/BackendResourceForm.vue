@@ -42,6 +42,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
 import { useWorkspaceTabsStore, type SecondaryTab } from '@/stores/workspaceTabsStore'
 import { normalizeDateFields, prepareDateForPayload } from '@/utils/date'
+import { listBackendResource } from './backendResource.service'
 import {
   createBackendResource,
   extractLaravelErrors,
@@ -108,6 +109,7 @@ const stockAdjustmentLookups = ref<StockAdjustmentLookups>({
 const stockAdjustmentLookupsLoaded = ref(false)
 const companyWorkflowSettings = ref<CompanyWorkflowSettings | null>(null)
 const companySettingsLoadedForCompany = ref<string | number | null>(null)
+const remoteSelectOptions = ref<Record<string, { label: string; value: string }[]>>({})
 
 const readonly = computed(() => props.tab.mode === 'detail' || ['posted', 'void', 'voided', 'cancelled', 'closed', 'finalized'].includes(status.value))
 const title = computed(() => {
@@ -216,6 +218,34 @@ function fieldReadonly(field: FormFieldConfig) {
   return readonly.value || Boolean(field.readonly)
 }
 
+function optionLabel(row: Record<string, unknown>, key?: string) {
+  if (key && row[key] != null) return String(row[key])
+  return String(row.name ?? row.label ?? row.code ?? row.id ?? '')
+}
+
+async function loadRemoteSelectOptions() {
+  const fields = props.config.sections
+    .flatMap((section) => section.fields)
+    .filter((field) => field.kind === 'select' && field.remoteOptions)
+
+  await Promise.all(fields.map(async (field) => {
+    const remote = field.remoteOptions
+    if (!remote) return
+    try {
+      const result = await listBackendResource(remote.endpoint, remote.params ?? {})
+      remoteSelectOptions.value[field.key] = result.rows.map((row) => {
+        const valueKey = remote.valueKey ?? 'id'
+        return {
+          value: String(row[valueKey] ?? row.id),
+          label: optionLabel(row, remote.labelKey),
+        }
+      })
+    } catch {
+      remoteSelectOptions.value[field.key] = []
+    }
+  }))
+}
+
 async function loadStockAdjustmentLookupData() {
   if (!isStockAdjustment.value || stockAdjustmentLookupsLoaded.value) return
   stockAdjustmentLookupsLoaded.value = true
@@ -291,6 +321,15 @@ watch(
 )
 
 watch(
+  () => props.config.endpoint,
+  () => {
+    remoteSelectOptions.value = {}
+    void loadRemoteSelectOptions()
+  },
+  { immediate: true },
+)
+
+watch(
   () => isStockAdjustment.value,
   () => {
     void loadStockAdjustmentLookupData()
@@ -347,6 +386,7 @@ function payload(values: Record<string, unknown>) {
     result.is_customer = contactType === 'customer'
     result.is_supplier = contactType === 'supplier'
     result.is_employee = contactType === 'employee'
+    result.payment_term_id = result.payment_term_id === '' ? null : result.payment_term_id
   }
   if (props.config.lineItems) {
     if (isStockAdjustment.value) {
@@ -621,7 +661,7 @@ function saveAndCloseFromDialog() {
                 v-else-if="field.kind === 'select'"
                 :name="field.key"
                 :label="field.label"
-                :options="field.options ?? []"
+                :options="field.remoteOptions ? (remoteSelectOptions[field.key] ?? []) : (field.options ?? [])"
                 :disabled="fieldReadonly(field)"
               />
               <FormCheckbox

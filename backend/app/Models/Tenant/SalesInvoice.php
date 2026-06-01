@@ -50,6 +50,11 @@ class SalesInvoice extends Model
         return $this->belongsTo(ProformaInvoice::class, 'proforma_invoice_id');
     }
 
+    public function paymentTerm(): BelongsTo
+    {
+        return $this->belongsTo(PaymentTerm::class, 'payment_term_id');
+    }
+
     public function journalEntry(): BelongsTo
     {
         return $this->belongsTo(JournalEntry::class, 'journal_entry_id');

@@ -17,6 +17,7 @@ class StoreSalesInvoiceRequest extends FormRequest
         return [
             'customer_id' => ['required', 'exists:tenant.contacts,id'],
             'invoice_date' => ['required', 'date_format:Y-m-d'],
+            'payment_term_id' => ['nullable', 'integer', 'exists:tenant.payment_terms,id'],
             'due_date' => ['nullable', 'date_format:Y-m-d', function (string $attribute, mixed $value, Closure $fail): void {
                 $invoiceDate = $this->input('invoice_date');
                 if (is_string($invoiceDate) && is_string($value) && $value < $invoiceDate) {

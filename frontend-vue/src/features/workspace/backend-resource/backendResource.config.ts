@@ -47,6 +47,7 @@ const remoteList = {
 
 const capabilities: Record<string, ResourceCapability> = {
   '/master-data/contacts': { ...remoteList, kind: 'master-data', createPermission: 'contacts.create', editPermission: 'contacts.edit', hasDetail: true, statusFilter: true },
+  '/master-data/payment-terms': { ...remoteList, kind: 'master-data', createPermission: 'payment_terms.create', editPermission: 'payment_terms.edit', hasDetail: true, statusFilter: true },
   '/master-data/units': { ...remoteList, kind: 'master-data', createPermission: 'units.create', editPermission: 'units.edit', hasDetail: true, statusFilter: true },
   '/master-data/product-categories': { ...remoteList, kind: 'master-data', createPermission: 'products.create', editPermission: 'products.edit', hasDetail: true, statusFilter: true },
   '/master-data/products': { ...remoteList, kind: 'master-data', createPermission: 'products.create', editPermission: 'products.edit', hasDetail: true, statusFilter: true },

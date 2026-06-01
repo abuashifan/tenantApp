@@ -8,6 +8,7 @@ export type SalesInvoiceValues = {
   invoice_number?: string | null
   customer_id: string
   invoice_date: string
+  payment_term_id?: string | number | null
   due_date?: string | null
   sales_order_id?: string | null
   delivery_order_id?: string | null
@@ -65,6 +66,7 @@ export const salesInvoiceFormConfig: TransactionFormConfig<SalesInvoiceValues> =
   validationSchema: z.object({
     customer_id: z.string().min(1),
     invoice_date: z.string().min(1),
+    payment_term_id: z.union([z.string(), z.number()]).optional().nullable(),
     due_date: z.string().optional().nullable(),
     lines: z.array(z.object({ description: z.string().min(1), quantity: z.coerce.number().gt(0), unit_price: z.coerce.number().min(0) })).min(1),
   }),
@@ -73,6 +75,7 @@ export const salesInvoiceFormConfig: TransactionFormConfig<SalesInvoiceValues> =
       invoice_number: null,
       customer_id: '',
       invoice_date: '',
+      payment_term_id: null,
       due_date: null,
       sales_order_id: null,
       delivery_order_id: null,

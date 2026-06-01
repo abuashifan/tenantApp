@@ -21,7 +21,7 @@ class ProformaInvoiceTest extends SalesTestCase
         $this->assertDatabaseCount('proforma_invoice_lines', 1, 'tenant');
     }
 
-    public function test_create_from_quotation(): void
+    public function test_create_from_quotation_is_not_supported(): void
     {
         $ctx = $this->setUpTenant();
         $quotation = $this->postJson('/api/sales/quotations', $this->quotationPayload([
@@ -30,10 +30,7 @@ class ProformaInvoiceTest extends SalesTestCase
         ]), $ctx['headers'])->assertStatus(201)->json('data');
 
         $this->postJson('/api/sales/proformas/from-quotation/'.$quotation['id'], [], $ctx['headers'])
-            ->assertStatus(201)
-            ->assertJsonPath('data.sales_quotation_id', $quotation['id'])
-            ->assertJsonPath('data.source_type', 'sales_quotation')
-            ->assertJsonPath('data.header_discount_amount', 20);
+            ->assertStatus(404);
     }
 
     public function test_create_from_sales_order(): void

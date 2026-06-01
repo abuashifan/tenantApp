@@ -38,15 +38,6 @@ class SourceDocumentPickerService
                 'statuses' => ['approved', 'confirmed', 'partially_delivered', 'delivered'],
                 'line_source' => 'sales_order_line',
             ],
-            'sales_quotation' => [
-                'model' => SalesQuotation::class,
-                'lines' => 'lines',
-                'number' => 'quotation_number',
-                'date' => 'quotation_date',
-                'partner' => 'customer_id',
-                'statuses' => ['sent', 'approved', 'accepted'],
-                'line_source' => 'sales_quotation_line',
-            ],
         ],
         'sales.delivery-orders' => [
             'sales_order' => [

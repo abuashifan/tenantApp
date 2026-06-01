@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\MasterData\UnitController;
 use App\Http\Controllers\Api\MasterData\WarehouseController;
 use App\Http\Controllers\Api\MasterData\DepartmentController;
 use App\Http\Controllers\Api\MasterData\ProjectController;
+use App\Http\Controllers\Api\MasterData\PaymentTermController;
 use App\Http\Controllers\Api\Journal\JournalEntryController;
 use App\Http\Controllers\Api\Reports\GeneralLedgerController;
 use App\Http\Controllers\Api\Reports\AccountLedgerDetailController;
@@ -92,6 +93,8 @@ Route::middleware(['auth:sanctum', 'company.access'])->group(function () {
     Route::patch('/settings/company/accounting', [CompanySettingController::class, 'updateAccounting'])
         ->middleware('permission:settings.company.edit');
     Route::patch('/settings/company/modules', [CompanySettingController::class, 'updateModules'])
+        ->middleware('permission:settings.company.edit');
+    Route::patch('/settings/company/transaction-defaults', [CompanySettingController::class, 'updateTransactionDefaults'])
         ->middleware('permission:settings.company.edit');
 });
 
@@ -292,6 +295,14 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('master-data')->gr
     Route::patch('/contacts/{id}/deactivate', [ContactController::class, 'deactivate'])->middleware('permission:contacts.deactivate');
     Route::patch('/contacts/{id}/activate', [ContactController::class, 'activate'])->middleware('permission:contacts.edit');
 
+    // Payment Terms
+    Route::get('/payment-terms', [PaymentTermController::class, 'index'])->middleware('permission:payment_terms.view');
+    Route::post('/payment-terms', [PaymentTermController::class, 'store'])->middleware('permission:payment_terms.create');
+    Route::get('/payment-terms/{id}', [PaymentTermController::class, 'show'])->middleware('permission:payment_terms.view');
+    Route::patch('/payment-terms/{id}', [PaymentTermController::class, 'update'])->middleware('permission:payment_terms.edit');
+    Route::patch('/payment-terms/{id}/deactivate', [PaymentTermController::class, 'deactivate'])->middleware('permission:payment_terms.deactivate');
+    Route::patch('/payment-terms/{id}/activate', [PaymentTermController::class, 'activate'])->middleware('permission:payment_terms.edit');
+
     // Units
     Route::get('/units', [UnitController::class, 'index'])->middleware('permission:units.view');
     Route::post('/units', [UnitController::class, 'store'])->middleware('permission:units.create');
@@ -401,7 +412,6 @@ Route::middleware(['auth:sanctum', 'company.access'])->prefix('sales')->group(fu
     Route::post('/proformas', [ProformaInvoiceController::class, 'store'])->middleware('permission:sales.proformas.create');
     Route::get('/proformas/{id}', [ProformaInvoiceController::class, 'show'])->middleware('permission:sales.proformas.view');
     Route::patch('/proformas/{id}', [ProformaInvoiceController::class, 'update'])->middleware('permission:sales.proformas.edit');
-    Route::post('/proformas/from-quotation/{quotationId}', [ProformaInvoiceController::class, 'createFromQuotation'])->middleware('permission:sales.proformas.convert');
     Route::post('/proformas/from-sales-order/{salesOrderId}', [ProformaInvoiceController::class, 'createFromSalesOrder'])->middleware('permission:sales.proformas.convert');
     Route::patch('/proformas/{id}/issue', [ProformaInvoiceController::class, 'issue'])->middleware('permission:sales.proformas.issue');
     Route::patch('/proformas/{id}/accept', [ProformaInvoiceController::class, 'accept'])->middleware('permission:sales.proformas.issue');

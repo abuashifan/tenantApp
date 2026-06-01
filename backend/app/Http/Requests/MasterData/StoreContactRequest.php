@@ -17,6 +17,7 @@ class StoreContactRequest extends FormRequest
             'contact_code' => ['nullable', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:255'],
             'contact_type' => ['nullable', 'in:customer,supplier,employee,other'],
+            'payment_term_id' => ['nullable', 'integer', 'exists:tenant.payment_terms,id'],
             'is_customer' => ['nullable', 'boolean'],
             'is_supplier' => ['nullable', 'boolean'],
             'is_employee' => ['nullable', 'boolean'],
@@ -29,4 +30,3 @@ class StoreContactRequest extends FormRequest
         ];
     }
 }
-

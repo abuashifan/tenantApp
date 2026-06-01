@@ -9,6 +9,7 @@ use App\Services\Audit\AuditLogService;
 use App\Services\DocumentNumbering\DocumentNumberService;
 use App\Services\Sales\Concerns\HandlesSalesDocuments;
 use App\Services\Tenant\TenantContext;
+use App\Services\Transactions\PaymentTermDueDateService;
 use App\Support\DocumentNumbering\DocumentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -17,18 +18,23 @@ class BillingInvoiceService
 {
     use HandlesSalesDocuments;
 
-    public function __construct(private readonly TenantContext $tenantContext, private readonly DocumentNumberService $documentNumberService, private readonly ?AuditLogService $auditLogService = null) {}
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly DocumentNumberService $documentNumberService,
+        private readonly PaymentTermDueDateService $paymentTermDueDateService,
+        private readonly ?AuditLogService $auditLogService = null
+    ) {}
 
     public function list(array $filters = []): Collection
     {
-        $query = BillingInvoice::query()->with('customer', 'salesInvoice');
+        $query = BillingInvoice::query()->with('customer', 'paymentTerm', 'salesInvoice');
         if (! empty($filters['status'])) $query->where('status', (string) $filters['status']);
         return $query->orderByDesc('billing_date')->orderByDesc('id')->get();
     }
 
     public function find(int $id): BillingInvoice
     {
-        return BillingInvoice::query()->with('lines', 'customer', 'salesInvoice')->findOrFail($id);
+        return BillingInvoice::query()->with('lines', 'customer', 'paymentTerm', 'salesInvoice')->findOrFail($id);
     }
 
     public function create(array $data): BillingInvoice
@@ -36,6 +42,7 @@ class BillingInvoiceService
         $company = $this->tenantContext->company();
         if (! $company) throw ApiException::make('COMPANY_NOT_FOUND', 'Company context not resolved.', 422);
         $this->ensureCustomerExists((int) $data['customer_id']);
+        $data = $this->paymentTermDueDateService->apply($data, 'billing_date', (int) $data['customer_id']);
         $amount = (float) array_sum(array_map(fn ($line) => (float) ($line['amount'] ?? 0), (array) $data['lines']));
 
         return DB::connection('tenant')->transaction(function () use ($company, $data, $amount) {
@@ -48,7 +55,7 @@ class BillingInvoiceService
             ]));
             $billing->lines()->createMany($this->normalizeLines((array) $data['lines']));
             $this->auditSales($this->auditLogService, 'billing_invoice.created', 'sales', $billing, 'billing_number');
-            return $billing->refresh()->load('lines', 'customer', 'salesInvoice');
+            return $billing->refresh()->load('lines', 'customer', 'paymentTerm', 'salesInvoice');
         });
     }
 
@@ -58,6 +65,7 @@ class BillingInvoiceService
         return $this->create(array_merge([
             'billing_date' => now()->toDateString(),
             'due_date' => $invoice->due_date?->toDateString(),
+            'payment_term_id' => $invoice->payment_term_id,
             'customer_id' => $invoice->customer_id,
             'sales_invoice_id' => $invoice->id,
             'sales_invoice_number' => $invoice->invoice_number,
@@ -83,7 +91,7 @@ class BillingInvoiceService
         $billing->issued_by = auth()->id();
         $billing->issued_at = now();
         $billing->save();
-        return $billing->refresh()->load('lines', 'customer', 'salesInvoice');
+        return $billing->refresh()->load('lines', 'customer', 'paymentTerm', 'salesInvoice');
     }
 
     public function cancel(BillingInvoice $billing, ?string $reason = null): BillingInvoice
@@ -94,7 +102,7 @@ class BillingInvoiceService
         $billing->cancelled_by = auth()->id();
         $billing->cancelled_at = now();
         $billing->save();
-        return $billing->refresh()->load('lines', 'customer', 'salesInvoice');
+        return $billing->refresh()->load('lines', 'customer', 'paymentTerm', 'salesInvoice');
     }
 
     private function normalizeLines(array $lines): array

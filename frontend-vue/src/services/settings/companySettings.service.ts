@@ -4,6 +4,7 @@ import { unwrap } from '@/services/apiResponse'
 
 export type CompanyAccountingSettings = {
   base_currency: string | null
+  default_payment_term_id: number | string | null
   amount_precision: number | null
   quantity_precision: number | null
   rounding_method: 'half_up' | 'half_down' | 'bankers' | 'floor' | 'ceil' | null
@@ -39,7 +40,12 @@ export type CompanyModuleSettings = {
 
 export type CompanySettings = {
   accounting: CompanyAccountingSettings
+  transaction_defaults: CompanyTransactionDefaults
   modules: CompanyModuleSettings
+}
+
+export type CompanyTransactionDefaults = {
+  default_payment_term_id: number | string | null
 }
 
 export type CompanyWorkflowSettings = Pick<
@@ -65,4 +71,9 @@ export async function updateCompanyAccountingSettings(payload: CompanyAccounting
 export async function updateCompanyModuleSettings(payload: CompanyModuleSettings) {
   const response = await api.patch<ApiResponse<{ modules: CompanyModuleSettings }>>('/settings/company/modules', payload)
   return unwrap(response.data).modules
+}
+
+export async function updateCompanyTransactionDefaults(payload: CompanyTransactionDefaults) {
+  const response = await api.patch<ApiResponse<{ transaction_defaults: CompanyTransactionDefaults }>>('/settings/company/transaction-defaults', payload)
+  return unwrap(response.data).transaction_defaults
 }

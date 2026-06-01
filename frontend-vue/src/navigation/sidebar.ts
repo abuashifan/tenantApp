@@ -60,6 +60,7 @@ export const sidebarMenuGroups: SidebarMenuGroup[] = [
     items: [
       item('master-data', 'coa', 'Chart of Accounts', '/accounting/chart-of-accounts', '/master-data/chart-of-accounts', 'coa.view', true),
       item('master-data', 'contacts', 'Contacts', '/master-data/contacts', '/master-data/contacts', 'contacts.view'),
+      item('master-data', 'payment-terms', 'Payment Terms', '/master-data/payment-terms', '/master-data/payment-terms', 'payment_terms.view'),
       item('master-data', 'units', 'Units', '/master-data/units', '/master-data/units', 'units.view'),
       item('master-data', 'departments', 'Departments', '/master-data/departments', '/master-data/departments', 'departments.view'),
       item('master-data', 'projects', 'Projects', '/master-data/projects', '/master-data/projects', 'projects.view'),

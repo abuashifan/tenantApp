@@ -14,6 +14,7 @@ class CompanySettingService
             ['company_id' => $company->id],
             [
                 'base_currency' => 'IDR',
+                'default_payment_term_id' => null,
                 'amount_precision' => 2,
                 'quantity_precision' => 4,
                 'rounding_method' => 'half_up',
@@ -62,6 +63,9 @@ class CompanySettingService
 
         return [
             'accounting' => $accounting->toArray(),
+            'transaction_defaults' => [
+                'default_payment_term_id' => $accounting->default_payment_term_id,
+            ],
             'modules' => $modules->toArray(),
         ];
     }
@@ -94,6 +98,19 @@ class CompanySettingService
         $modules->save();
 
         return $modules->refresh();
+    }
+
+    public function updateTransactionDefaults(Company $company, array $data): array
+    {
+        $accounting = $this->getOrCreateAccountingSetting($company);
+        $accounting->fill([
+            'default_payment_term_id' => $data['default_payment_term_id'] ?? null,
+        ]);
+        $accounting->save();
+
+        return [
+            'default_payment_term_id' => $accounting->refresh()->default_payment_term_id,
+        ];
     }
 
     private function normalizeConsistency(

@@ -9,6 +9,7 @@ type Contact = {
   id: number
   contact_code?: string | null
   name: string
+  payment_term_id?: number | string | null
   is_customer?: boolean
   is_supplier?: boolean
   is_active?: boolean
@@ -29,6 +30,10 @@ const props = withDefaults(
   },
 )
 
+const emit = defineEmits<{
+  select: [contact: Contact]
+}>()
+
 const loading = ref(false)
 const contacts = ref<Contact[]>([])
 const error = ref<string | null>(null)
@@ -42,8 +47,14 @@ const options = computed(() =>
   filtered.value.map((c) => ({
     value: String(c.id),
     label: c.contact_code ? `${c.contact_code} - ${c.name}` : c.name,
+    contact: c,
   })),
 )
+
+function onSelect(option: unknown) {
+  const contact = (option as { contact?: Contact }).contact
+  if (contact) emit('select', contact)
+}
 
 onMounted(async () => {
   loading.value = true
@@ -70,5 +81,6 @@ onMounted(async () => {
     placeholder="Search partner…"
     :options="options"
     :compact="compact"
+    @select="onSelect"
   />
 </template>

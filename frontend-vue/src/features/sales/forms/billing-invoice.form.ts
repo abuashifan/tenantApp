@@ -16,6 +16,7 @@ const billingInvoicesService = createResourceService({
 export type BillingInvoiceValues = {
   billing_number?: string | null
   billing_date: string
+  payment_term_id?: string | number | null
   due_date?: string | null
   customer_id: string
   sales_invoice_id?: string | null
@@ -55,12 +56,15 @@ export const billingInvoiceFormConfig: TransactionFormConfig<BillingInvoiceValue
   validationSchema: z.object({
     customer_id: z.string().min(1),
     billing_date: z.string().min(1),
+    payment_term_id: z.union([z.string(), z.number()]).optional().nullable(),
+    due_date: z.string().optional().nullable(),
     lines: z.array(z.object({ description: z.string().min(1), amount: z.coerce.number().gt(0) })).min(1),
   }),
   makeEmptyValues() {
     return {
       billing_number: null,
       billing_date: '',
+      payment_term_id: null,
       due_date: null,
       customer_id: '',
       sales_invoice_id: null,
