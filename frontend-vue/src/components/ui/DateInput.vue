@@ -11,6 +11,7 @@ const props = withDefaults(
     disabled?: boolean
     readonly?: boolean
     placeholder?: string
+    compact?: boolean
   }>(),
   {
     modelValue: '',
@@ -19,6 +20,7 @@ const props = withDefaults(
     disabled: false,
     readonly: false,
     placeholder: undefined,
+    compact: false,
   },
 )
 
@@ -42,7 +44,10 @@ const model = computed({
     :disabled="disabled"
     :readonly="readonly"
     :placeholder="placeholder"
-    class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:bg-slate-50"
+    :class="[
+      'w-full border border-slate-200 bg-white text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb] disabled:bg-slate-50',
+      compact ? 'h-9 rounded-lg px-2.5 text-xs' : 'h-10 rounded-xl px-3 text-sm',
+    ]"
     @blur="$emit('blur', $event)"
   />
 </template>

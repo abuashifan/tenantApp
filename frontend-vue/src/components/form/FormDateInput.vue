@@ -10,10 +10,12 @@ const props = withDefaults(
     name: string
     label?: string
     disabled?: boolean
+    compact?: boolean
   }>(),
   {
     label: '',
     disabled: false,
+    compact: false,
   },
 )
 
@@ -31,6 +33,7 @@ const model = computed({
       v-model="model"
       :name="name"
       :disabled="disabled"
+      :compact="compact"
       @blur="handleBlur"
     />
   </FormField>

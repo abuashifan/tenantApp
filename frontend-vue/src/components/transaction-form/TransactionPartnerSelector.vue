@@ -20,10 +20,12 @@ const props = withDefaults(
     name: string
     label?: string
     readonly?: boolean
+    compact?: boolean
   }>(),
   {
     label: 'Partner',
     readonly: false,
+    compact: false,
   },
 )
 
@@ -67,5 +69,6 @@ onMounted(async () => {
     :error="error"
     placeholder="Search partner…"
     :options="options"
+    :compact="compact"
   />
 </template>

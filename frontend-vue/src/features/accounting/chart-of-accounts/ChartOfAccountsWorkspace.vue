@@ -279,7 +279,7 @@ function registerSaveHandlers() {
     registeredSaveHandlerIds.add(tabId)
   }
 
-  for (const tabId of [...registeredSaveHandlerIds]) {
+  for (const tabId of registeredSaveHandlerIds) {
     if (currentIds.has(tabId)) continue
     tabs.unregisterSecondarySaveHandler(tabId)
     registeredSaveHandlerIds.delete(tabId)

@@ -107,6 +107,12 @@ function dimensionDisplay(line: TransactionLine, key: 'department_id' | 'project
   return selected?.label ?? String(value)
 }
 
+function unitDisplay(line: TransactionLine) {
+  const unitName = typeof line.unit_name === 'string' ? line.unit_name.trim() : ''
+  const unitId = line.unit_id == null || line.unit_id === '' ? '' : String(line.unit_id)
+  return unitName || unitId || '-'
+}
+
 function selectProduct(index: number, option: unknown) {
   const product = option as NormalizedProduct
   const line = lineAt(index)
@@ -122,8 +128,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-    <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+  <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2">
       <div>
         <h2 class="text-sm font-semibold text-slate-900">Lines</h2>
         <p class="mt-0.5 text-xs leading-4 text-slate-500">Add/remove line items.</p>
@@ -135,43 +141,45 @@ onMounted(() => {
     </div>
 
     <div class="overflow-x-auto">
-      <table class="transaction-line-table min-w-[1220px] w-full table-fixed text-left text-xs">
+      <table class="transaction-line-table min-w-[1280px] w-full table-fixed text-left text-xs">
         <colgroup>
-          <col class="w-[180px]" />
-          <col class="w-[320px]" />
-          <col class="w-[64px]" />
-          <col class="w-[110px]" />
-          <col class="w-[152px]" />
-          <col class="w-[72px]" />
-          <col class="w-[150px]" />
-          <col class="w-[150px]" />
-          <col class="w-[120px]" />
+          <col class="w-[170px]" />
+          <col class="w-[280px]" />
+          <col class="w-[70px]" />
+          <col class="w-[86px]" />
+          <col class="w-[128px]" />
+          <col class="w-[140px]" />
+          <col class="w-[68px]" />
+          <col class="w-[132px]" />
+          <col class="w-[135px]" />
+          <col class="w-[135px]" />
           <col class="w-[42px]" />
         </colgroup>
-        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-medium text-slate-600">
+        <thead class="border-b border-slate-300 bg-slate-100 text-[11px] font-semibold uppercase text-slate-600">
           <tr>
-            <th class="h-8 px-2 py-1.5 font-medium">Product</th>
-            <th class="h-8 px-2 py-1.5 font-medium">Description</th>
-            <th class="h-8 px-2 py-1.5 text-right font-medium">Qty</th>
-            <th class="h-8 px-2 py-1.5 text-right font-medium">{{ priceLabel }}</th>
-            <th class="h-8 px-2 py-1.5 text-right font-medium">Discount</th>
-            <th class="h-8 px-2 py-1.5 text-right font-medium">Tax %</th>
-            <th class="h-8 px-2 py-1.5 font-medium">Department</th>
-            <th class="h-8 px-2 py-1.5 font-medium">Project</th>
-            <th class="h-8 px-2 py-1.5 text-right font-medium">Line Total</th>
+            <th class="h-7 px-2 py-1 font-semibold">Product</th>
+            <th class="h-7 px-2 py-1 font-semibold">Description</th>
+            <th class="h-7 px-2 py-1 text-right font-semibold">Qty</th>
+            <th class="h-7 px-2 py-1 font-semibold">Unit</th>
+            <th class="h-7 px-2 py-1 text-right font-semibold">{{ priceLabel }}</th>
+            <th class="h-7 px-2 py-1 text-right font-semibold">Discount</th>
+            <th class="h-7 px-2 py-1 text-right font-semibold">Tax %</th>
+            <th class="h-7 px-2 py-1 text-right font-semibold">Amount</th>
+            <th class="h-7 px-2 py-1 font-semibold">Department</th>
+            <th class="h-7 px-2 py-1 font-semibold">Project</th>
             <th class="h-8 px-2 py-1.5 text-center font-medium"></th>
           </tr>
         </thead>
 
         <tbody class="divide-y divide-slate-100">
           <tr v-if="!hasLines">
-            <td colspan="10" class="px-6 py-10 text-center text-sm font-semibold text-slate-500">
+            <td colspan="11" class="px-6 py-10 text-center text-sm font-semibold text-slate-500">
               No lines. Click "Add line".
             </td>
           </tr>
 
-          <tr v-for="(row, index) in fields" :key="row.key" class="h-10 align-middle">
-            <td class="px-2 py-1.5 align-middle">
+          <tr v-for="(row, index) in fields" :key="row.key" class="h-9 align-middle hover:bg-slate-50/60">
+            <td class="px-1.5 py-1 align-middle">
               <TransactionSearchableSelect
                 :name="`${name}[${index}].product_id`"
                 :options="productOptions"
@@ -194,7 +202,7 @@ onMounted(() => {
                 @select="selectProduct(index, $event)"
               />
             </td>
-            <td class="px-2 py-1.5 align-middle">
+            <td class="px-1.5 py-1 align-middle">
               <Field
                 :name="`${name}[${index}].description`"
                 as="input"
@@ -203,7 +211,7 @@ onMounted(() => {
                 class="h-8 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-xs font-normal leading-none text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb] disabled:bg-slate-50"
               />
             </td>
-            <td class="px-2 py-1.5 align-middle">
+            <td class="px-1.5 py-1 align-middle">
               <Field
                 :name="`${name}[${index}].quantity`"
                 as="input"
@@ -214,13 +222,18 @@ onMounted(() => {
                 class="h-8 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-right text-xs font-normal leading-none text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb] disabled:bg-slate-50"
               />
             </td>
-            <td class="px-2 py-1.5 align-middle">
+            <td class="px-1.5 py-1 align-middle">
+              <span class="flex h-8 w-full items-center rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs text-slate-600">
+                {{ unitDisplay(row.value as TransactionLine) }}
+              </span>
+            </td>
+            <td class="px-1.5 py-1 align-middle">
               <TransactionFormattedNumberInput
                 :name="`${name}[${index}].${priceField}`"
                 :disabled="readonly"
               />
             </td>
-            <td class="px-2 py-1.5 align-middle">
+            <td class="px-1.5 py-1 align-middle">
               <div class="flex min-w-0 gap-1.5">
                 <Field
                   :name="`${name}[${index}].discount_type`"
@@ -237,7 +250,7 @@ onMounted(() => {
                 />
               </div>
             </td>
-            <td class="px-2 py-1.5 align-middle">
+            <td class="px-1.5 py-1 align-middle">
               <Field
                 :name="`${name}[${index}].tax_rate`"
                 as="input"
@@ -248,7 +261,13 @@ onMounted(() => {
                 class="h-8 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-right text-xs font-normal leading-none text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb] disabled:bg-slate-50"
               />
             </td>
-            <td class="px-2 py-1.5 align-middle">
+            <td class="px-1.5 py-1 align-middle">
+              <TransactionFormattedNumberInput
+                :name="`${name}[${index}].line_total`"
+                :disabled="true"
+              />
+            </td>
+            <td class="px-1.5 py-1 align-middle">
               <TransactionSearchableSelect
                 :name="`${name}[${index}].department_id`"
                 :options="departmentOptions"
@@ -269,7 +288,7 @@ onMounted(() => {
                 @open="loadDimensions"
               />
             </td>
-            <td class="px-2 py-1.5 align-middle">
+            <td class="px-1.5 py-1 align-middle">
               <TransactionSearchableSelect
                 :name="`${name}[${index}].project_id`"
                 :options="projectOptions"
@@ -290,13 +309,7 @@ onMounted(() => {
                 @open="loadDimensions"
               />
             </td>
-            <td class="px-2 py-1.5 align-middle">
-              <TransactionFormattedNumberInput
-                :name="`${name}[${index}].line_total`"
-                :disabled="true"
-              />
-            </td>
-            <td class="px-2 py-1.5 text-center align-middle">
+            <td class="px-1.5 py-1 text-center align-middle">
               <IconButton variant="danger" size="sm" type="button" :disabled="readonly" @click="remove(index)">
                 <Minus class="h-4 w-4" />
               </IconButton>

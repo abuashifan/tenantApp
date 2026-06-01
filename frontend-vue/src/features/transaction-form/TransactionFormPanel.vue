@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { FileText, History, Save, Search } from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
 import VoidTransactionDialog from '@/components/dialog/VoidTransactionDialog.vue'
@@ -13,7 +14,6 @@ import TransactionFormShell from '@/components/transaction-form/TransactionFormS
 import TransactionLineTable from '@/components/transaction-form/TransactionLineTable.vue'
 import TransactionNotesPanel from '@/components/transaction-form/TransactionNotesPanel.vue'
 import TransactionPartnerSelector from '@/components/transaction-form/TransactionPartnerSelector.vue'
-import TransactionSourceInfoCard from '@/components/transaction-form/TransactionSourceInfoCard.vue'
 import TransactionTotalsPanel from '@/components/transaction-form/TransactionTotalsPanel.vue'
 import TransactionValidationSummary from '@/components/transaction-form/TransactionValidationSummary.vue'
 
@@ -51,6 +51,7 @@ const conversionNotice = ref<string | null>(null)
 const conversionError = ref<string | null>(null)
 const sourcePickerOpen = ref(false)
 const activeSourceKey = ref<string | null>(null)
+const activeFormTab = ref<'details' | 'more'>('details')
 const promptedSourceKeys = ref(new Set<string>())
 useTransactionTotals(tx.form, { priceField: props.config.lineProduct?.priceField })
 
@@ -66,9 +67,19 @@ const needsCashBankAndAmount =
 const supportsInternalNotes = computed(() => Object.prototype.hasOwnProperty.call(tx.form.values, 'internal_notes'))
 const supportsValidUntil = computed(() => Object.prototype.hasOwnProperty.call(tx.form.values, 'valid_until'))
 const formTitle = computed(() => props.tab?.entityNumber ?? props.config.title)
+const documentNumber = computed(() => {
+  const value = tx.form.values[props.config.numberField] ?? props.tab?.entityNumber
+  const text = value == null ? '' : String(value).trim()
+  return text || (mode === 'create' ? 'Generated on Save' : '-')
+})
+const documentDate = computed(() => {
+  const value = tx.form.values[props.config.dateField]
+  return value == null || value === '' ? '-' : String(value).slice(0, 10)
+})
 const displayedStatus = computed(() => tx.status.value || 'Draft')
 const sourceType = computed(() => String(tx.form.values.source_type ?? '') || null)
 const sourceNumber = computed(() => String(tx.form.values.source_number ?? '') || null)
+const currencyCode = computed(() => String(tx.form.values.currency_code ?? 'IDR'))
 const sourceOptions = computed(() => props.config.sourceOptions ?? [])
 const activeSourceOption = computed(() => sourceOptions.value.find((option) => option.key === activeSourceKey.value) ?? sourceOptions.value[0] ?? null)
 const activeSourceType = computed(() => activeSourceOption.value?.sourceType ?? activeSourceOption.value?.key.replace(/-/g, '_') ?? '')
@@ -116,6 +127,20 @@ const visibleConversions = computed(() =>
     return conversion.whenStatusIn.includes((tx.status.value ?? '').toLowerCase())
   }),
 )
+
+const formTabs = [
+  { key: 'details', label: 'Rincian' },
+  { key: 'more', label: 'Informasi Lainnya' },
+] as const
+
+function sourceLabel(type?: string | null) {
+  if (!type) return '-'
+  return type
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
 
 async function onSubmit() {
   if (await tx.save()) emit('changed')
@@ -217,14 +242,43 @@ function applySourceDocument(document: SourceDocument) {
 </script>
 
 <template>
-  <form class="space-y-4" @submit.prevent="onSubmit">
+  <form class="space-y-3" @submit.prevent="onSubmit">
     <TransactionFormShell :loading="tx.loading.value" :error="tx.error.value" :readonly="tx.isReadonly.value" @close="emit('close')">
       <template #header>
-        <TransactionFormHeader :eyebrow="config.moduleKey" :title="formTitle" :subtitle="mode === 'create' ? `Create ${config.title}` : config.title">
-          <template #aside>
-            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Form Mode</span>
-          </template>
-        </TransactionFormHeader>
+        <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_520px]">
+          <TransactionFormHeader :eyebrow="config.moduleKey" :title="config.title" :subtitle="mode === 'create' ? `Create ${config.title}` : formTitle">
+            <div v-if="sourceType || sourceNumber" class="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-600">
+                Source: {{ sourceLabel(sourceType) }}
+              </span>
+              <span v-if="sourceNumber" class="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-bold text-slate-800">
+                {{ sourceNumber }}
+              </span>
+            </div>
+          </TransactionFormHeader>
+
+          <div class="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-2 sm:grid-cols-4">
+            <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+              <div class="flex items-center gap-1.5 text-[11px] font-bold uppercase text-slate-500">
+                <FileText class="h-3.5 w-3.5" />
+                Number
+              </div>
+              <p class="mt-1 truncate text-sm font-black text-slate-950" :title="documentNumber">{{ documentNumber }}</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+              <p class="text-[11px] font-bold uppercase text-slate-500">Date</p>
+              <p class="mt-1 truncate text-sm font-bold tabular-nums text-slate-900">{{ documentDate }}</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+              <p class="text-[11px] font-bold uppercase text-slate-500">Status</p>
+              <p class="mt-1 truncate text-sm font-bold capitalize text-slate-900">{{ displayedStatus }}</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+              <p class="text-[11px] font-bold uppercase text-slate-500">Mode</p>
+              <p class="mt-1 truncate text-sm font-bold capitalize text-slate-900">{{ mode }}</p>
+            </div>
+          </div>
+        </div>
       </template>
 
       <template #validation>
@@ -234,69 +288,111 @@ function applySourceDocument(document: SourceDocument) {
         <p v-if="conversionNotice" class="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ conversionNotice }}</p>
       </template>
 
-      <TransactionSourceInfoCard :source-type="sourceType" :source-number="sourceNumber" />
+      <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 px-3 pt-2">
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="tabItem in formTabs"
+              :key="tabItem.key"
+              type="button"
+              class="rounded-t-lg border border-b-0 px-3 py-2 text-xs font-bold transition"
+              :class="activeFormTab === tabItem.key ? 'border-slate-200 bg-white text-slate-950' : 'border-transparent text-slate-500 hover:text-slate-800'"
+              @click="activeFormTab = tabItem.key"
+            >
+              {{ tabItem.label }}
+            </button>
+          </div>
 
-      <div v-if="sourceOptions.length && !tx.isReadonly.value" class="flex flex-wrap gap-2">
-        <BaseButton
-          v-for="option in sourceOptions"
-          :key="option.key"
-          variant="secondary"
-          size="sm"
-          type="button"
-          @click="openSourcePicker(option.key)"
-        >
-          Ambil {{ option.label }}
+          <div v-if="sourceOptions.length && !tx.isReadonly.value" class="flex flex-wrap gap-1.5 pb-2">
+            <BaseButton
+              v-for="option in sourceOptions"
+              :key="option.key"
+              variant="secondary"
+              size="sm"
+              type="button"
+              @click="openSourcePicker(option.key)"
+            >
+              Ambil {{ option.label }}
+            </BaseButton>
+          </div>
+        </div>
+
+        <div v-show="activeFormTab === 'details'" class="space-y-3 p-3">
+          <div class="grid gap-2 lg:grid-cols-4">
+            <TransactionPartnerSelector
+              v-if="config.partnerType !== 'none'"
+              :partner-type="config.partnerType === 'vendor' ? 'vendor' : 'customer'"
+              :name="partnerName"
+              :readonly="tx.isReadonly.value"
+              compact
+            />
+            <TransactionDateFields
+              :date-name="config.dateField"
+              :due-date-name="supportsValidUntil ? 'valid_until' : undefined"
+              due-date-label="Valid Until"
+              :readonly="tx.isReadonly.value"
+              compact
+            />
+            <label class="block space-y-1.5">
+              <span class="text-xs font-bold text-slate-500">Status</span>
+              <span class="flex h-9 w-full items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs capitalize text-slate-900">
+                {{ displayedStatus }}
+              </span>
+            </label>
+          </div>
+
+          <TransactionFormSection v-if="needsCashBankAndAmount" title="Payment">
+            <TransactionCashBankAmountFields :readonly="tx.isReadonly.value" />
+          </TransactionFormSection>
+
+          <TransactionLineTable
+            v-if="config.hasLines"
+            name="lines"
+            :readonly="tx.isReadonly.value"
+            :product-config="config.lineProduct"
+          />
+
+          <div v-if="config.hasLines" class="grid justify-items-end">
+            <TransactionFormSection title="Totals" class="w-full max-w-md">
+              <TransactionTotalsPanel :currency="currencyCode" />
+            </TransactionFormSection>
+          </div>
+        </div>
+
+        <div v-show="activeFormTab === 'more'" class="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <TransactionFormSection title="Notes">
+            <TransactionNotesPanel :readonly="tx.isReadonly.value" :show-internal-notes="supportsInternalNotes" />
+          </TransactionFormSection>
+
+          <TransactionFormSection title="Source">
+            <div class="space-y-2 text-sm">
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-slate-500">Source Type</span>
+                <span class="text-right font-bold text-slate-900">{{ sourceLabel(sourceType) }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-slate-500">Source Number</span>
+                <span class="text-right font-bold text-slate-900">{{ sourceNumber || '-' }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-slate-500">Currency</span>
+                <span class="text-right font-bold text-slate-900">{{ currencyCode }}</span>
+              </div>
+            </div>
+          </TransactionFormSection>
+        </div>
+      </div>
+
+      <template #actions-left>
+        <BaseButton variant="secondary" size="sm" type="button" disabled>
+          <Search class="h-4 w-4" />
+          Preview
         </BaseButton>
-      </div>
-
-      <div class="grid gap-3 lg:grid-cols-4">
-        <TransactionPartnerSelector
-          v-if="config.partnerType !== 'none'"
-          :partner-type="config.partnerType === 'vendor' ? 'vendor' : 'customer'"
-          :name="partnerName"
-          :readonly="tx.isReadonly.value"
-        />
-        <TransactionDateFields
-          :date-name="config.dateField"
-          :due-date-name="supportsValidUntil ? 'valid_until' : undefined"
-          due-date-label="Valid Until"
-          :readonly="tx.isReadonly.value"
-        />
-        <label class="block space-y-1.5">
-          <span class="text-xs font-bold text-slate-500">Status</span>
-          <span class="flex h-10 w-full items-center rounded-xl border border-slate-200 bg-white px-3 text-sm capitalize text-slate-900">
-            {{ displayedStatus }}
-          </span>
-        </label>
-      </div>
-
-      <TransactionFormSection v-if="needsCashBankAndAmount" title="Payment">
-        <TransactionCashBankAmountFields :readonly="tx.isReadonly.value" />
-      </TransactionFormSection>
-
-      <TransactionLineTable
-        v-if="config.hasLines"
-        name="lines"
-        :readonly="tx.isReadonly.value"
-        :product-config="config.lineProduct"
-      />
-
-      <div
-        v-if="config.hasLines"
-        class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]"
-      >
-        <TransactionFormSection title="Notes">
-          <TransactionNotesPanel :readonly="tx.isReadonly.value" :show-internal-notes="supportsInternalNotes" />
-        </TransactionFormSection>
-
-        <TransactionFormSection title="Totals">
-          <TransactionTotalsPanel />
-        </TransactionFormSection>
-      </div>
-
-      <TransactionFormSection v-else title="Notes">
-        <TransactionNotesPanel :readonly="tx.isReadonly.value" :show-internal-notes="supportsInternalNotes" />
-      </TransactionFormSection>
+        <BaseButton variant="secondary" size="sm" type="button" disabled>
+          <History class="h-4 w-4" />
+          Audit
+        </BaseButton>
+      </template>
 
       <template #actions-right>
         <TransactionActionBar>
@@ -304,7 +400,7 @@ function applySourceDocument(document: SourceDocument) {
             v-for="conversion in visibleConversions"
             :key="conversion.key"
             variant="secondary"
-            size="md"
+            size="sm"
             type="button"
             :loading="conversionLoading"
             @click="runConversion(conversion)"
@@ -315,7 +411,7 @@ function applySourceDocument(document: SourceDocument) {
             v-for="action in visibleLifecycleActions"
             :key="action.key"
             :variant="action.variant ?? 'secondary'"
-            size="md"
+            size="sm"
             type="button"
             :loading="actions.actionLoading.value"
             @click="runLifecycleAction(action)"
@@ -323,7 +419,10 @@ function applySourceDocument(document: SourceDocument) {
             {{ action.label }}
           </BaseButton>
         </TransactionActionBar>
-        <BaseButton v-if="!tx.isReadonly.value" variant="primary" size="md" type="submit" :loading="tx.loading.value">Save</BaseButton>
+        <BaseButton v-if="!tx.isReadonly.value" variant="primary" size="sm" type="submit" :loading="tx.loading.value">
+          <Save class="h-4 w-4" />
+          Save
+        </BaseButton>
       </template>
     </TransactionFormShell>
     <VoidTransactionDialog
