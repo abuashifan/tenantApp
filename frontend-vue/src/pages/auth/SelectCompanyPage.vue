@@ -39,6 +39,10 @@ const filtered = computed(() =>
     c.name.toLowerCase().includes(query.value.trim().toLowerCase()),
   ),
 )
+const selectedCompany = computed(
+  () => companyStore.companies.find((company) => String(company.id) === String(selected.value)) ?? null,
+)
+const userInitial = computed(() => (authStore.user?.name?.trim().charAt(0) || 'U').toUpperCase())
 
 function errorText(e: unknown, fallback: string) {
   const error = normalizeApiError(e)
@@ -105,141 +109,191 @@ async function handleContinue() {
     selecting.value = false
   }
 }
+
+function handleCardDoubleClick(companyId: string | number) {
+  if (String(selected.value) === String(companyId)) {
+    void handleContinue()
+    return
+  }
+
+  selected.value = companyId
+}
 </script>
 
 <template>
   <main
-    class="min-h-screen bg-[radial-gradient(circle_at_top_left,#f7fbe9,transparent_34%),linear-gradient(135deg,#f8fafc_0%,#edf7f5_52%,#e9f6fb_100%)] p-5 text-slate-900 sm:p-8"
+    class="min-h-[100dvh] overflow-y-auto bg-[radial-gradient(circle_at_top_left,#f7fbe9,transparent_30%),linear-gradient(135deg,#f8fafc_0%,#edf7f5_52%,#e9f6fb_100%)] px-4 py-4 pb-24 text-slate-900 sm:px-6 lg:px-8 lg:py-4 lg:pb-6"
   >
-    <div class="mx-auto max-w-6xl">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-4">
       <header
-        class="mb-8 flex flex-col gap-5 rounded-[2rem] border border-white/80 bg-white/80 p-5 shadow-xl shadow-slate-900/5 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-6"
+        class="flex flex-col gap-4 rounded-2xl border border-white/80 bg-white/90 p-4 shadow-lg shadow-slate-900/5 backdrop-blur sm:flex-row sm:items-center sm:justify-between lg:p-4"
       >
-        <div class="flex items-center gap-4">
-          <div class="grid h-14 w-14 place-items-center rounded-2xl bg-[#06131e] text-[#b4db24]">
-            <ArrowLeftRight class="h-7 w-7" />
+        <div class="flex min-w-0 items-center gap-3">
+          <div class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#06131e] text-[#b4db24]">
+            <ArrowLeftRight class="h-5 w-5" />
           </div>
-          <div>
-            <p class="text-sm font-semibold text-[#1d81af]">Phase 1 · Company Access</p>
-            <h1 class="text-2xl font-bold tracking-tight text-slate-950">Pilih perusahaan aktif</h1>
-            <p class="mt-1 text-sm text-slate-500">
-              Satu user bisa memiliki akses ke banyak company.
-            </p>
+          <div class="min-w-0">
+            <h1 class="text-lg font-bold tracking-tight text-slate-950 sm:text-xl">Pilih Perusahaan</h1>
+            <p class="truncate text-sm text-slate-500">Pilih company aktif untuk mulai bekerja</p>
           </div>
         </div>
 
-        <BaseButton variant="secondary" size="lg" :loading="loggingOut" @click="handleLogout">
-          <LogOut class="h-4 w-4" />
-          Keluar
-        </BaseButton>
+        <div class="flex items-center justify-between gap-3 sm:justify-end">
+          <div class="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+            <div
+              class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#f7fbe9] text-xs font-black text-[#48580e] ring-1 ring-[#e1f1a7]"
+            >
+              {{ userInitial }}
+            </div>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-slate-900">{{ authStore.user?.name ?? 'User' }}</p>
+              <p class="truncate text-xs text-slate-500">{{ authStore.user?.email ?? 'Authenticated user' }}</p>
+            </div>
+          </div>
+
+          <BaseButton variant="secondary" size="md" :loading="loggingOut" @click="handleLogout">
+            <LogOut class="h-4 w-4" />
+            Keluar
+          </BaseButton>
+        </div>
       </header>
 
-      <div class="grid gap-6">
-        <section
-          class="rounded-[2rem] border border-white/80 bg-white/82 p-5 shadow-xl shadow-slate-900/5 backdrop-blur sm:p-6"
-        >
-          <div class="mb-5 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+      <section class="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-lg shadow-slate-900/5 backdrop-blur">
+        <div class="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+          <div class="min-w-0">
             <SearchInput v-model="query" placeholder="Cari perusahaan..." />
-            <ToneBadge tone="lime">
-              <Star class="mr-1 h-3.5 w-3.5" />
-              {{ filtered.length }} company
-            </ToneBadge>
           </div>
-
-          <p
-            v-if="errorMessage"
-            class="mb-4 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700"
+          <ToneBadge tone="lime">
+            <Star class="mr-1 h-3.5 w-3.5" />
+            {{ filtered.length }} company
+          </ToneBadge>
+          <BaseButton
+            class="hidden lg:inline-flex lg:min-w-36"
+            size="md"
+            :disabled="selected == null"
+            :loading="selecting"
+            @click="handleContinue"
           >
-            {{ errorMessage }}
-          </p>
+            Lanjutkan
+            <ChevronRight class="h-4 w-4" />
+          </BaseButton>
+        </div>
 
-          <div
-            v-if="loading"
-            class="rounded-[1.75rem] border border-slate-200 bg-white p-5 text-sm text-slate-500"
-          >
-            Mengambil daftar company...
-          </div>
+        <p
+          v-if="errorMessage"
+          class="mt-3 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700"
+        >
+          {{ errorMessage }}
+        </p>
+      </section>
 
-          <div
-            v-else-if="filtered.length === 0"
-            class="rounded-[1.75rem] border border-slate-200 bg-white p-5 text-sm text-slate-500"
-          >
-            Tidak ada company yang cocok.
-          </div>
+      <section
+        v-if="loading"
+        class="rounded-2xl border border-white/80 bg-white/90 p-5 text-sm text-slate-500 shadow-lg shadow-slate-900/5 backdrop-blur"
+      >
+        Mengambil daftar company...
+      </section>
 
-          <div v-else class="space-y-4">
-            <button
-              v-for="company in filtered"
-              :key="company.id"
-              type="button"
-              class="group w-full rounded-[1.75rem] border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-900/8"
+      <section
+        v-else-if="filtered.length === 0"
+        class="rounded-2xl border border-white/80 bg-white/90 p-5 text-sm text-slate-500 shadow-lg shadow-slate-900/5 backdrop-blur"
+      >
+        Tidak ada company yang cocok.
+      </section>
+
+      <section
+        v-else
+        class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] lg:gap-4"
+      >
+        <article
+          v-for="company in filtered"
+          :key="company.id"
+          class="group flex min-h-36 cursor-pointer flex-col justify-between rounded-2xl border bg-white/95 p-4 text-left shadow-sm outline-none transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/10 lg:min-h-32"
+          :class="
+            String(selected) === String(company.id)
+              ? 'border-[#b4db24] bg-[#fbfdf3] ring-2 ring-[#e1f1a7]'
+              : 'border-slate-200'
+          "
+          @click="selected = company.id"
+          @dblclick="handleCardDoubleClick(company.id)"
+        >
+          <div class="flex items-start gap-3">
+            <div
+              class="grid h-12 w-12 shrink-0 place-items-center rounded-xl lg:h-11 lg:w-11"
               :class="
-                selected === company.id
-                  ? 'border-[#b4db24] ring-4 ring-[#f0f8d3]'
-                  : 'border-slate-200'
+                String(selected) === String(company.id)
+                  ? 'bg-[#06131e] text-[#b4db24]'
+                  : 'bg-slate-100 text-slate-500 group-hover:bg-[#e9f6fb] group-hover:text-[#24a1db]'
               "
-              @click="selected = company.id"
             >
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex gap-4">
-                  <div
-                    class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl"
-                    :class="
-                      selected === company.id
-                        ? 'bg-[#06131e] text-[#b4db24]'
-                        : 'bg-slate-100 text-slate-500 group-hover:bg-[#e9f6fb] group-hover:text-[#24a1db]'
-                    "
-                  >
-                    <Building2 class="h-7 w-7" />
-                  </div>
-                  <div>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <h3 class="text-base font-bold text-slate-950">{{ company.name }}</h3>
-                      <ToneBadge v-if="selected === company.id" tone="lime">
-                        <Check class="mr-1 h-3.5 w-3.5" />
-                        Dipilih
-                      </ToneBadge>
-                    </div>
-                    <div class="mt-2 flex flex-wrap gap-2">
-                      <ToneBadge tone="green">{{ company.user_role ?? 'Member' }}</ToneBadge>
-                      <ToneBadge tone="blue">{{
-                        company.tenant_database?.status ?? company.status ?? 'active'
-                      }}</ToneBadge>
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight
-                  class="mt-4 h-5 w-5 text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-500"
-                  :class="selected === company.id ? 'text-[#b4db24]' : ''"
-                />
+              <Building2 class="h-6 w-6 lg:h-5 lg:w-5" />
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-2">
+                <h2 class="min-w-0 text-sm font-black leading-5 text-slate-950">
+                  {{ company.name }}
+                </h2>
+                <span
+                  v-if="String(selected) === String(company.id)"
+                  class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#b4db24] text-[#06131e]"
+                >
+                  <Check class="h-3.5 w-3.5" />
+                </span>
               </div>
 
-              <div
-                class="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-xs text-slate-500"
-              >
-                <Users class="h-4 w-4 text-slate-400" />
-                Company code: {{ company.code ?? '-' }}
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <ToneBadge tone="green">{{ company.user_role ?? 'Member' }}</ToneBadge>
+                <ToneBadge tone="blue">
+                  {{ company.tenant_database?.status ?? company.status ?? 'active' }}
+                </ToneBadge>
               </div>
-            </button>
+            </div>
           </div>
 
-          <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p class="text-sm text-slate-500">
-              Company terpilih akan menjadi konteks tenant untuk dashboard dan seluruh modul ERP.
-            </p>
+          <div class="mt-3 flex items-end justify-between gap-3 border-t border-slate-100 pt-3">
+            <div class="min-w-0 text-xs text-slate-500">
+              <div class="flex min-w-0 items-center gap-1.5">
+                <Users class="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                <span class="truncate">Code: {{ company.code ?? '-' }}</span>
+              </div>
+            </div>
+
             <BaseButton
-              class="sm:min-w-44"
-              size="lg"
-              :disabled="selected == null"
+              v-if="String(selected) === String(company.id)"
+              size="sm"
               :loading="selecting"
-              @click="handleContinue"
+              @click.stop="handleContinue"
             >
-              Lanjutkan
-              <ChevronRight class="h-4 w-4" />
+              Masuk
+              <ChevronRight class="h-3.5 w-3.5" />
             </BaseButton>
           </div>
-        </section>
-      </div>
+        </article>
+      </section>
+
+      <footer
+        class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-2xl shadow-slate-900/15 backdrop-blur lg:hidden"
+      >
+        <div class="mx-auto flex max-w-7xl items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="truncate text-xs font-semibold text-slate-500">Company terpilih</p>
+            <p class="truncate text-sm font-black text-slate-950">
+              {{ selectedCompany?.name ?? 'Belum dipilih' }}
+            </p>
+          </div>
+          <BaseButton
+            class="shrink-0"
+            size="md"
+            :disabled="selected == null"
+            :loading="selecting"
+            @click="handleContinue"
+          >
+            Lanjutkan
+            <ChevronRight class="h-4 w-4" />
+          </BaseButton>
+        </div>
+      </footer>
     </div>
   </main>
 </template>
