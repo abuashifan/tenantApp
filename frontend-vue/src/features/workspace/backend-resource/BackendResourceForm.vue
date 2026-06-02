@@ -559,7 +559,7 @@ function saveAndCloseFromDialog() {
   <FormPageShell>
     <FormLoadingState v-if="loading" />
     <FormErrorState v-else-if="error" :message="error" @retry="loadEntity" />
-    <form v-else class="space-y-5" @submit.prevent="save(false)">
+    <form v-else class="min-w-0 space-y-5" @submit.prevent="save(false)">
       <FormHeader :title="title" :subtitle="`Document ${numberText}`">
         <template #meta>
           <div v-if="!isProductDetail" class="mt-3 flex flex-wrap items-center gap-2">
@@ -584,7 +584,7 @@ function saveAndCloseFromDialog() {
         Auto post aktif: transaksi akan langsung diposting setelah disimpan.
       </div>
 
-      <nav v-if="isProductDetail" class="flex items-end gap-1 border-b border-slate-200 pt-1">
+      <nav v-if="isProductDetail" class="flex min-w-0 items-end gap-1 overflow-x-auto border-b border-slate-200 pt-1">
         <button
           type="button"
           class="h-11 rounded-t-xl border px-5 text-sm font-semibold transition"
@@ -605,7 +605,7 @@ function saveAndCloseFromDialog() {
         </button>
       </nav>
 
-      <div v-show="!isProductDetail || internalTab === 'detail'" class="space-y-5">
+      <div v-show="!isProductDetail || internalTab === 'detail'" class="min-w-0 space-y-5">
         <FormSection
           v-for="section in config.sections"
           :key="section.title"

@@ -49,11 +49,11 @@ watch(
         @click="closeOnOverlay ? emit('close') : undefined"
       />
 
-      <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="workspace-scrollbar absolute inset-0 flex min-h-0 items-center justify-center overflow-y-auto p-4">
         <div
           ref="dialogRef"
           tabindex="-1"
-          :class="cn('w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl')"
+          :class="cn('max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl')"
         >
           <div v-if="title" class="mb-4">
             <h2 class="text-base font-extrabold text-slate-950">{{ title }}</h2>

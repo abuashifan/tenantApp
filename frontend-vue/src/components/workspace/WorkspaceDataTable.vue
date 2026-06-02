@@ -44,6 +44,8 @@ defineEmits<{
     :sorting="sorting"
     :manual-sorting="remoteSort"
     :clear-selection-on-page-change="clearSelectionOnPageChange ?? remotePagination"
+    compact
+    fill-available
     show-page-size
     @update:selected-ids="$emit('update:selectedIds', $event)"
     @row-click="$emit('rowClick', $event)"

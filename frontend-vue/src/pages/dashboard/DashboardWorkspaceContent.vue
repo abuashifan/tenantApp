@@ -84,9 +84,9 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="space-y-4">
+  <section class="min-w-0 space-y-4">
     <div class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <p class="text-sm font-semibold text-[#1d81af]">Dashboard</p>
           <h1 class="mt-2 text-2xl font-black text-slate-950">{{ activeCompanyName }}</h1>
@@ -108,7 +108,7 @@ onMounted(load)
         {{ fiscalWarning }}
       </p>
 
-      <div class="grid gap-4 lg:grid-cols-[minmax(280px,1fr)_minmax(420px,2fr)]">
+      <div class="grid min-w-0 gap-4 xl:grid-cols-[minmax(280px,1fr)_minmax(420px,2fr)]">
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p class="text-xs font-black uppercase text-slate-400">Fiscal Status</p>
           <div class="mt-4 flex items-center justify-between gap-3">

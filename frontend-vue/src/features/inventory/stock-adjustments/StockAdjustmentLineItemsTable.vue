@@ -112,8 +112,8 @@ function onAdjustmentTypeChange(rowIndex: number, event: Event) {
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-    <div class="overflow-x-auto">
+  <div class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div class="workspace-table-scroll min-w-0 overflow-x-auto">
       <table class="min-w-[1180px] divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-black uppercase text-slate-500">
           <tr>
@@ -127,7 +127,7 @@ function onAdjustmentTypeChange(rowIndex: number, event: Event) {
             <th class="w-52 px-3 py-2">Reason</th>
             <th class="w-48 px-3 py-2">Department</th>
             <th class="w-48 px-3 py-2">Project</th>
-            <th class="w-20 px-3 py-2 text-right">Action</th>
+            <th class="sticky right-0 w-20 bg-slate-50 px-3 py-2 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]">Action</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
@@ -184,7 +184,7 @@ function onAdjustmentTypeChange(rowIndex: number, event: Event) {
                 step="0.0001"
               />
             </td>
-            <td class="px-3 py-2 text-right align-top">
+            <td class="sticky right-0 bg-white px-3 py-2 text-right align-top shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]">
               <span class="inline-flex h-8 items-center justify-end font-semibold tabular-nums text-slate-700">
                 {{ formatQuantity(currentStock(row)) }}
               </span>

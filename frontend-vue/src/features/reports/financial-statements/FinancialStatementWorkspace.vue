@@ -185,15 +185,15 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
+  <div class="workspace-card tablet-workspace-card tablet-workspace-card-gap flex min-w-0 flex-col gap-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
     <h1 class="border-b border-slate-100 pb-4 text-xl font-black text-slate-950">{{ titles[kind] }}</h1>
     <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
-        <label v-if="kind !== 'balance-sheet'" class="block space-y-1.5 lg:w-[180px]">
+      <div class="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-end">
+        <label v-if="kind !== 'balance-sheet'" class="block space-y-1.5 xl:w-[180px]">
           <span class="text-xs font-bold text-slate-500">Start Date</span>
           <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
         </label>
-        <label class="block space-y-1.5 lg:w-[180px]">
+        <label class="block space-y-1.5 xl:w-[180px]">
           <span class="text-xs font-bold text-slate-500">{{ kind === 'balance-sheet' ? 'As Of Date' : 'End Date' }}</span>
           <input v-model="endDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
         </label>
@@ -204,7 +204,7 @@ onMounted(load)
     <p v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{{ error }}</p>
     <p v-if="imbalanceWarning" class="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-700">{{ imbalanceWarning }}</p>
 
-    <div v-if="summaryCards.length" class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div v-if="summaryCards.length" class="grid min-w-0 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 xl:grid-cols-4">
       <div v-for="[label, value] in summaryCards" :key="label">
         <p class="text-xs font-bold text-slate-500">{{ label }}</p>
         <p class="mt-1 font-extrabold tabular-nums text-slate-900">{{ formatMoney(value as number) }}</p>

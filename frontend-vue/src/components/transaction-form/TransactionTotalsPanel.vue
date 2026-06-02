@@ -25,22 +25,22 @@ function money(value: number) {
 </script>
 
 <template>
-  <div class="grid gap-1 text-sm">
-    <div class="flex items-center justify-between gap-6 py-0.5">
-      <span class="font-normal text-slate-600">Subtotal</span>
-      <span class="text-right font-normal tabular-nums text-slate-700">{{ money(subtotal) }}</span>
+  <div class="grid min-w-0 flex-none grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-white text-sm shadow-sm md:h-11 md:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,1.25fr)]">
+    <div class="flex min-w-0 items-center justify-between gap-2 border-r border-b border-slate-200 px-3 py-2 md:border-b-0">
+      <span class="shrink-0 whitespace-nowrap text-xs font-semibold text-slate-500">Subtotal</span>
+      <span class="min-w-0 truncate text-right font-bold tabular-nums text-slate-800" :title="money(subtotal)">{{ money(subtotal) }}</span>
     </div>
-    <div class="flex items-center justify-between gap-6 py-0.5">
-      <span class="font-normal text-slate-600">Discount</span>
-      <span class="text-right font-normal tabular-nums text-slate-700">{{ money(discount) }}</span>
+    <div class="flex min-w-0 items-center justify-between gap-2 border-b border-slate-200 px-3 py-2 md:border-r md:border-b-0">
+      <span class="shrink-0 whitespace-nowrap text-xs font-semibold text-slate-500">Disc.</span>
+      <span class="min-w-0 truncate text-right font-bold tabular-nums text-slate-800" :title="money(discount)">{{ money(discount) }}</span>
     </div>
-    <div class="flex items-center justify-between gap-6 py-0.5">
-      <span class="font-normal text-slate-600">Tax</span>
-      <span class="text-right font-normal tabular-nums text-slate-700">{{ money(tax) }}</span>
+    <div class="flex min-w-0 items-center justify-between gap-2 border-r border-slate-200 px-3 py-2">
+      <span class="shrink-0 whitespace-nowrap text-xs font-semibold text-slate-500">Tax</span>
+      <span class="min-w-0 truncate text-right font-bold tabular-nums text-slate-800" :title="money(tax)">{{ money(tax) }}</span>
     </div>
-    <div class="mt-1 flex items-center justify-between gap-6 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-      <span class="text-sm font-semibold text-slate-800">Grand Total</span>
-      <span class="text-right text-lg font-black tabular-nums text-slate-950">{{ money(total) }}</span>
+    <div class="flex min-w-0 items-center justify-between gap-2 bg-slate-50 px-3 py-2">
+      <span class="shrink-0 whitespace-nowrap text-xs font-black uppercase text-slate-700">Total</span>
+      <span class="min-w-0 truncate text-right text-base font-black tabular-nums text-slate-950" :title="money(total)">{{ money(total) }}</span>
     </div>
   </div>
 </template>

@@ -16,7 +16,7 @@ const activeKey = computed(() => `tenant:${tabs.tenantStateVersion}:primary:${ta
 </script>
 
 <template>
-  <div class="h-full min-h-0">
+  <div class="h-full min-h-0 min-w-0">
     <KeepAlive>
       <component :is="activeComponent" :key="activeKey" />
     </KeepAlive>

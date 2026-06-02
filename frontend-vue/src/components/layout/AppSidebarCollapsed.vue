@@ -20,7 +20,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <aside class="hidden h-screen w-20 shrink-0 flex-col items-center bg-[#06131e] py-4 text-white shadow-2xl shadow-slate-950/30 lg:flex">
+  <aside class="app-viewport hidden w-20 shrink-0 flex-col items-center bg-[#06131e] py-4 text-white shadow-2xl shadow-slate-950/30 lg:flex">
     <div class="grid h-12 w-12 place-items-center rounded-2xl bg-[#b4db24] text-[#06131e]">
       <Building2 class="h-6 w-6" />
     </div>

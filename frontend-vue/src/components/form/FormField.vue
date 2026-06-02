@@ -18,9 +18,9 @@ withDefaults(
 </script>
 
 <template>
-  <label :class="cn('block space-y-1.5')">
+  <label :class="cn('block min-w-0 space-y-1')">
     <div v-if="label" class="flex items-center justify-between gap-3">
-      <span class="text-xs font-bold text-slate-500">
+      <span class="truncate text-[11px] font-bold leading-4 text-slate-500">
         {{ label }}
         <span v-if="required" class="text-rose-600">*</span>
       </span>

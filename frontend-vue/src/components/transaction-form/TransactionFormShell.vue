@@ -13,7 +13,7 @@ defineEmits<{
 </script>
 
 <template>
-  <div class="space-y-3">
+  <div class="flex h-full min-h-0 min-w-0 flex-col gap-2">
     <slot name="header" />
 
     <div
@@ -27,18 +27,21 @@ defineEmits<{
       Loading…
     </div>
 
-    <div v-else class="space-y-3">
+    <div v-else class="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
       <slot name="status" />
       <slot name="validation" />
-      <slot />
 
-      <div class="sticky bottom-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white/95 px-1 py-3 shadow-[0_-12px_28px_rgba(15,23,42,0.08)] backdrop-blur">
-        <div class="flex flex-wrap gap-2">
+      <div class="min-h-0 min-w-0 flex-1 overflow-hidden">
+        <slot />
+      </div>
+
+      <div class="grid min-w-0 flex-none gap-2 border-t border-slate-200 bg-white pt-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div class="workspace-table-scroll flex min-w-0 flex-nowrap gap-2 overflow-x-auto">
           <slot name="actions-left" />
         </div>
-        <div class="flex flex-wrap justify-end gap-2">
+        <div class="workspace-table-scroll flex min-w-0 flex-nowrap justify-start gap-2 overflow-x-auto md:justify-end">
           <slot name="actions-right" />
-          <BaseButton variant="secondary" size="md" type="button" @click="$emit('close')">Close</BaseButton>
+          <BaseButton class="shrink-0" variant="secondary" size="sm" type="button" @click="$emit('close')">Close</BaseButton>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { FileText, History, Save, Search } from 'lucide-vue-next'
+import { FileText, History, Info, ListTree, Save, Search } from 'lucide-vue-next'
 
 import FormDateInput from '@/components/form/FormDateInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -8,7 +8,6 @@ import VoidTransactionDialog from '@/components/dialog/VoidTransactionDialog.vue
 import SourceDocumentPickerModal from '@/components/transaction-form/SourceDocumentPickerModal.vue'
 import TransactionActionBar from '@/components/transaction-form/TransactionActionBar.vue'
 import TransactionCashBankAmountFields from '@/components/transaction-form/TransactionCashBankAmountFields.vue'
-import TransactionFormHeader from '@/components/transaction-form/TransactionFormHeader.vue'
 import TransactionFormSection from '@/components/transaction-form/TransactionFormSection.vue'
 import TransactionFormShell from '@/components/transaction-form/TransactionFormShell.vue'
 import TransactionLineTable from '@/components/transaction-form/TransactionLineTable.vue'
@@ -66,6 +65,9 @@ useTransactionTotals(tx.form, { priceField: props.config.lineProduct?.priceField
 
 const partnerName =
   props.config.partnerField ?? (props.config.partnerType === 'vendor' ? 'vendor_id' : props.config.partnerType === 'customer' ? 'customer_id' : '')
+const partnerLabel = computed(() =>
+  props.config.partnerType === 'vendor' ? 'Vendor' : props.config.partnerType === 'customer' ? 'Pelanggan' : props.config.title,
+)
 
 const needsCashBankAndAmount =
   props.config.documentType === 'sales.customer-deposits' ||
@@ -393,47 +395,45 @@ function applySourceDocument(document: SourceDocument) {
 </script>
 
 <template>
-  <form class="space-y-3" @submit.prevent="onSubmit">
+  <form class="h-full min-h-0 min-w-0" @submit.prevent="onSubmit">
     <TransactionFormShell :loading="tx.loading.value" :error="tx.error.value" :readonly="tx.isReadonly.value" @close="emit('close')">
       <template #header>
-        <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_520px]">
-          <TransactionFormHeader :eyebrow="config.moduleKey" :title="config.title" :subtitle="mode === 'create' ? `Create ${config.title}` : formTitle">
-            <div v-if="sourceType || sourceNumber" class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-600">
-                Source: {{ sourceLabel(sourceType) }}
-              </span>
-              <span v-if="sourceNumber" class="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-bold text-slate-800">
-                {{ sourceNumber }}
-              </span>
+        <div class="grid min-w-0 gap-2 md:grid-cols-[minmax(240px,0.95fr)_minmax(0,2.15fr)] md:items-end">
+          <div class="min-w-0">
+            <TransactionPartnerSelector
+              v-if="config.partnerType !== 'none'"
+              :partner-type="config.partnerType === 'vendor' ? 'vendor' : 'customer'"
+              :name="partnerName"
+              :label="partnerLabel"
+              :readonly="tx.isReadonly.value"
+              compact
+              @select="onPartnerSelected"
+            />
+            <div v-else class="min-w-0">
+              <p class="truncate text-[11px] font-bold leading-4 text-[#1d81af]">{{ config.moduleKey }}</p>
+              <p class="truncate text-sm font-black leading-5 text-slate-950">{{ config.title }}</p>
             </div>
-          </TransactionFormHeader>
+          </div>
 
-          <div class="grid gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-2" :class="supportsPaymentTerm ? 'grid-cols-2 xl:grid-cols-4' : 'grid-cols-2'">
-            <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-              <div class="flex items-center gap-1.5 text-[11px] font-bold uppercase text-slate-500">
+          <div class="grid min-w-0 gap-2 md:grid-cols-[minmax(124px,0.85fr)_minmax(120px,0.75fr)_minmax(150px,1fr)_auto] md:items-end">
+            <div class="min-w-0">
+              <div class="mb-1 flex items-center gap-1.5 text-[11px] font-bold leading-4 text-slate-500">
                 <FileText class="h-3.5 w-3.5" />
-                Number
+                No Faktur
               </div>
-              <p class="mt-1 truncate text-sm font-black text-slate-950" :title="documentNumber">{{ documentNumber }}</p>
+              <p class="flex h-9 min-w-0 items-center truncate rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-sm font-black text-slate-950" :title="documentNumber">
+                {{ documentNumber }}
+              </p>
             </div>
-            <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-              <FormDateInput
-                :name="config.dateField"
-                label="Date"
-                :disabled="tx.isReadonly.value"
-                compact
-              />
-            </div>
-            <div v-if="supportsPaymentTerm" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-              <FormDateInput
-                name="due_date"
-                label="Due Date"
-                :disabled="tx.isReadonly.value"
-                compact
-              />
-            </div>
-            <div v-if="supportsPaymentTerm" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+            <FormDateInput
+              :name="config.dateField"
+              label="Date"
+              :disabled="tx.isReadonly.value"
+              compact
+            />
+            <div class="min-w-0">
               <TransactionSearchableSelect
+                v-if="supportsPaymentTerm"
                 name="payment_term_id"
                 label="Payment Term"
                 :options="paymentTermOptions"
@@ -442,7 +442,37 @@ function applySourceDocument(document: SourceDocument) {
                 compact
                 selected-display-mode="name"
               />
+              <div v-else class="min-w-0">
+                <p class="mb-1 truncate text-[11px] font-bold leading-4 text-slate-500">Document</p>
+                <p class="flex h-9 min-w-0 items-center truncate rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-sm font-semibold text-slate-700" :title="formTitle">
+                  {{ formTitle }}
+                </p>
+              </div>
             </div>
+
+            <div class="workspace-table-scroll flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto md:justify-end">
+              <BaseButton
+                v-for="option in sourceOptions"
+                :key="option.key"
+                v-show="!tx.isReadonly.value"
+                class="shrink-0"
+                variant="secondary"
+                size="sm"
+                type="button"
+                @click="openSourcePicker(option.key)"
+              >
+                Ambil {{ option.label }}
+              </BaseButton>
+            </div>
+          </div>
+
+          <div v-if="sourceType || sourceNumber" class="md:col-start-2 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs">
+            <span class="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 font-semibold text-slate-600">
+              Source: {{ sourceLabel(sourceType) }}
+            </span>
+            <span v-if="sourceNumber" class="min-w-0 truncate rounded-full border border-slate-200 bg-white px-2.5 py-0.5 font-bold text-slate-800">
+              {{ sourceNumber }}
+            </span>
           </div>
         </div>
       </template>
@@ -454,93 +484,74 @@ function applySourceDocument(document: SourceDocument) {
         <p v-if="conversionNotice" class="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ conversionNotice }}</p>
       </template>
 
-      <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 px-3 pt-2">
-          <div class="flex flex-wrap gap-1.5">
+      <div class="grid h-full min-h-0 min-w-0 grid-cols-[46px_minmax(0,1fr)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex min-h-0 flex-col items-center gap-1 border-r border-slate-200 bg-slate-50/80 px-1 py-2">
+          <div class="flex flex-col gap-1">
             <button
               v-for="tabItem in formTabs"
               :key="tabItem.key"
               type="button"
-              class="rounded-t-lg border border-b-0 px-3 py-2 text-xs font-bold transition"
-              :class="activeFormTab === tabItem.key ? 'border-slate-200 bg-white text-slate-950' : 'border-transparent text-slate-500 hover:text-slate-800'"
+              class="flex h-9 w-9 items-center justify-center rounded-lg border text-slate-500 transition"
+              :class="activeFormTab === tabItem.key ? 'border-[#24a1db]/30 bg-white text-[#1d81af] shadow-sm' : 'border-transparent hover:bg-white hover:text-slate-800'"
+              :title="tabItem.label"
               @click="activeFormTab = tabItem.key"
             >
-              {{ tabItem.label }}
+              <ListTree v-if="tabItem.key === 'details'" class="h-4 w-4" />
+              <Info v-else class="h-4 w-4" />
+              <span class="sr-only">{{ tabItem.label }}</span>
             </button>
           </div>
-
-          <div v-if="sourceOptions.length && !tx.isReadonly.value" class="flex flex-wrap gap-1.5 pb-2">
-            <BaseButton
-              v-for="option in sourceOptions"
-              :key="option.key"
-              variant="secondary"
-              size="sm"
-              type="button"
-              @click="openSourcePicker(option.key)"
-            >
-              Ambil {{ option.label }}
-            </BaseButton>
-          </div>
         </div>
 
-        <div v-show="activeFormTab === 'details'" class="space-y-3 p-3">
-          <div class="grid gap-2 lg:grid-cols-4">
-            <TransactionPartnerSelector
-              v-if="config.partnerType !== 'none'"
-              :partner-type="config.partnerType === 'vendor' ? 'vendor' : 'customer'"
-              :name="partnerName"
-              :readonly="tx.isReadonly.value"
-              compact
-              @select="onPartnerSelected"
-            />
-            <FormDateInput
-              v-if="supportsValidUntil"
-              name="valid_until"
-              label="Valid Until"
-              :disabled="tx.isReadonly.value"
-              compact
-            />
+        <div class="min-h-0 min-w-0 overflow-hidden">
+          <div v-show="activeFormTab === 'details'" class="h-full min-h-0 min-w-0 flex-col gap-1.5 overflow-hidden p-1.5" :class="activeFormTab === 'details' ? 'flex' : ''">
+            <TransactionFormSection v-if="needsCashBankAndAmount" title="Payment">
+              <TransactionCashBankAmountFields :readonly="tx.isReadonly.value" />
+            </TransactionFormSection>
+
+            <div v-if="config.hasLines" class="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
+              <TransactionLineTable
+                class="min-h-[232px] flex-1 md:min-h-[264px]"
+                name="lines"
+                :readonly="tx.isReadonly.value"
+                :product-config="config.lineProduct"
+              />
+
+              <TransactionTotalsPanel :currency="currencyCode" />
+            </div>
           </div>
 
-          <TransactionFormSection v-if="needsCashBankAndAmount" title="Payment">
-            <TransactionCashBankAmountFields :readonly="tx.isReadonly.value" />
-          </TransactionFormSection>
+          <div v-show="activeFormTab === 'more'" class="min-h-0 min-w-0 gap-2 overflow-auto p-2 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.42fr)]" :class="activeFormTab === 'more' ? 'grid' : ''">
+            <TransactionFormSection v-if="supportsValidUntil" title="Dates">
+              <FormDateInput
+                name="valid_until"
+                label="Valid Until"
+                :disabled="tx.isReadonly.value"
+                compact
+              />
+            </TransactionFormSection>
 
-          <TransactionLineTable
-            v-if="config.hasLines"
-            name="lines"
-            :readonly="tx.isReadonly.value"
-            :product-config="config.lineProduct"
-          />
+            <TransactionFormSection title="Notes">
+              <TransactionNotesPanel :readonly="tx.isReadonly.value" :show-internal-notes="supportsInternalNotes" />
+            </TransactionFormSection>
 
-          <div v-if="config.hasLines" class="grid justify-items-end">
-            <TransactionFormSection title="Totals" class="w-full max-w-md">
-              <TransactionTotalsPanel :currency="currencyCode" />
+            <TransactionFormSection title="Source">
+              <div class="space-y-2 text-sm">
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-slate-500">Source Type</span>
+                  <span class="text-right font-bold text-slate-900">{{ sourceLabel(sourceType) }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-slate-500">Source Number</span>
+                  <span class="text-right font-bold text-slate-900">{{ sourceNumber || '-' }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-slate-500">Currency</span>
+                  <span class="text-right font-bold text-slate-900">{{ currencyCode }}</span>
+                </div>
+              </div>
             </TransactionFormSection>
           </div>
-        </div>
-
-        <div v-show="activeFormTab === 'more'" class="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <TransactionFormSection title="Notes">
-            <TransactionNotesPanel :readonly="tx.isReadonly.value" :show-internal-notes="supportsInternalNotes" />
-          </TransactionFormSection>
-
-          <TransactionFormSection title="Source">
-            <div class="space-y-2 text-sm">
-              <div class="flex items-center justify-between gap-4">
-                <span class="text-slate-500">Source Type</span>
-                <span class="text-right font-bold text-slate-900">{{ sourceLabel(sourceType) }}</span>
-              </div>
-              <div class="flex items-center justify-between gap-4">
-                <span class="text-slate-500">Source Number</span>
-                <span class="text-right font-bold text-slate-900">{{ sourceNumber || '-' }}</span>
-              </div>
-              <div class="flex items-center justify-between gap-4">
-                <span class="text-slate-500">Currency</span>
-                <span class="text-right font-bold text-slate-900">{{ currencyCode }}</span>
-              </div>
-            </div>
-          </TransactionFormSection>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { Field, useFieldArray, useFormContext } from 'vee-validate'
 import { Minus, Plus } from 'lucide-vue-next'
 
@@ -86,6 +86,13 @@ function addLine() {
   })
 }
 
+async function addProductLine(option: unknown) {
+  addLine()
+  await nextTick()
+  const index = fields.value.length - 1
+  if (index >= 0) selectProduct(index, option)
+}
+
 function lineAt(index: number) {
   const lines = form?.values[props.name]
   return Array.isArray(lines) && lines[index] && typeof lines[index] === 'object'
@@ -128,20 +135,45 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-    <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2">
-      <div>
-        <h2 class="text-sm font-semibold text-slate-900">Lines</h2>
-        <p class="mt-0.5 text-xs leading-4 text-slate-500">Add/remove line items.</p>
-      </div>
-      <BaseButton variant="secondary" size="sm" type="button" :disabled="readonly" @click="addLine">
+  <div class="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="grid min-w-0 flex-none gap-1.5 border-b border-slate-100 bg-white px-2 py-1 md:grid-cols-[minmax(240px,420px)_auto_minmax(0,1fr)_auto] md:items-center">
+      <TransactionSearchableSelect
+        :model-value="null"
+        :options="productOptions"
+        option-value="id"
+        option-label="label"
+        placeholder="Cari/Pilih Barang & Jasa..."
+        empty-text="Produk tidak ditemukan"
+        loading-text="Memuat produk..."
+        :readonly="readonly"
+        :loading="loadingProducts"
+        :error="productError"
+        compact
+        selected-display-mode="code-name"
+        selected-font-weight="normal"
+        selected-max-one-line
+        option-two-line
+        @open="resetProducts"
+        @search="searchProducts"
+        @select="addProductLine"
+      />
+
+      <BaseButton class="shrink-0" variant="secondary" size="sm" type="button" :disabled="readonly" @click="addLine">
         <Plus class="h-4 w-4" />
         Add line
       </BaseButton>
+
+      <div class="min-w-0" />
+
+      <div class="flex min-w-0 items-center justify-start gap-2 md:justify-end">
+        <span class="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-black tabular-nums text-slate-900">
+          {{ fields.length }} Items
+        </span>
+      </div>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="transaction-line-table min-w-[1280px] w-full table-fixed text-left text-xs">
+    <div class="workspace-table-scroll min-h-0 min-w-0 flex-1 overflow-auto">
+      <table class="transaction-line-table w-full min-w-[1280px] table-fixed text-left text-xs">
         <colgroup>
           <col class="w-[170px]" />
           <col class="w-[280px]" />
@@ -153,9 +185,9 @@ onMounted(() => {
           <col class="w-[132px]" />
           <col class="w-[135px]" />
           <col class="w-[135px]" />
-          <col class="w-[42px]" />
+          <col class="w-[48px]" />
         </colgroup>
-        <thead class="border-b border-slate-300 bg-slate-100 text-[11px] font-semibold uppercase text-slate-600">
+        <thead class="sticky top-0 z-10 border-b border-slate-300 bg-slate-100 text-[11px] font-semibold uppercase text-slate-600">
           <tr>
             <th class="h-7 px-2 py-1 font-semibold">Product</th>
             <th class="h-7 px-2 py-1 font-semibold">Description</th>
@@ -167,7 +199,7 @@ onMounted(() => {
             <th class="h-7 px-2 py-1 text-right font-semibold">Amount</th>
             <th class="h-7 px-2 py-1 font-semibold">Department</th>
             <th class="h-7 px-2 py-1 font-semibold">Project</th>
-            <th class="h-8 px-2 py-1.5 text-center font-medium"></th>
+            <th class="sticky right-0 h-8 bg-slate-100 px-2 py-1.5 text-center font-medium shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]"></th>
           </tr>
         </thead>
 
@@ -309,7 +341,7 @@ onMounted(() => {
                 @open="loadDimensions"
               />
             </td>
-            <td class="px-1.5 py-1 text-center align-middle">
+            <td class="sticky right-0 bg-white px-1.5 py-1 text-center align-middle shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]">
               <IconButton variant="danger" size="sm" type="button" :disabled="readonly" @click="remove(index)">
                 <Minus class="h-4 w-4" />
               </IconButton>

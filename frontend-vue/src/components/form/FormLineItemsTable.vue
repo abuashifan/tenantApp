@@ -27,13 +27,13 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-    <div class="overflow-x-auto">
+  <div class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div class="workspace-table-scroll min-w-0 overflow-x-auto">
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-black uppercase text-slate-500">
           <tr>
             <th v-for="column in columns" :key="column.key" class="px-3 py-2">{{ column.label }}</th>
-            <th class="w-20 px-3 py-2 text-right">Action</th>
+            <th class="sticky right-0 w-20 bg-slate-50 px-3 py-2 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]">Action</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
@@ -65,7 +65,7 @@ const emit = defineEmits<{
                 :disabled="readonly"
               />
             </td>
-            <td class="px-3 py-2 text-right align-top">
+            <td class="sticky right-0 bg-white px-3 py-2 text-right align-top shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]">
               <BaseButton v-if="!readonly" variant="secondary" size="sm" @click="emit('remove', rowIndex)">Remove</BaseButton>
             </td>
           </tr>

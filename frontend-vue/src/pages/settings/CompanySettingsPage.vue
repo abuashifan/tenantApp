@@ -250,7 +250,7 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="space-y-4">
+  <section class="min-w-0 space-y-4">
     <header class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -296,7 +296,7 @@ onMounted(load)
         </dl>
       </article>
 
-      <div class="grid gap-4 xl:grid-cols-[minmax(440px,1.45fr)_minmax(320px,1fr)]">
+      <div class="grid min-w-0 gap-4 xl:grid-cols-[minmax(440px,1.45fr)_minmax(320px,1fr)]">
         <form class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" @submit.prevent="saveAccounting">
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <h2 class="text-base font-black text-slate-950">Accounting Settings</h2>

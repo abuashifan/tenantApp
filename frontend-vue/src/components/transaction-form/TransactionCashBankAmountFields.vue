@@ -22,7 +22,7 @@ withDefaults(
 </script>
 
 <template>
-  <div class="grid gap-3 sm:grid-cols-2">
+  <div class="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
     <TransactionAccountSelector
       :name="cashBankAccountName"
       :label="cashBankAccountLabel"
@@ -31,8 +31,8 @@ withDefaults(
       :params="{ is_active: true, is_cash_bank: true }"
     />
 
-    <label class="block space-y-1.5">
-      <span class="text-xs font-bold text-slate-500">{{ amountLabel }}</span>
+    <label class="block min-w-0 space-y-1">
+      <span class="truncate text-[11px] font-bold leading-4 text-slate-500">{{ amountLabel }}</span>
       <Field
         :name="amountName"
         as="input"
@@ -40,7 +40,7 @@ withDefaults(
         step="0.01"
         inputmode="decimal"
         :disabled="readonly"
-        class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-right text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:bg-slate-50"
+        class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-right text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb] disabled:bg-slate-50"
       />
     </label>
   </div>

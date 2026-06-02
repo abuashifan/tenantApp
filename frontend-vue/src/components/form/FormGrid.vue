@@ -15,7 +15,7 @@ withDefaults(
   <div
     :class="
       cn(
-        'grid gap-4',
+        'grid min-w-0 gap-4 tablet-form-gap',
         cols === 1 ? 'grid-cols-1' : '',
         cols === 2 ? 'grid-cols-1 md:grid-cols-2' : '',
         cols === 3 ? 'grid-cols-1 md:grid-cols-3' : '',

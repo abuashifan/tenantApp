@@ -28,14 +28,14 @@ defineEmits<{
 </script>
 
 <template>
-  <div v-if="open" class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
+  <aside v-if="open" class="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/50 p-3">
     <slot>
-      <div class="flex flex-wrap items-end gap-4">
-        <label v-if="hasStatus" class="block w-full max-w-xs space-y-1.5">
+      <div class="grid min-w-0 gap-3">
+        <label v-if="hasStatus" class="block w-full space-y-1.5">
           <span class="text-xs font-bold text-slate-500">Status</span>
           <select
             :value="status"
-            class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]"
+            class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb]"
             @change="$emit('update:status', ($event.target as HTMLSelectElement).value)"
           >
             <option value="">All Status</option>
@@ -44,7 +44,7 @@ defineEmits<{
             </option>
           </select>
         </label>
-        <label v-if="showIncludeVoid" class="inline-flex h-10 items-center gap-2 text-sm font-semibold text-slate-700">
+        <label v-if="showIncludeVoid" class="inline-flex h-9 items-center gap-2 text-sm font-semibold text-slate-700">
           <input
             :checked="includeVoid"
             type="checkbox"
@@ -55,5 +55,5 @@ defineEmits<{
         </label>
       </div>
     </slot>
-  </div>
+  </aside>
 </template>

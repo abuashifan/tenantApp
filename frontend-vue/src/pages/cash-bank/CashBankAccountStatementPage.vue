@@ -133,8 +133,8 @@ onMounted(initialize)
 </script>
 
 <template>
-  <div class="space-y-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
-    <div class="flex flex-col gap-3 border-b border-slate-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
+  <div class="workspace-card tablet-workspace-card tablet-workspace-card-gap flex min-w-0 flex-col gap-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
+    <div class="flex min-w-0 flex-col gap-3 border-b border-slate-100 pb-4 xl:flex-row xl:items-center xl:justify-between">
       <div>
         <h1 class="text-xl font-black text-slate-950">Cash Bank Account Statement</h1>
         <p class="mt-1 text-sm text-slate-500">Mutasi Rekening Kas Bank</p>
@@ -145,7 +145,7 @@ onMounted(initialize)
     </div>
 
     <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
-      <div class="grid gap-3 lg:grid-cols-[minmax(250px,1.4fr)_165px_165px_minmax(220px,1fr)_auto_auto] lg:items-end">
+      <div class="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(250px,1.4fr)_165px_165px_minmax(220px,1fr)_auto_auto] xl:items-end">
         <label class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">Account</span>
           <select v-model="selectedAccountId" :disabled="accountsLoading || accounts.length === 0" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700">
@@ -191,7 +191,7 @@ onMounted(initialize)
         description="Choose a cash or bank account and apply a reporting period."
       />
       <template v-else>
-        <div class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="grid min-w-0 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 xl:grid-cols-5">
           <div>
             <p class="text-xs font-bold text-slate-500">Account</p>
             <p class="mt-1 text-sm font-extrabold text-slate-900">{{ statement.account.account_code }}</p>
@@ -207,7 +207,7 @@ onMounted(initialize)
           :data="rows"
           :loading="false"
           :selectable="false"
-          table-max-height="calc(100vh - 550px)"
+          table-max-height="max(240px, calc(100dvh - 550px))"
           empty-title="No statement movements"
           empty-description="No posted cash bank journal lines match the selected period or search."
         />

@@ -17,6 +17,7 @@ const props = defineProps<{
   selectedCount: number
   embedded?: boolean
   showFilterActions?: boolean
+  hasFilters?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -51,11 +52,18 @@ function applyFilters() {
 
 <template>
   <div
-    class="flex flex-col gap-3"
-    :class="embedded ? 'border-b border-slate-100 pb-4' : 'rounded-3xl border border-slate-200 bg-white p-4 shadow-sm'"
+    class="flex min-w-0 flex-col gap-2"
+    :class="embedded ? 'border-b border-slate-100 pb-2' : 'rounded-2xl border border-slate-200 bg-white p-3 shadow-sm'"
   >
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr_auto] lg:items-end">
+    <div class="grid min-w-0 items-center gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+      <div
+        class="grid min-w-0 items-center gap-2"
+        :class="
+          config.dateFilter?.enabled
+            ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(112px,0.36fr)_minmax(112px,0.36fr)_auto]'
+            : 'grid-cols-[minmax(0,1fr)_auto]'
+        "
+      >
         <WorkspaceSearchBar
           v-if="config.search?.enabled !== false"
           v-model="localSearch"
@@ -71,31 +79,29 @@ function applyFilters() {
           @update:end-date="emit('update:endDate', $event)"
         />
 
-        <label v-if="config.statusOptions?.length" class="block space-y-1.5">
-          <span class="text-xs font-bold text-slate-500">Status</span>
-          <BaseButton variant="secondary" size="md" @click="emit('toggleFilters')">
-            <SlidersHorizontal class="h-4 w-4" />
-            Filter
-          </BaseButton>
-        </label>
+        <BaseButton v-if="hasFilters || config.statusOptions?.length" variant="secondary" size="sm" @click="emit('toggleFilters')">
+          <SlidersHorizontal class="h-4 w-4" />
+          Filter
+        </BaseButton>
       </div>
 
-      <WorkspaceActionBar
-        :create-label="config.createLabel"
-        :create-permission="config.permissions?.create"
-        :selected-count="selectedCount"
-        :actions="config.globalActions"
-        @create="emit('create')"
-        @refresh="emit('refresh')"
-        @action-click="emit('actionClick', $event)"
-      />
+      <div class="workspace-table-scroll flex min-w-0 items-center justify-start gap-2 overflow-x-auto md:justify-end">
+        <slot name="toolbar-bottom" />
+        <WorkspaceActionBar
+          :create-label="config.createLabel"
+          :create-permission="config.permissions?.create"
+          :selected-count="selectedCount"
+          :actions="config.globalActions"
+          @create="emit('create')"
+          @refresh="emit('refresh')"
+          @action-click="emit('actionClick', $event)"
+        />
+      </div>
     </div>
 
     <div v-if="showFilterActions" class="flex justify-end gap-2">
       <BaseButton variant="secondary" size="sm" @click="emit('resetFilters')">Reset</BaseButton>
       <BaseButton variant="primary" size="sm" @click="applyFilters">Apply</BaseButton>
     </div>
-
-    <slot name="toolbar-bottom" />
   </div>
 </template>

@@ -20,7 +20,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <aside class="hidden h-screen w-[304px] shrink-0 flex-col bg-[#06131e] text-white shadow-2xl shadow-slate-950/30 lg:flex">
+  <aside class="app-viewport tablet-sidebar-full hidden w-[304px] shrink-0 flex-col bg-[#06131e] text-white shadow-2xl shadow-slate-950/30 lg:flex">
     <div class="flex h-20 items-center justify-between border-b border-white/10 px-5">
       <div class="flex items-center gap-3">
         <div class="grid h-11 w-11 place-items-center rounded-2xl bg-[#b4db24] text-[#06131e]">
@@ -51,7 +51,7 @@ const emit = defineEmits<{
       </div>
     </div>
 
-    <nav class="flex-1 overflow-y-auto p-4">
+    <nav class="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
       <div class="space-y-2">
         <div v-for="module in modules" :key="module.key">
           <button

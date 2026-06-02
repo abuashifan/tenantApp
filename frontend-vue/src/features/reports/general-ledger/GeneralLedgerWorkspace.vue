@@ -81,11 +81,11 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
+  <div class="workspace-card tablet-workspace-card tablet-workspace-card-gap flex min-w-0 flex-col gap-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
     <h1 class="border-b border-slate-100 pb-4 text-xl font-black text-slate-950">General Ledger</h1>
     <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
-        <label class="block space-y-1.5 lg:min-w-[320px] lg:flex-1">
+      <div class="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-end">
+        <label class="block min-w-0 space-y-1.5 xl:min-w-[320px] xl:flex-1">
           <span class="text-xs font-bold text-slate-500">Account</span>
           <select v-model="selectedAccountId" :disabled="accountsLoading" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 disabled:bg-slate-100">
             <option :value="null">{{ accountsLoading ? 'Loading accounts...' : 'Select account...' }}</option>
@@ -95,15 +95,15 @@ onMounted(load)
           </select>
           <span v-if="accountsError" class="block text-xs font-semibold text-rose-600">{{ accountsError }}</span>
         </label>
-        <label class="block space-y-1.5 lg:w-[165px]">
+        <label class="block space-y-1.5 xl:w-[165px]">
           <span class="text-xs font-bold text-slate-500">Start Date</span>
           <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
         </label>
-        <label class="block space-y-1.5 lg:w-[165px]">
+        <label class="block space-y-1.5 xl:w-[165px]">
           <span class="text-xs font-bold text-slate-500">End Date</span>
           <input v-model="endDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
         </label>
-        <label class="block space-y-1.5 lg:min-w-[220px] lg:flex-1">
+        <label class="block min-w-0 space-y-1.5 xl:min-w-[220px] xl:flex-1">
           <span class="text-xs font-bold text-slate-500">Search</span>
           <input v-model="search" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" placeholder="Search journal no or description..." />
         </label>
@@ -120,8 +120,8 @@ onMounted(load)
     </div>
 
     <p v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{{ error }}</p>
-    <div v-if="detail" class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 lg:grid-cols-6">
-      <div class="lg:col-span-2">
+    <div v-if="detail" class="grid min-w-0 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 xl:grid-cols-6">
+      <div class="xl:col-span-2">
         <p class="text-xs font-bold text-slate-500">Account</p>
         <p class="mt-1 text-sm font-extrabold text-slate-900">{{ detail.account.account_code }}</p>
         <p class="text-sm text-slate-600">{{ detail.account.account_name }}</p>
@@ -138,7 +138,7 @@ onMounted(load)
       :data="rows"
       :loading="loading"
       :selectable="false"
-      table-max-height="calc(100vh - 520px)"
+      table-max-height="max(240px, calc(100dvh - 520px))"
       empty-title="No ledger lines"
       empty-description="No posted journal lines match your filters."
     />

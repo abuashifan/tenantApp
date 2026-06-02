@@ -17,13 +17,13 @@ const hasOptions = computed(() => props.options?.length > 0)
 </script>
 
 <template>
-  <div v-if="hasOptions" class="space-y-1.5">
-    <span class="block text-xs font-bold text-slate-500">Source Type</span>
+  <div v-if="hasOptions" class="min-w-0 space-y-1">
+    <span class="block truncate text-[11px] font-bold leading-4 text-slate-500">Source Type</span>
     <Field
       :name="sourceTypeName"
       as="select"
       :disabled="readonly"
-      class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb] disabled:bg-slate-50"
+      class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb] disabled:bg-slate-50"
     >
       <option value="">Direct</option>
       <option v-for="opt in options" :key="opt.key" :value="opt.key">{{ opt.label }}</option>

@@ -3,7 +3,7 @@ import { cn } from '@/utils/cn'
 </script>
 
 <template>
-  <section :class="cn('space-y-5')">
+  <section :class="cn('min-w-0 space-y-5')">
     <slot />
   </section>
 </template>

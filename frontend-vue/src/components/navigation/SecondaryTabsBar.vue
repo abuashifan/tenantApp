@@ -25,7 +25,7 @@ const emit = defineEmits<{
   <div
     :class="
       cn(
-        'flex overflow-x-auto',
+        'flex min-w-0 overflow-x-auto',
         attached
           ? 'items-end gap-1 bg-transparent'
           : 'items-center gap-2 rounded-3xl border border-slate-200 bg-white p-2 shadow-sm',
@@ -37,7 +37,7 @@ const emit = defineEmits<{
         :class="
           cn(
             'group flex items-center gap-2 border text-xs font-extrabold transition',
-            attached ? 'h-10 rounded-t-xl px-4 text-sm font-medium' : 'h-9 rounded-xl px-3',
+            attached ? 'tablet-secondary-tab h-10 rounded-t-xl px-4 text-sm font-medium' : 'h-9 rounded-xl px-3',
             tab.id === activeId
               ? attached
                 ? 'relative z-10 -mb-px border-rose-500 border-b-white bg-white text-slate-950 shadow-[0_-3px_10px_rgba(244,63,94,0.12)]'

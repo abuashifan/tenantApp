@@ -18,8 +18,8 @@ const pageCount = computed(() => Math.max(props.table.getPageCount(), 1))
 
 <template>
   <div
-    class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4"
-    :class="compact ? 'py-2' : 'py-3'"
+    class="flex min-w-0 flex-none flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-3"
+    :class="compact ? 'py-1.5' : 'py-3'"
   >
     <p class="text-xs font-semibold text-slate-500">
       Page <span class="font-bold text-slate-800">{{ table.getState().pagination.pageIndex + 1 }}</span>
@@ -30,7 +30,7 @@ const pageCount = computed(() => Math.max(props.table.getPageCount(), 1))
       </template>
     </p>
 
-    <div class="flex items-center gap-2">
+    <div class="flex min-w-0 flex-wrap items-center gap-2">
       <label v-if="showPageSize" class="inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
         Rows
         <select

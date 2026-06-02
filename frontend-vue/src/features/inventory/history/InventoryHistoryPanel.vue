@@ -146,9 +146,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <section class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <div class="border-b border-slate-200 p-5">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <h2 class="text-base font-extrabold text-slate-950">Riwayat Persediaan: {{ entityName }}</h2>
           <p class="mt-1 text-sm text-slate-500">Mencatat semua stock in dan stock out berdasarkan periode filter.</p>
@@ -163,7 +163,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="mt-5 grid gap-3 lg:grid-cols-[170px_170px_minmax(240px,1fr)_190px_180px]">
+      <div class="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[170px_170px_minmax(240px,1fr)_190px_180px]">
         <label class="space-y-1.5">
           <span class="block text-xs font-bold text-slate-500">Dari</span>
           <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
@@ -211,8 +211,8 @@ onMounted(async () => {
         description="Ubah filter periode atau gudang untuk melihat pergerakan stok."
       />
     </div>
-    <div v-else class="overflow-x-auto p-5 pt-0">
-      <table class="min-w-[1120px] w-full overflow-hidden rounded-2xl border border-slate-200 text-sm">
+    <div v-else class="workspace-table-scroll min-w-0 overflow-x-auto p-5 pt-0">
+      <table class="w-full min-w-[1120px] overflow-hidden rounded-2xl border border-slate-200 text-sm">
         <thead class="bg-slate-800 text-left text-xs font-bold text-white">
           <tr>
             <th class="px-3 py-3">Tanggal</th>

@@ -36,8 +36,8 @@ function addLine() {
 </script>
 
 <template>
-  <div class="rounded-3xl border border-slate-200 bg-white shadow-sm">
-    <div class="flex items-start justify-between gap-3 px-6 py-5">
+  <div class="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div class="flex min-w-0 items-start justify-between gap-3 px-6 py-5">
       <div>
         <h2 class="text-sm font-extrabold text-slate-900">Journal Lines</h2>
         <p class="mt-1 text-xs leading-5 text-slate-500">Add/remove lines and input debit/credit.</p>
@@ -48,8 +48,8 @@ function addLine() {
       </BaseButton>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="min-w-[980px] w-full text-left text-sm">
+    <div class="workspace-table-scroll min-w-0 overflow-x-auto">
+      <table class="w-full min-w-[980px] text-left text-sm">
         <thead class="bg-slate-50 text-xs font-bold text-slate-600">
           <tr>
             <th class="px-4 py-3">Account</th>
@@ -58,7 +58,7 @@ function addLine() {
             <th class="px-4 py-3">Project</th>
             <th class="px-4 py-3 text-right">Debit</th>
             <th class="px-4 py-3 text-right">Credit</th>
-            <th class="px-4 py-3"></th>
+            <th class="sticky right-0 bg-slate-50 px-4 py-3 shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]"></th>
           </tr>
         </thead>
 
@@ -70,7 +70,7 @@ function addLine() {
           </tr>
 
           <tr v-for="(row, index) in fields" :key="row.key" class="align-top">
-            <td class="px-4 py-3">
+            <td class="sticky right-0 bg-white px-4 py-3 shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]">
               <Field :name="`${name}[${index}].accountId`" as="select"
                 class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-4 focus:ring-[#e9f6fb]">
                 <option value="" disabled>Select…</option>

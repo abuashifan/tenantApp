@@ -355,12 +355,12 @@ onMounted(load)
     @action-click="(payload) => (payload.key === 'create' ? openCreateForm() : undefined)"
   >
     <template #toolbar-right>
-      <div class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-extrabold text-slate-600">
+      <div class="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-extrabold text-slate-600">
         Total: {{ filteredAccounts.length }}
       </div>
     </template>
     <template #advanced-filters>
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div class="grid gap-3">
         <label class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">Account Type</span>
           <select :value="accountType" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700" @change="updateAccountType(($event.target as HTMLSelectElement).value)">

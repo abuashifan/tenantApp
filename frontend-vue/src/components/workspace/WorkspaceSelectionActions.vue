@@ -21,7 +21,7 @@ defineEmits<{
 </script>
 
 <template>
-  <div v-if="props.showEdit" class="flex justify-end">
+  <div v-if="props.showEdit && props.selectedCount > 0" class="flex justify-end">
     <BaseButton
       variant="secondary"
       size="sm"

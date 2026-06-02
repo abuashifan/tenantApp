@@ -26,8 +26,8 @@ defineEmits<{
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" @click="$emit('close')">
-    <div class="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl" @click.stop>
+  <div v-if="open" class="workspace-scrollbar fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/40 p-4" @click="$emit('close')">
+    <div class="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl" @click.stop>
       <h2 class="text-lg font-black text-slate-950">{{ title }}</h2>
       <p class="mt-2 text-sm leading-6 text-slate-600">{{ message }}</p>
       <div class="mt-6 flex justify-end gap-2">

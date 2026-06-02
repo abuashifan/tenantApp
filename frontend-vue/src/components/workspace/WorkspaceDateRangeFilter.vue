@@ -14,13 +14,13 @@ defineEmits<{
 </script>
 
 <template>
-  <label class="block space-y-1.5">
-    <span class="text-xs font-bold text-slate-500">{{ label ?? 'Start Date' }}</span>
-    <DateInput :model-value="startDate" @update:model-value="$emit('update:startDate', $event)" />
+  <label class="block min-w-0">
+    <span class="sr-only">{{ label ?? 'Start Date' }}</span>
+    <DateInput :model-value="startDate" compact @update:model-value="$emit('update:startDate', $event)" />
   </label>
 
-  <label class="block space-y-1.5">
-    <span class="text-xs font-bold text-slate-500">End Date</span>
-    <DateInput :model-value="endDate" @update:model-value="$emit('update:endDate', $event)" />
+  <label class="block min-w-0">
+    <span class="sr-only">End Date</span>
+    <DateInput :model-value="endDate" compact @update:model-value="$emit('update:endDate', $event)" />
   </label>
 </template>

@@ -39,74 +39,62 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="space-y-5">
-    <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p class="text-sm font-semibold text-[#1d81af]">Purchase & AP</p>
-          <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-950">Open Bills</h1>
-          <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            Posted vendor bills with outstanding balance and drilldown to bill or vendor ledger detail.
-          </p>
+  <section class="h-full min-h-0 min-w-0">
+    <div class="flex h-full min-h-0 min-w-0 flex-col gap-2 rounded-b-2xl rounded-tr-2xl border border-slate-200 bg-white p-2.5 shadow-sm lg:p-3">
+      <header class="flex min-w-0 flex-none flex-wrap items-center justify-between gap-2">
+        <div class="min-w-0">
+          <p class="text-xs font-semibold text-[#1d81af]">Purchase & AP</p>
+          <h1 class="truncate text-base font-black leading-5 text-slate-950">Open Bills</h1>
         </div>
-        <BaseButton variant="secondary" :loading="loading" @click="load">Refresh</BaseButton>
-      </div>
-    </div>
+        <BaseButton variant="secondary" size="sm" :loading="loading" @click="load">Refresh</BaseButton>
+      </header>
 
-    <WorkspaceErrorState v-if="error" :message="error" @retry="load" />
+      <WorkspaceErrorState v-if="error" :message="error" @retry="load" />
 
-    <div class="grid gap-4 md:grid-cols-2">
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <p class="text-xs font-black uppercase tracking-wide text-slate-400">Open Bills</p>
-        <p class="mt-2 text-xl font-black text-slate-950">{{ rows.length }}</p>
+      <div class="grid min-w-0 flex-none items-center gap-2 border-b border-slate-100 pb-2 md:grid-cols-[minmax(0,1fr)_auto]">
+        <label class="min-w-0">
+          <span class="sr-only">Search bill/vendor</span>
+          <input v-model="search" class="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb]" placeholder="Search bill/vendor" />
+        </label>
+        <div class="workspace-table-scroll flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto md:justify-end">
+          <span class="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-extrabold text-slate-600">
+            Rows: {{ filteredRows.length }}
+          </span>
+          <span class="inline-flex h-9 shrink-0 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-extrabold text-slate-600">
+            Outstanding: {{ formatMoney(balanceTotal) }}
+          </span>
+        </div>
       </div>
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <p class="text-xs font-black uppercase tracking-wide text-slate-400">Outstanding AP</p>
-        <p class="mt-2 text-xl font-black text-slate-950">{{ formatMoney(balanceTotal) }}</p>
-      </div>
-    </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <label class="text-sm font-bold text-slate-700">
-        Search bill/vendor
-        <input v-model="search" class="mt-2 h-10 w-full max-w-md rounded-xl border border-slate-200 px-3 text-sm" placeholder="Bill number or vendor" />
-      </label>
-    </div>
-
-    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div class="border-b border-slate-100 px-5 py-4">
-        <h2 class="text-lg font-black text-slate-950">Open Bill Rows</h2>
-        <p class="mt-1 text-sm text-slate-500">{{ filteredRows.length }} row(s)</p>
-      </div>
-      <div v-if="loading" class="p-6 text-sm font-bold text-slate-500">Loading open bills...</div>
+      <div v-if="loading" class="p-4 text-sm font-bold text-slate-500">Loading open bills...</div>
       <WorkspaceEmptyState v-else-if="filteredRows.length === 0" title="No open bills" />
-      <div v-else class="overflow-x-auto">
+      <div v-else class="workspace-table-scroll min-h-0 min-w-0 flex-1 overflow-auto rounded-2xl border border-slate-200">
         <table class="min-w-full divide-y divide-slate-100 text-sm">
           <thead class="bg-slate-50 text-left text-xs font-black uppercase tracking-wide text-slate-400">
             <tr>
-              <th class="px-4 py-3">Bill</th>
-              <th class="px-4 py-3">Vendor</th>
-              <th class="px-4 py-3">Due Date</th>
-              <th class="px-4 py-3 text-right">Total</th>
-              <th class="px-4 py-3 text-right">Paid/Returned</th>
-              <th class="px-4 py-3 text-right">Balance</th>
-              <th class="px-4 py-3">Status</th>
-              <th class="px-4 py-3 text-right">Action</th>
+              <th class="px-3 py-2">Bill</th>
+              <th class="px-3 py-2">Vendor</th>
+              <th class="px-3 py-2">Due Date</th>
+              <th class="px-3 py-2 text-right">Total</th>
+              <th class="px-3 py-2 text-right">Paid/Returned</th>
+              <th class="px-3 py-2 text-right">Balance</th>
+              <th class="px-3 py-2">Status</th>
+              <th class="sticky right-0 bg-slate-50 px-3 py-2 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]">Action</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="row in filteredRows" :key="row.bill_id" class="hover:bg-slate-50">
-              <td class="px-4 py-3">
+              <td class="px-3 py-2">
                 <p class="font-black text-slate-900">{{ row.bill_number }}</p>
                 <p class="text-xs font-semibold text-slate-500">{{ formatDate(row.bill_date) }}</p>
               </td>
-              <td class="px-4 py-3">{{ row.vendor_name ?? '-' }}</td>
-              <td class="px-4 py-3">{{ formatDate(row.due_date) }}</td>
-              <td class="px-4 py-3 text-right font-bold">{{ formatMoney(row.grand_total) }}</td>
-              <td class="px-4 py-3 text-right font-bold">{{ formatMoney(row.paid_amount + row.returned_amount) }}</td>
-              <td class="px-4 py-3 text-right font-black">{{ formatMoney(row.balance_due) }}</td>
-              <td class="px-4 py-3"><WorkspaceStatusBadge :status="row.status" /></td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-3 py-2">{{ row.vendor_name ?? '-' }}</td>
+              <td class="px-3 py-2">{{ formatDate(row.due_date) }}</td>
+              <td class="px-3 py-2 text-right font-bold">{{ formatMoney(row.grand_total) }}</td>
+              <td class="px-3 py-2 text-right font-bold">{{ formatMoney(row.paid_amount + row.returned_amount) }}</td>
+              <td class="px-3 py-2 text-right font-black">{{ formatMoney(row.balance_due) }}</td>
+              <td class="px-3 py-2"><WorkspaceStatusBadge :status="row.status" /></td>
+              <td class="sticky right-0 bg-white px-3 py-2 text-right shadow-[-12px_0_18px_-18px_rgba(15,23,42,0.35)]">
                 <div class="flex flex-col gap-1">
                   <RouterLink class="font-black text-[#1d81af] hover:underline" :to="`/purchase/ap/bills/${row.bill_id}/ledger`">
                     Bill ledger

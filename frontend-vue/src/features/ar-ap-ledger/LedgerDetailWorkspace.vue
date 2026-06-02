@@ -133,7 +133,7 @@ onMounted(fetchLedger)
     </div>
 
     <div v-if="!isDocumentLedger" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+      <div class="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-end">
         <label class="text-sm font-bold text-slate-700">
           Start date
           <input v-model="startDate" type="date" class="mt-2 h-10 rounded-xl border border-slate-200 px-3 text-sm" />
@@ -146,14 +146,14 @@ onMounted(fetchLedger)
       </div>
     </div>
 
-    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div class="border-b border-slate-100 px-5 py-4">
         <h2 class="text-lg font-black text-slate-950">Ledger Movements</h2>
         <p class="mt-1 text-sm text-slate-500">{{ rows.length }} row(s)</p>
       </div>
       <div v-if="loading" class="p-6 text-sm font-bold text-slate-500">Loading ledger movements...</div>
       <WorkspaceEmptyState v-else-if="rows.length === 0" title="No ledger movements" description="No posted AR/AP movement matched this ledger." />
-      <div v-else class="overflow-x-auto">
+      <div v-else class="workspace-table-scroll min-w-0 overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-100 text-sm">
           <thead class="bg-slate-50 text-left text-xs font-black uppercase tracking-wide text-slate-400">
             <tr>

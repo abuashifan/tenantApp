@@ -359,7 +359,7 @@ watch(
     </template>
 
     <template #toolbar-right>
-      <span class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600">
+      <span class="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">
         {{ effectiveRemote ? pagination.total : filteredRows.length }} rows
       </span>
     </template>

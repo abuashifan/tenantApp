@@ -6,7 +6,7 @@ import { cn } from '@/utils/cn'
   <div
     :class="
       cn(
-        'sticky bottom-0 z-10 mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white/95 pt-3 backdrop-blur',
+        'mt-3 flex min-w-0 flex-nowrap items-center justify-end gap-2 overflow-x-auto border-t border-slate-200 bg-white pt-3',
       )
     "
   >

@@ -162,7 +162,7 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden bg-slate-100 text-slate-900">
+  <div class="app-viewport flex min-w-0 overflow-hidden bg-slate-100 text-slate-900">
     <AppSidebarCollapsed
       v-if="ui.sidebarCollapsed"
       :modules="modules"
@@ -199,8 +199,8 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
         v-if="showSecondary"
         :class="
           attachedSecondaryWorkspace
-            ? 'bg-transparent px-4 pt-4 lg:px-6 lg:pt-6'
-            : 'border-b border-slate-200 bg-white px-4 py-2 lg:px-6'
+            ? 'min-w-0 flex-none bg-transparent px-4 pt-4 lg:px-6 lg:pt-6 tablet-workspace-padding tablet-workspace-top-padding'
+            : 'min-w-0 flex-none border-b border-slate-200 bg-white px-4 py-2 lg:px-6'
         "
       >
         <SecondaryTabsBar
@@ -215,8 +215,8 @@ const activeCompanyName = computed(() => company.activeCompany?.name ?? 'PT Maju
       <main
         :class="
           attachedSecondaryWorkspace
-            ? 'min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-0 lg:px-6 lg:pb-6'
-            : 'min-h-0 flex-1 overflow-y-auto p-4 lg:p-6'
+            ? 'workspace-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-0 lg:px-6 lg:pb-6 tablet-workspace-padding'
+            : 'workspace-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-6 tablet-workspace-padding tablet-workspace-top-padding'
         "
       >
         <WorkspaceContentArea />

@@ -89,9 +89,9 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
+  <div class="workspace-card tablet-workspace-card tablet-workspace-card-gap flex min-w-0 flex-col gap-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
     <div class="border-b border-slate-100 pb-4">
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <h1 class="text-2xl font-black tracking-tight text-slate-950">Trial Balance</h1>
         <div class="flex flex-wrap gap-2">
           <BaseButton variant="secondary" size="md"><Upload class="h-4 w-4" />Export</BaseButton>
@@ -101,20 +101,20 @@ onMounted(load)
       </div>
     </div>
     <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
-        <label class="block space-y-1.5 lg:flex-1">
+      <div class="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-end">
+        <label class="block min-w-0 space-y-1.5 xl:flex-1">
           <span class="text-xs font-bold text-slate-500">Search</span>
           <input v-model="search" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" placeholder="Search account code or name..." />
         </label>
-        <label class="block space-y-1.5 lg:w-[160px]">
+        <label class="block space-y-1.5 xl:w-[160px]">
           <span class="text-xs font-bold text-slate-500">Start Date</span>
           <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
         </label>
-        <label class="block space-y-1.5 lg:w-[160px]">
+        <label class="block space-y-1.5 xl:w-[160px]">
           <span class="text-xs font-bold text-slate-500">End Date</span>
           <input v-model="endDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
         </label>
-        <label class="block space-y-1.5 lg:w-[160px]">
+        <label class="block space-y-1.5 xl:w-[160px]">
           <span class="text-xs font-bold text-slate-500">Account Type</span>
           <select v-model="accountType" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold">
             <option value="">All</option><option value="asset">Asset</option><option value="liability">Liability</option>
@@ -138,7 +138,7 @@ onMounted(load)
         empty-description="No rows match your filter."
         @row-click="openGeneralLedger"
       />
-      <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
+      <div class="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
         <span class="font-semibold text-slate-600">Accounts: {{ rows.length }}</span>
         <span class="font-extrabold tabular-nums text-slate-900">
           Total Debit {{ formatRupiah(totals.ending_debit) }} | Total Credit {{ formatRupiah(totals.ending_credit) }}

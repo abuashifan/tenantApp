@@ -256,7 +256,7 @@ const pageCount = computed(() => Math.max(table.getPageCount(), 1))
   <div
     :class="
       cn(
-        'flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white',
+        'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white',
         fillAvailable && 'flex-1',
       )
     "
@@ -280,16 +280,22 @@ const pageCount = computed(() => Math.max(table.getPageCount(), 1))
     </div>
 
     <div
-      :class="cn('min-h-0 overflow-x-auto', fillAvailable && 'flex-1 overflow-y-auto')"
+      :class="cn('workspace-table-scroll min-h-0 min-w-0 overflow-x-auto', fillAvailable && 'flex-1 overflow-y-auto')"
       :style="props.tableMaxHeight ? { maxHeight: props.tableMaxHeight, overflowY: 'auto' } : undefined"
     >
-      <table class="min-w-full text-left text-sm">
+      <table class="w-full min-w-full text-left text-sm">
         <thead class="sticky top-0 z-10 bg-slate-50 text-xs font-bold text-slate-600">
           <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
             <th
               v-for="header in headerGroup.headers"
               :key="header.id"
-              :class="cn('whitespace-nowrap px-4', compact ? 'py-1.5' : 'py-3')"
+              :class="
+                cn(
+                  'whitespace-nowrap tablet-table-cell px-4',
+                  compact ? 'tablet-table-cell-compact py-2 text-xs' : 'py-3',
+                  header.column.id === 'actions' && 'workspace-table-action-cell',
+                )
+              "
             >
               <button
                 v-if="!header.isPlaceholder && header.column.getCanSort()"
@@ -337,7 +343,13 @@ const pageCount = computed(() => Math.max(table.getPageCount(), 1))
             <td
               v-for="cell in row.getVisibleCells()"
               :key="cell.id"
-              :class="cn('whitespace-nowrap px-4', compact ? 'py-1.5' : 'py-3')"
+              :class="
+                cn(
+                  'whitespace-nowrap tablet-table-cell px-4',
+                  compact ? 'tablet-table-cell-compact py-2 text-sm' : 'py-3',
+                  cell.column.id === 'actions' && 'workspace-table-action-cell',
+                )
+              "
             >
               <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
             </td>

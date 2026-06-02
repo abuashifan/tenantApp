@@ -35,7 +35,7 @@ async function handleLogout() {
 </script>
 
 <template>
-  <header class="flex h-20 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:px-6">
+  <header class="tablet-topbar flex h-20 min-w-0 flex-none items-center gap-3 border-b border-slate-200 bg-white px-4 lg:px-6">
     <button
       type="button"
       class="grid h-10 w-10 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-600 lg:hidden"

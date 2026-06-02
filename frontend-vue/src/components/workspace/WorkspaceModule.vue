@@ -118,10 +118,10 @@ watch(
 </script>
 
 <template>
-  <div>
+  <div class="h-full min-h-0 min-w-0">
     <div
       v-if="activeSecondary?.mode === 'list'"
-      class="space-y-4 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5"
+      class="workspace-card tablet-workspace-card flex h-full min-h-0 min-w-0 flex-col gap-2 rounded-b-2xl rounded-tr-2xl border border-slate-200 bg-white p-3 shadow-sm lg:p-4"
     >
       <DataTableToolbar
         v-model:search="list.filters.value.search"
@@ -157,6 +157,7 @@ watch(
       />
 
       <DataTable
+        class="min-h-0 flex-1"
         :columns="columns"
         :data="rowsForTable"
         :loading="loading || list.loading.value"
@@ -166,12 +167,14 @@ watch(
         v-model:selected-ids="selectedIds"
         :pagination="list.pagination.value"
         :sorting="list.sorting.value"
+        compact
+        fill-available
         @page-change="list.setPage"
         @per-page-change="(perPage) => { list.pagination.value.perPage = perPage; list.setPage(1) }"
       />
     </div>
 
-    <div v-else class="rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
+    <div v-else class="workspace-card tablet-workspace-card h-full min-h-0 min-w-0 overflow-hidden rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-3 shadow-sm lg:p-4">
       <slot name="form" :tab="activeSecondary" />
     </div>
 

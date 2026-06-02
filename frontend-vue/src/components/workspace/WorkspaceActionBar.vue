@@ -33,8 +33,8 @@ const visibleActions = computed(() =>
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
-    <BaseButton variant="secondary" size="md" @click="emit('refresh')">
+  <div class="flex min-w-max flex-nowrap items-center justify-start gap-2 xl:justify-end">
+    <BaseButton variant="secondary" size="sm" @click="emit('refresh')">
       <RefreshCw class="h-4 w-4" />
       Refresh
     </BaseButton>
@@ -43,7 +43,7 @@ const visibleActions = computed(() =>
       v-for="action in visibleActions"
       :key="action.key"
       :variant="action.variant === 'danger' ? 'danger' : 'secondary'"
-      size="md"
+      size="sm"
       :disabled="selectedCount === 0 && action.variant === 'danger'"
       @click="emit('actionClick', action.key)"
     >
@@ -51,7 +51,7 @@ const visibleActions = computed(() =>
       {{ action.label }}
     </BaseButton>
 
-    <BaseButton v-if="createLabel && createPermission && can(createPermission)" variant="secondary" size="md" @click="emit('create')">
+    <BaseButton v-if="createLabel && createPermission && can(createPermission)" variant="secondary" size="sm" @click="emit('create')">
       <Plus class="h-4 w-4" />
       {{ createLabel }}
     </BaseButton>

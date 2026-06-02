@@ -23,7 +23,7 @@ const emit = defineEmits<{
       type="button"
       :class="
         cn(
-          'group flex h-10 max-w-[220px] shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold transition',
+          'tablet-primary-tab group flex h-10 max-w-[220px] shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold transition',
           activeId === tab.id
             ? 'border-[#fecdd3] bg-[#fff1f2] text-[#e11d48]'
             : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',

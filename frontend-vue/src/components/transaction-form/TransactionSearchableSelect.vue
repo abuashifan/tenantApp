@@ -141,7 +141,7 @@ const isDisabled = computed(() => props.disabled || props.readonly)
 const triggerClass = computed(() =>
   cn(
     'flex w-full min-w-0 items-center justify-between gap-1.5 overflow-hidden border border-slate-200 bg-white text-left text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400',
-    props.compact ? 'h-8 rounded-lg px-2 text-xs' : 'h-10 rounded-xl px-3 text-sm',
+    props.compact ? 'h-8 rounded-lg px-2 text-xs' : 'h-9 rounded-lg px-2.5 text-sm',
     props.selectedFontWeight === 'medium' ? 'font-medium' : 'font-normal',
   ),
 )
@@ -273,8 +273,8 @@ onBeforeUnmount(removeFloatingListeners)
 </script>
 
 <template>
-  <div ref="root" class="relative space-y-1.5">
-    <span v-if="label" class="block text-xs font-bold text-slate-500">{{ label }}</span>
+  <div ref="root" class="relative min-w-0 space-y-1">
+    <span v-if="label" class="block truncate text-[11px] font-bold leading-4 text-slate-500">{{ label }}</span>
     <button
       ref="trigger"
       type="button"

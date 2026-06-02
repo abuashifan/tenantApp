@@ -5,7 +5,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-end gap-2">
+  <div class="flex min-w-max flex-nowrap items-center justify-end gap-2">
     <slot />
   </div>
 </template>
