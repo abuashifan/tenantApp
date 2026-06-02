@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import BackendResourceForm from '@/features/workspace/backend-resource/BackendResourceForm.vue'
-import { journalFormConfig } from '@/features/workspace/backend-resource/backendResource.form.config'
 import { journalListConfig } from '@/features/accounting/journals/journal-list.config'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
+import JournalEntryWorkstationForm from './JournalEntryWorkstationForm.vue'
 
 const tabs = useWorkspaceTabsStore()
 const activeSecondaryId = computed(
@@ -22,9 +21,8 @@ function closeForm() {
 </script>
 
 <template>
-  <BackendResourceForm
+  <JournalEntryWorkstationForm
     v-if="activeSecondary"
-    :config="journalFormConfig"
     :primary-tab-id="journalListConfig.primaryTabId"
     :tab="activeSecondary"
     @close="closeForm"

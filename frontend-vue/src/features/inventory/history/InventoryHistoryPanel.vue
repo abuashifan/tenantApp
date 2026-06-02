@@ -3,8 +3,10 @@ import { computed, onMounted, ref } from 'vue'
 import { Download, RefreshCw, Search } from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DateInput from '@/components/ui/DateInput.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
 import WorkspaceLoadingState from '@/components/workspace/WorkspaceLoadingState.vue'
+import { formatDisplayDate } from '@/utils/date'
 import {
   getInventoryHistory,
   listInventoryHistoryWarehouses,
@@ -166,11 +168,11 @@ onMounted(async () => {
       <div class="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[170px_170px_minmax(240px,1fr)_190px_180px]">
         <label class="space-y-1.5">
           <span class="block text-xs font-bold text-slate-500">Dari</span>
-          <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
+          <DateInput v-model="startDate" />
         </label>
         <label class="space-y-1.5">
           <span class="block text-xs font-bold text-slate-500">Sampai</span>
-          <input v-model="endDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
+          <DateInput v-model="endDate" />
         </label>
         <label class="space-y-1.5">
           <span class="block text-xs font-bold text-slate-500">Search</span>
@@ -230,7 +232,7 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.id" class="border-b border-slate-100 text-slate-700 hover:bg-slate-50">
-            <td class="whitespace-nowrap px-3 py-3">{{ row.date }}</td>
+            <td class="whitespace-nowrap px-3 py-3">{{ formatDisplayDate(row.date) }}</td>
             <td class="px-3 py-3">
               <span
                 class="rounded-full border px-2.5 py-1 text-xs font-bold"

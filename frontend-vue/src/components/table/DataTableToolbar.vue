@@ -2,6 +2,9 @@
 import { Filter, Plus, Search, Slash } from 'lucide-vue-next'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DateInput from '@/components/ui/DateInput.vue'
+import BaseMultiSelect from '@/components/ui/BaseMultiSelect.vue'
+import type { WorkspaceStatusFilter, WorkspaceStatusOption } from '@/types/workspace'
 import { cn } from '@/utils/cn'
 
 const props = withDefaults(
@@ -9,6 +12,8 @@ const props = withDefaults(
     search: string
     startDate: string
     endDate: string
+    status?: WorkspaceStatusFilter
+    statusOptions?: WorkspaceStatusOption[]
     selectedCount: number
     searchPlaceholder?: string
     createLabel?: string
@@ -19,8 +24,11 @@ const props = withDefaults(
     showFilter?: boolean
     showDateFilters?: boolean
     embedded?: boolean
+    bulkActions?: Array<{ key: string; label: string; variant?: 'primary' | 'secondary' | 'danger' }>
   }>(),
   {
+    status: () => [],
+    statusOptions: () => [],
     selectedCount: 0,
     searchPlaceholder: 'Search transaction number…',
     createLabel: 'Create New',
@@ -31,6 +39,7 @@ const props = withDefaults(
     showFilter: true,
     showDateFilters: true,
     embedded: false,
+    bulkActions: () => [],
   },
 )
 
@@ -38,9 +47,11 @@ const emit = defineEmits<{
   'update:search': [value: string]
   'update:startDate': [value: string]
   'update:endDate': [value: string]
+  'update:status': [value: WorkspaceStatusFilter]
   filter: []
   create: []
   void: []
+  bulkAction: [key: string]
 }>()
 </script>
 
@@ -57,9 +68,13 @@ const emit = defineEmits<{
       <div
         class="grid w-full min-w-0 items-center gap-2"
         :class="
-          props.showDateFilters
-            ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(112px,0.36fr)_minmax(112px,0.36fr)]'
-            : 'grid-cols-1'
+          props.showDateFilters && props.statusOptions.length
+            ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(112px,0.34fr)_minmax(112px,0.34fr)_minmax(132px,0.4fr)]'
+            : props.showDateFilters
+              ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(112px,0.36fr)_minmax(112px,0.36fr)]'
+              : props.statusOptions.length
+                ? 'grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(132px,0.4fr)]'
+                : 'grid-cols-1'
         "
       >
         <label class="block min-w-0">
@@ -77,23 +92,23 @@ const emit = defineEmits<{
 
         <label v-if="props.showDateFilters" class="block min-w-0">
           <span class="sr-only">Start Date</span>
-          <input
-            :value="props.startDate"
-            type="date"
-            class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb]"
-            @input="emit('update:startDate', ($event.target as HTMLInputElement).value)"
-          />
+          <DateInput :model-value="props.startDate" compact @update:model-value="emit('update:startDate', $event)" />
         </label>
 
         <label v-if="props.showDateFilters" class="block min-w-0">
           <span class="sr-only">End Date</span>
-          <input
-            :value="props.endDate"
-            type="date"
-            class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-[#24a1db] focus:ring-2 focus:ring-[#e9f6fb]"
-            @input="emit('update:endDate', ($event.target as HTMLInputElement).value)"
-          />
+          <DateInput :model-value="props.endDate" compact @update:model-value="emit('update:endDate', $event)" />
         </label>
+
+        <BaseMultiSelect
+          v-if="props.statusOptions.length"
+          :model-value="props.status"
+          :options="props.statusOptions"
+          all-label="All Status"
+          none-label="All Status"
+          aria-label="Status filter"
+          @update:model-value="emit('update:status', $event)"
+        />
       </div>
 
       <div class="workspace-table-scroll flex min-w-0 flex-nowrap items-center justify-start gap-2 overflow-x-auto md:justify-end">
@@ -106,7 +121,17 @@ const emit = defineEmits<{
           {{ props.createLabel }}
         </BaseButton>
         <BaseButton
-          v-if="props.showVoid"
+          v-for="action in props.bulkActions"
+          :key="action.key"
+          :variant="action.variant ?? 'secondary'"
+          size="sm"
+          :disabled="props.selectedCount === 0"
+          @click="emit('bulkAction', action.key)"
+        >
+          {{ action.label }}
+        </BaseButton>
+        <BaseButton
+          v-if="props.showVoid && props.bulkActions.length === 0"
           variant="danger"
           size="sm"
           :disabled="props.selectedCount === 0"

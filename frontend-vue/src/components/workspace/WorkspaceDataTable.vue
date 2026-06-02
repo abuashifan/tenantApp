@@ -46,6 +46,7 @@ defineEmits<{
     :clear-selection-on-page-change="clearSelectionOnPageChange ?? remotePagination"
     compact
     fill-available
+    row-clickable
     show-page-size
     @update:selected-ids="$emit('update:selectedIds', $event)"
     @row-click="$emit('rowClick', $event)"

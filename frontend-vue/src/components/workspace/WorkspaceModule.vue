@@ -7,6 +7,7 @@ import DataTableToolbar from '@/components/table/DataTableToolbar.vue'
 import WorkspaceSelectionActions from '@/components/workspace/WorkspaceSelectionActions.vue'
 import { useWorkspaceList } from '@/composables/useWorkspaceList'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
+import type { WorkspaceStatusFilter, WorkspaceStatusOption } from '@/types/workspace'
 
 const props = withDefaults(
   defineProps<{
@@ -29,6 +30,8 @@ const props = withDefaults(
     showVoid?: boolean
     showFilter?: boolean
     showDateFilters?: boolean
+    statusOptions?: WorkspaceStatusOption[]
+    bulkActions?: Array<{ key: string; label: string; variant?: 'primary' | 'secondary' | 'danger' }>
     reloadKey?: string | number
     clearSelectionKey?: string | number
     defaultSorting?: SortingState
@@ -47,8 +50,10 @@ const props = withDefaults(
     showEditSelected: true,
     showCreate: true,
     showVoid: true,
-    showFilter: true,
+    showFilter: false,
     showDateFilters: true,
+    statusOptions: () => [],
+    bulkActions: () => [],
   },
 )
 
@@ -56,7 +61,9 @@ const emit = defineEmits<{
   filter: [filters: { search: string; startDate: string; endDate: string }]
   create: []
   void: [selectedIds: string[]]
+  bulkAction: [payload: { key: string; selectedIds: string[]; selectedRows: TRow[] }]
   editFirstSelected: [id: string]
+  rowClick: [row: TRow]
   loadError: [message: string]
 }>()
 
@@ -81,6 +88,7 @@ const list = useWorkspaceList<TRow>({
 })
 selectedIds.value = list.selectedIds.value
 const rowsForTable = computed<TRow[]>(() => list.visibleRows.value)
+const selectedRows = computed(() => rowsForTable.value.filter((row) => selectedIds.value.includes(row.id)))
 
 
 function editFirstSelected() {
@@ -92,6 +100,26 @@ function editFirstSelected() {
 function applyFilter() {
   emit('filter', list.filters.value)
   void list.fetchRows()
+}
+
+function updateSearch(value: string) {
+  list.setSearch(value)
+  applyFilter()
+}
+
+function updateStartDate(value: string) {
+  list.setDateRange(value, list.filters.value.endDate)
+  applyFilter()
+}
+
+function updateEndDate(value: string) {
+  list.setDateRange(list.filters.value.startDate, value)
+  applyFilter()
+}
+
+function updateStatus(value: WorkspaceStatusFilter) {
+  list.setStatus(value)
+  applyFilter()
 }
 
 watch(
@@ -124,9 +152,11 @@ watch(
       class="workspace-card tablet-workspace-card flex h-full min-h-0 min-w-0 flex-col gap-2 rounded-b-2xl rounded-tr-2xl border border-slate-200 bg-white p-3 shadow-sm lg:p-4"
     >
       <DataTableToolbar
-        v-model:search="list.filters.value.search"
-        v-model:startDate="list.filters.value.startDate"
-        v-model:endDate="list.filters.value.endDate"
+        :search="list.filters.value.search"
+        :start-date="list.filters.value.startDate"
+        :end-date="list.filters.value.endDate"
+        :status="list.status.value"
+        :status-options="statusOptions"
         :selected-count="selectedIds.length"
         :search-placeholder="searchPlaceholder"
         :create-label="createLabel"
@@ -136,10 +166,16 @@ watch(
         :show-void="showVoid"
         :show-filter="showFilter"
         :show-date-filters="showDateFilters"
+        :bulk-actions="bulkActions"
         embedded
+        @update:search="updateSearch"
+        @update:start-date="updateStartDate"
+        @update:end-date="updateEndDate"
+        @update:status="updateStatus"
         @filter="applyFilter"
         @create="emit('create')"
         @void="emit('void', selectedIds)"
+        @bulk-action="emit('bulkAction', { key: $event, selectedIds, selectedRows })"
       />
 
       <div
@@ -169,7 +205,9 @@ watch(
         :sorting="list.sorting.value"
         compact
         fill-available
+        row-clickable
         @page-change="list.setPage"
+        @row-click="emit('rowClick', $event)"
         @per-page-change="(perPage) => { list.pagination.value.perPage = perPage; list.setPage(1) }"
       />
     </div>

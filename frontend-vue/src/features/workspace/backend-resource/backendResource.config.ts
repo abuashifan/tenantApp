@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/vue-table'
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
 import type { SidebarMenuItem } from '@/navigation/sidebar'
 import type { WorkspaceListConfig, WorkspaceRowAction } from '@/types/workspace'
+import { formatDisplayDate } from '@/utils/date'
 import type { BackendResourceRow } from './backendResource.service'
 
 export type BackendWorkspaceKind = 'master-data' | 'document' | 'report' | 'inventory' | 'settings'
@@ -190,10 +191,32 @@ function statusText(row: BackendResourceRow) {
   return typeof raw === 'boolean' ? (raw ? 'active' : 'inactive') : String(raw)
 }
 
+const documentDateFields = [
+  'document_date',
+  'date',
+  'transaction_date',
+  'quotation_date',
+  'order_date',
+  'delivery_date',
+  'invoice_date',
+  'billing_date',
+  'return_date',
+  'receipt_date',
+  'request_date',
+  'bill_date',
+  'payment_date',
+  'deposit_date',
+  'transfer_date',
+  'movement_date',
+  'adjustment_date',
+  'opname_date',
+  'created_at',
+]
+
 function documentColumns(): ColumnDef<BackendResourceRow, unknown>[] {
   return [
     { id: 'number', accessorFn: (row) => text(row, ['document_number', 'number', 'quotation_number', 'order_number', 'invoice_number', 'billing_number', 'receipt_number', 'return_number', 'deposit_number', 'transfer_number', 'id']), header: 'Number', cell: ({ row }) => h('span', { class: 'font-bold text-slate-900' }, text(row.original, ['document_number', 'number', 'quotation_number', 'order_number', 'invoice_number', 'billing_number', 'receipt_number', 'return_number', 'deposit_number', 'transfer_number', 'id'])) },
-    { id: 'date', accessorFn: (row) => text(row, ['document_date', 'date', 'transaction_date', 'order_date', 'invoice_date', 'created_at']), header: 'Date', cell: ({ row }) => text(row.original, ['document_date', 'date', 'transaction_date', 'order_date', 'invoice_date', 'created_at']) },
+    { id: 'date', accessorFn: (row) => text(row, documentDateFields), header: 'Date', cell: ({ row }) => formatDisplayDate(text(row.original, documentDateFields)) },
     { id: 'party', accessorFn: (row) => text(row, ['customer_name', 'vendor_name', 'contact_name', 'customer', 'vendor', 'contact']), header: 'Customer / Vendor', cell: ({ row }) => text(row.original, ['customer_name', 'vendor_name', 'contact_name', 'customer', 'vendor', 'contact']) },
     { id: 'status', accessorFn: (row) => statusText(row), header: 'Status', cell: ({ row }) => statusCell(row.original) },
     { id: 'total', accessorFn: (row) => Number(value(row, ['grand_total', 'total', 'total_amount', 'amount', 'balance'])) || 0, header: 'Total', cell: ({ row }) => h('span', { class: 'tabular-nums' }, money(row.original, ['grand_total', 'total', 'total_amount', 'amount', 'balance'])) },

@@ -5,7 +5,8 @@ import { api } from '@/api'
 import type { ApiResponse } from '@/services/apiResponse'
 import { unwrap } from '@/services/apiResponse'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
-import type { WorkspaceListConfig, WorkspacePagination } from '@/types/workspace'
+import type { WorkspaceListConfig, WorkspacePagination, WorkspaceStatusFilter } from '@/types/workspace'
+import { currentMonthDateRange, KNOWN_DATE_FIELDS, toDateInputValue } from '@/utils/date'
 
 type BackendListPayload<TRaw> = TRaw[] | { data?: TRaw[]; items?: TRaw[] }
 type WorkspaceFetcher<T> = (params: Record<string, unknown>) => Promise<T[]>
@@ -37,21 +38,49 @@ function normalizePayload<TRaw>(payload: BackendListPayload<TRaw>): TRaw[] {
   return []
 }
 
+function normalizeStatusFilter(value: unknown): WorkspaceStatusFilter {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean)
+  if (typeof value === 'string' && value) return [value]
+  return []
+}
+
+function rowText(row: unknown) {
+  return JSON.stringify(row ?? '').toLowerCase()
+}
+
+function rowStatus(row: unknown) {
+  const record = (row ?? {}) as Record<string, unknown>
+  const value = record.status ?? record.state ?? record.is_active
+  if (typeof value === 'boolean') return value ? 'active' : 'inactive'
+  return String(value ?? '').toLowerCase()
+}
+
+function rowDate(row: unknown) {
+  const record = (row ?? {}) as Record<string, unknown>
+  if (typeof record.date === 'string') return toDateInputValue(record.date)
+  for (const field of KNOWN_DATE_FIELDS) {
+    const value = toDateInputValue(record[field])
+    if (value) return value
+  }
+  return ''
+}
+
 export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
   options: WorkspaceListOptions<TRow, TRaw>,
 ) {
   const tabs = useWorkspaceTabsStore()
   const savedListState = options.primaryTabId ? tabs.getListState(options.primaryTabId) : null
   const rows = shallowRef<TRow[]>([])
+  const defaultDateRange = currentMonthDateRange()
   const loading = ref(false)
   const error = ref<string | null>(null)
   const filters = ref<WorkspaceListFilters>({
     search: savedListState?.search ?? '',
-    startDate: savedListState?.startDate ?? '',
-    endDate: savedListState?.endDate ?? '',
+    startDate: savedListState?.startDate || defaultDateRange.startDate,
+    endDate: savedListState?.endDate || defaultDateRange.endDate,
   })
   const filterValues = ref<Record<string, unknown>>(savedListState?.filters ?? {})
-  const status = ref(savedListState?.status ?? '')
+  const status = ref<WorkspaceStatusFilter>(normalizeStatusFilter(savedListState?.status))
   const pagination = ref<WorkspacePagination>(savedListState?.pagination ?? { page: 1, perPage: 10, total: 0, lastPage: 1 })
   const sorting = ref<SortingState>(savedListState?.sorting?.length ? savedListState.sorting : (options.defaultSorting ?? []))
   const selectedIds = ref<string[]>(savedListState?.selectedIds ?? [])
@@ -84,7 +113,7 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
     if (filters.value.search) params.search = filters.value.search
     if (filters.value.startDate) params.date_from = filters.value.startDate
     if (filters.value.endDate) params.date_to = filters.value.endDate
-    if (status.value) params.status = status.value
+    if (status.value.length === 1) params.status = status.value[0]
     params.page = pagination.value.page
     params.per_page = pagination.value.perPage
     if (sorting.value[0]) {
@@ -140,13 +169,17 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
   }
 
   const visibleRows = computed(() => {
-    if (options.clientFilter === false) return rows.value
-    if (shouldFetchRemote.value && options.clientFilter !== true) return rows.value
-
     const query = filters.value.search.trim().toLowerCase()
-    if (!query) return rows.value
+    const selectedStatuses = new Set(status.value)
 
-    return rows.value.filter((row) => JSON.stringify(row).toLowerCase().includes(query))
+    return rows.value.filter((row) => {
+      if (query && !rowText(row).includes(query)) return false
+      if (selectedStatuses.size > 0 && !selectedStatuses.has(rowStatus(row))) return false
+      const date = rowDate(row)
+      if (filters.value.startDate && date && date < filters.value.startDate) return false
+      if (filters.value.endDate && date && date > filters.value.endDate) return false
+      return true
+    })
   })
 
   function refresh() {
@@ -172,7 +205,7 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
     persistListState()
   }
 
-  function setStatus(value: string) {
+  function setStatus(value: WorkspaceStatusFilter) {
     status.value = value
     pagination.value.page = 1
     persistListState()
@@ -189,9 +222,9 @@ export function useWorkspaceList<TRow extends { id: string }, TRaw = unknown>(
   }
 
   function clearFilters() {
-    filters.value = { search: '', startDate: '', endDate: '' }
+    filters.value = { search: '', ...currentMonthDateRange() }
     filterValues.value = {}
-    status.value = ''
+    status.value = []
     pagination.value.page = 1
     persistListState()
   }

@@ -12,7 +12,8 @@ import { backendResourceFormConfigs } from './backendResource.form.config'
 import { runBackendResourceAction, extractLaravelErrors } from './backendResourceForm.service'
 import { findSidebarMenuItem } from '@/navigation/sidebar'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
-import type { WorkspacePagination } from '@/types/workspace'
+import type { WorkspacePagination, WorkspaceStatusFilter } from '@/types/workspace'
+import { currentMonthDateRange } from '@/utils/date'
 
 const tabs = useWorkspaceTabsStore()
 const menuItem = computed(() => findSidebarMenuItem(tabs.activePrimaryTabId))
@@ -26,7 +27,7 @@ const error = ref<string | null>(null)
 const search = ref('')
 const startDate = ref('')
 const endDate = ref('')
-const status = ref('')
+const status = ref<WorkspaceStatusFilter>([])
 const includeVoid = ref(false)
 const selectedIds = ref<string[]>([])
 const sorting = ref<SortingState>([])
@@ -51,6 +52,12 @@ const filterGuidance = computed(() => {
   }
   return ''
 })
+
+function normalizeStatusFilter(value: unknown): WorkspaceStatusFilter {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean)
+  if (typeof value === 'string' && value) return [value]
+  return []
+}
 
 function currentPrimaryId() {
   return config.value?.primaryTabId ?? menuItem.value?.href ?? tabs.activePrimaryTabId
@@ -78,10 +85,12 @@ function persistListState(partial: Parameters<typeof tabs.updateListState>[1] = 
 
 function hydrateListState(primaryTabId: string) {
   const state = tabs.getListState(primaryTabId)
+  const defaultDateRange = currentMonthDateRange()
+  const usesDateRange = Boolean(capability.value?.dateFilter || capability.value?.requiredDateFilter)
   search.value = state.search
-  startDate.value = state.startDate
-  endDate.value = state.endDate
-  status.value = state.status
+  startDate.value = usesDateRange ? state.startDate || defaultDateRange.startDate : state.startDate
+  endDate.value = usesDateRange ? state.endDate || defaultDateRange.endDate : state.endDate
+  status.value = normalizeStatusFilter(state.status)
   includeVoid.value = state.includeVoid
   sorting.value = state.sorting.length ? state.sorting : defaultSorting.value
   pagination.value = state.pagination
@@ -110,7 +119,7 @@ const filteredRows = computed(() => {
   const query = search.value.trim().toLowerCase()
   return rows.value.filter((row) => {
     if (query && !rowText(row).includes(query)) return false
-    if (status.value && statusValue(row) !== status.value) return false
+    if (status.value.length > 0 && !status.value.includes(statusValue(row))) return false
     const date = dateValue(row)
     if (startDate.value && date && date < startDate.value) return false
     if (endDate.value && date && date > endDate.value) return false
@@ -138,7 +147,7 @@ function requestParams() {
     params[queryKey('page', 'page')] = pagination.value.page
     params[queryKey('perPage', 'per_page')] = pagination.value.perPage
     if (supportsRemote('remoteSearch') && search.value.trim()) params[queryKey('search', 'search')] = search.value.trim()
-    if (supportsRemote('remoteFilters') && status.value) params[queryKey('status', 'status')] = status.value
+    if (supportsRemote('remoteFilters') && status.value.length === 1) params[queryKey('status', 'status')] = status.value[0]
     if (supportsRemote('remoteFilters') && startDate.value) params[queryKey('startDate', 'start_date')] = startDate.value
     if (supportsRemote('remoteFilters') && endDate.value) params[queryKey('endDate', 'end_date')] = endDate.value
     if (supportsRemote('remoteFilters') && capability.value?.includeVoidFilter) {
@@ -198,7 +207,7 @@ function updateDates(range: { startDate: string; endDate: string }) {
   if (supportsRemote('remoteFilters') || capability.value?.requiredDateFilter) void load()
 }
 
-function updateStatus(value: string) {
+function updateStatus(value: WorkspaceStatusFilter) {
   status.value = value
   resetPageAndSelection()
   persistListState()

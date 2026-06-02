@@ -2,8 +2,10 @@
 import { computed, onMounted, ref } from 'vue'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DateInput from '@/components/ui/DateInput.vue'
 import { usePermission } from '@/composables/usePermission'
 import type { ApiError } from '@/types/api'
+import { formatDisplayDate } from '@/utils/date'
 import {
   closeFiscalYear,
   getClosingChecklist,
@@ -44,8 +46,7 @@ const canManageLock = computed(() => can('fiscal_year.lock_manage'))
 const isLocked = computed(() => Boolean(activeFiscalYear.value?.locked_until))
 
 function formatDate(value?: string | null) {
-  if (!value) return '-'
-  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
+  return formatDisplayDate(value)
 }
 
 function formatMoney(value?: number | null) {
@@ -378,11 +379,10 @@ onMounted(load)
           <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
             <label class="text-sm font-bold text-slate-700">
               Lock until
-              <input
+              <DateInput
                 v-model="lockUntil"
-                type="date"
                 :disabled="!canManageLock"
-                class="mt-2 block h-10 rounded-xl border border-slate-200 px-3 text-sm disabled:bg-slate-50"
+                class="mt-2"
               />
             </label>
             <label class="text-sm font-bold text-slate-700">

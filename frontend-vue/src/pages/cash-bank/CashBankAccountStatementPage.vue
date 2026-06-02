@@ -5,10 +5,12 @@ import { RefreshCw, Search } from 'lucide-vue-next'
 
 import DataTable from '@/components/table/DataTable.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DateInput from '@/components/ui/DateInput.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
 import WorkspaceErrorState from '@/components/workspace/WorkspaceErrorState.vue'
 import WorkspaceLoadingState from '@/components/workspace/WorkspaceLoadingState.vue'
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
+import { formatDisplayDate } from '@/utils/date'
 import {
   cashBankReportErrorMessage,
   getCashBankAccountStatement,
@@ -62,7 +64,7 @@ function sourceLabel(line: CashBankStatementLine) {
 }
 
 const columns = computed<ColumnDef<CashBankStatementLine, unknown>[]>(() => [
-  { accessorKey: 'journal_date', header: 'Date', cell: ({ row }) => row.original.journal_date },
+  { accessorKey: 'journal_date', header: 'Date', cell: ({ row }) => formatDisplayDate(row.original.journal_date) },
   { accessorKey: 'journal_number', header: 'Document No', cell: ({ row }) => row.original.journal_number },
   { accessorKey: 'description', header: 'Description / Memo', cell: ({ row }) => row.original.description || '-' },
   { id: 'source', header: 'Source Type', cell: ({ row }) => sourceLabel(row.original) },
@@ -157,11 +159,11 @@ onMounted(initialize)
         </label>
         <label class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">Start Date</span>
-          <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
+          <DateInput v-model="startDate" />
         </label>
         <label class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">End Date</span>
-          <input v-model="endDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
+          <DateInput v-model="endDate" />
         </label>
         <label class="block space-y-1.5">
           <span class="text-xs font-bold text-slate-500">Search</span>

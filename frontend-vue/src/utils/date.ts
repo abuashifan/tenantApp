@@ -41,6 +41,17 @@ function pad(value: number) {
   return String(value).padStart(2, '0')
 }
 
+export function currentMonthDateRange(now = new Date()) {
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const start = new Date(year, month, 1)
+  const end = new Date(year, month + 1, 0)
+  return {
+    startDate: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
+    endDate: `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`,
+  }
+}
+
 export function toDateInputValue(value: unknown): string {
   if (value == null || value === '') return ''
 
@@ -57,6 +68,34 @@ export function toDateInputValue(value: unknown): string {
   const match = trimmed.match(DATE_PREFIX_PATTERN)
   const date = match?.[1] ?? ''
   return isValidDateInput(date) ? date : ''
+}
+
+export function formatDisplayDate(value: unknown): string {
+  const date = toDateInputValue(value)
+  if (!date) return '-'
+  const [year, month, day] = date.split('-')
+  return `${day}/${month}/${year}`
+}
+
+export function toDateDisplayValue(value: unknown): string {
+  const formatted = formatDisplayDate(value)
+  return formatted === '-' ? '' : formatted
+}
+
+export function parseDateDisplayValue(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+
+  const iso = toDateInputValue(trimmed)
+  if (iso) return iso
+
+  const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!match) return ''
+
+  const [, day, month, year] = match
+  const candidate = `${year}-${month}-${day}`
+  return isValidDateInput(candidate) ? candidate : ''
 }
 
 export function prepareDateForPayload(value: unknown): string | null {

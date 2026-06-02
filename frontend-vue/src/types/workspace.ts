@@ -35,6 +35,8 @@ export type WorkspaceStatusOption = {
   tone?: WorkspaceStatusTone
 }
 
+export type WorkspaceStatusFilter = string[]
+
 export type WorkspaceDateFilterConfig = {
   enabled: boolean
   field?: string
@@ -67,7 +69,7 @@ export type WorkspaceListState = {
   search: string
   filters: WorkspaceListFilters
   dateRange: WorkspaceDateRange
-  status: string
+  status: WorkspaceStatusFilter
   pagination: WorkspacePagination
   sorting: SortingState
   selectedIds: string[]

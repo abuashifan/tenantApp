@@ -1,17 +1,15 @@
 <script setup lang="ts" generic="TRow extends { id: string }">
-import { computed, h, ref, shallowRef, useSlots } from 'vue'
-import type { ColumnDef, SortingState } from '@tanstack/vue-table'
+import { computed, ref, useSlots } from 'vue'
+import type { SortingState } from '@tanstack/vue-table'
 
-import WorkspaceConfirmDialog from '@/components/workspace/WorkspaceConfirmDialog.vue'
 import WorkspaceDataTable from '@/components/workspace/WorkspaceDataTable.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
 import WorkspaceErrorState from '@/components/workspace/WorkspaceErrorState.vue'
 import WorkspaceFilterPanel from '@/components/workspace/WorkspaceFilterPanel.vue'
 import WorkspaceLoadingState from '@/components/workspace/WorkspaceLoadingState.vue'
-import WorkspaceRowActions from '@/components/workspace/WorkspaceRowActions.vue'
 import WorkspaceToolbar from '@/components/workspace/WorkspaceToolbar.vue'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
-import type { WorkspaceListConfig, WorkspacePagination, WorkspaceRowAction } from '@/types/workspace'
+import type { WorkspaceListConfig, WorkspacePagination, WorkspaceStatusFilter } from '@/types/workspace'
 
 const props = withDefaults(
   defineProps<{
@@ -26,11 +24,10 @@ const props = withDefaults(
     search?: string
     startDate?: string
     endDate?: string
-    status?: string
+    status?: WorkspaceStatusFilter
     includeVoid?: boolean
     showIncludeVoid?: boolean
     selectedIds?: string[]
-    showFilterActions?: boolean
   }>(),
   {
     rows: () => [],
@@ -39,11 +36,10 @@ const props = withDefaults(
     search: '',
     startDate: '',
     endDate: '',
-    status: '',
+    status: () => [],
     includeVoid: false,
     showIncludeVoid: false,
     selectedIds: () => [],
-    showFilterActions: false,
   },
 )
 
@@ -52,13 +48,11 @@ const emit = defineEmits<{
   search: [value: string]
   filterChange: [filters: Record<string, unknown>]
   dateChange: [range: { startDate: string; endDate: string }]
-  statusChange: [status: string]
+  statusChange: [status: WorkspaceStatusFilter]
   includeVoidChange: [includeVoid: boolean]
   pageChange: [page: number]
   perPageChange: [perPage: number]
   sortChange: [sorting: SortingState]
-  applyFilters: []
-  resetFilters: []
   rowClick: [row: TRow]
   actionClick: [payload: { key: string; row?: TRow }]
   bulkActionClick: [payload: { key: string; selectedIds: string[] }]
@@ -70,69 +64,18 @@ const slots = useSlots()
 tabs.ensureListSecondaryTab(props.config.primaryTabId)
 
 const filtersOpen = ref(false)
-const pendingAction = shallowRef<{ action: WorkspaceRowAction<TRow>; row: TRow } | null>(null)
 const activeSecondaryId = computed(() => tabs.activeSecondaryTabIdByPrimaryId[props.config.primaryTabId] ?? '')
 const secondaryTabs = computed(() => tabs.secondaryTabsByPrimaryId[props.config.primaryTabId] ?? [])
 const activeSecondary = computed(() => secondaryTabs.value.find((tab) => tab.id === activeSecondaryId.value) ?? null)
-const hasFilters = computed(() => Boolean(slots['advanced-filters'] || props.config.statusOptions?.length || props.showIncludeVoid))
-
-const columns = computed<ColumnDef<TRow, unknown>[]>(() => {
-  if (!props.config.rowActions?.length) return props.config.columns
-
-  return [
-    ...props.config.columns,
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) =>
-        h(WorkspaceRowActions<TRow>, {
-          row: row.original,
-          actions: props.config.rowActions ?? [],
-          onActionClick: (key: string, selectedRow: TRow) => handleRowAction(key, selectedRow),
-        }),
-      enableSorting: false,
-    },
-  ]
-})
+const hasFilters = computed(() => Boolean(slots['advanced-filters'] || props.showIncludeVoid))
 
 function openCreateTab() {
   emit('actionClick', { key: 'create' })
 }
 
-function openEditTab(row: TRow) {
+function openRowEdit(row: TRow) {
+  emit('rowClick', row)
   emit('actionClick', { key: 'edit', row })
-}
-
-function openDetailTab(row: TRow) {
-  emit('actionClick', { key: 'detail', row })
-}
-
-function handleRowAction(key: string, row: TRow) {
-  const action = props.config.rowActions?.find((item) => item.key === key)
-  if (action?.confirm) {
-    pendingAction.value = { action, row }
-    return
-  }
-
-  executeRowAction(key, row)
-}
-
-function executeRowAction(key: string, row: TRow) {
-  if (key === 'edit') {
-    openEditTab(row)
-    return
-  }
-  if (key === 'detail' || key === 'open') {
-    openDetailTab(row)
-    return
-  }
-  emit('actionClick', { key, row })
-}
-
-function confirmPendingAction() {
-  if (!pendingAction.value) return
-  executeRowAction(pendingAction.value.action.key, pendingAction.value.row)
-  pendingAction.value = null
 }
 </script>
 
@@ -154,16 +97,15 @@ function confirmPendingAction() {
         :search="search"
         :start-date="startDate"
         :end-date="endDate"
+        :status="status"
         :selected-count="selectedIds.length"
-        :show-filter-actions="showFilterActions"
         :has-filters="hasFilters"
         embedded
         @update:search="emit('search', $event)"
         @update:start-date="emit('dateChange', { startDate: $event, endDate })"
         @update:end-date="emit('dateChange', { startDate, endDate: $event })"
+        @update:status="emit('statusChange', $event)"
         @toggle-filters="filtersOpen = !filtersOpen"
-        @apply-filters="emit('applyFilters')"
-        @reset-filters="emit('resetFilters')"
         @create="openCreateTab"
         @refresh="emit('refresh')"
         @action-click="emit('bulkActionClick', { key: $event, selectedIds })"
@@ -180,27 +122,14 @@ function confirmPendingAction() {
         :class="filtersOpen ? 'grid xl:grid-cols-[260px_minmax(0,1fr)]' : 'flex flex-col'"
       >
         <WorkspaceFilterPanel
-          v-if="$slots['advanced-filters']"
+          v-if="filtersOpen && ($slots['advanced-filters'] || showIncludeVoid)"
           :open="filtersOpen"
-          :status="status"
-          :status-options="config.statusOptions"
           :show-include-void="showIncludeVoid"
           :include-void="includeVoid"
-          @update:status="emit('statusChange', $event)"
           @update:include-void="emit('includeVoidChange', $event)"
         >
           <slot name="advanced-filters" />
         </WorkspaceFilterPanel>
-        <WorkspaceFilterPanel
-          v-else
-          :open="filtersOpen"
-          :status="status"
-          :status-options="config.statusOptions"
-          :show-include-void="showIncludeVoid"
-          :include-void="includeVoid"
-          @update:status="emit('statusChange', $event)"
-          @update:include-void="emit('includeVoidChange', $event)"
-        />
 
         <div class="flex min-h-0 min-w-0 flex-1 flex-col">
           <slot v-if="loading" name="loading">
@@ -218,7 +147,7 @@ function confirmPendingAction() {
           <WorkspaceDataTable
             v-else
             class="min-h-0 flex-1"
-            :columns="columns"
+            :columns="config.columns"
             :rows="rows"
             :loading="loading"
             :selectable="config.selectable !== false"
@@ -232,7 +161,7 @@ function confirmPendingAction() {
             :remote-sort="remoteSort"
             :clear-selection-on-page-change="config.clearSelectionOnPageChange"
             @update:selected-ids="emit('update:selectedIds', $event)"
-            @row-click="emit('rowClick', $event)"
+            @row-click="openRowEdit"
             @page-change="emit('pageChange', $event)"
             @per-page-change="emit('perPageChange', $event)"
             @sort-change="emit('sortChange', $event)"
@@ -243,19 +172,8 @@ function confirmPendingAction() {
       <slot name="after-table" />
     </div>
 
-    <div v-else class="workspace-card tablet-workspace-card min-w-0 rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
+    <div v-else class="workspace-card tablet-workspace-card h-full min-h-0 min-w-0 overflow-hidden rounded-b-2xl rounded-tr-2xl border border-slate-200 bg-white p-2.5 shadow-sm lg:p-3">
       <slot name="secondary" :tab="activeSecondary" />
     </div>
-
-    <WorkspaceConfirmDialog
-      :open="pendingAction != null"
-      :title="pendingAction?.action.confirm?.title ?? 'Confirm action'"
-      :message="pendingAction?.action.confirm?.message ?? 'Continue this action?'"
-      :confirm-label="pendingAction?.action.confirm?.confirmLabel ?? 'Confirm'"
-      :variant="pendingAction?.action.confirm?.variant"
-      @close="pendingAction = null"
-      @cancel="pendingAction = null"
-      @confirm="confirmPendingAction"
-    />
   </div>
 </template>

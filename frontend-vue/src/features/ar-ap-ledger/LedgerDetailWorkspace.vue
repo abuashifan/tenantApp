@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DateInput from '@/components/ui/DateInput.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
 import WorkspaceErrorState from '@/components/workspace/WorkspaceErrorState.vue'
 import {
@@ -136,11 +137,11 @@ onMounted(fetchLedger)
       <div class="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-end">
         <label class="text-sm font-bold text-slate-700">
           Start date
-          <input v-model="startDate" type="date" class="mt-2 h-10 rounded-xl border border-slate-200 px-3 text-sm" />
+          <DateInput v-model="startDate" class="mt-2" />
         </label>
         <label class="text-sm font-bold text-slate-700">
           End date
-          <input v-model="endDate" type="date" class="mt-2 h-10 rounded-xl border border-slate-200 px-3 text-sm" />
+          <DateInput v-model="endDate" class="mt-2" />
         </label>
         <BaseButton :loading="loading" @click="fetchLedger">Apply Filter</BaseButton>
       </div>

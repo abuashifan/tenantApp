@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import type { SortingState } from '@tanstack/vue-table'
 
-import type { WorkspacePagination } from '@/types/workspace'
+import type { WorkspacePagination, WorkspaceStatusFilter } from '@/types/workspace'
 
 export type PrimaryTab = {
   id: string
@@ -46,7 +46,7 @@ export type WorkspaceListState = {
   selectedIds: string[]
   startDate: string
   endDate: string
-  status: string
+  status: string | WorkspaceStatusFilter
   includeVoid: boolean
   pagination: WorkspacePagination
   sorting: SortingState
@@ -103,7 +103,7 @@ function defaultListState(): WorkspaceListState {
     selectedIds: [],
     startDate: '',
     endDate: '',
-    status: '',
+    status: [],
     includeVoid: false,
     pagination: { page: 1, perPage: 10, total: 0, lastPage: 1 },
     sorting: [],

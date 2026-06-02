@@ -11,6 +11,7 @@ import DataTableToolbar from '@/components/table/DataTableToolbar.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import IconButton from '@/components/ui/IconButton.vue'
 import FormShell from '@/components/form/FormShell.vue'
+import { formatDisplayDate } from '@/utils/date'
 
 type TxRow = {
   id: string
@@ -86,7 +87,7 @@ const columns = computed<ColumnDef<TxRow, unknown>[]>(() => [
   {
     accessorKey: 'date',
     header: 'Date',
-    cell: ({ row }) => row.original.date,
+    cell: ({ row }) => formatDisplayDate(row.original.date),
   },
   {
     accessorKey: 'status',

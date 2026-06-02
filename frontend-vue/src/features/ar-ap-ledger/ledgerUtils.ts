@@ -1,4 +1,5 @@
 import type { ApiError } from '@/types/api'
+import { formatDisplayDate } from '@/utils/date'
 
 export type LedgerMovement = {
   date: string | null
@@ -16,8 +17,7 @@ export type LedgerMovement = {
 }
 
 export function formatDate(value?: string | null) {
-  if (!value) return '-'
-  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
+  return formatDisplayDate(value)
 }
 
 export function formatMoney(value?: number | null) {

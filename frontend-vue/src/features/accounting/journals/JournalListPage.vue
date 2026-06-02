@@ -9,9 +9,11 @@ import { journalListConfig, type JournalListRow } from '@/features/accounting/jo
 import { listJournals, voidJournal as voidJournalApi } from '@/features/accounting/journals/journal.service'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceTabsStore } from '@/stores/workspaceTabsStore'
-import type { WorkspacePagination } from '@/types/workspace'
+import type { WorkspacePagination, WorkspaceStatusFilter } from '@/types/workspace'
+import { currentMonthDateRange } from '@/utils/date'
 
 const defaultJournalSorting: SortingState = [{ id: 'journal_date', desc: true }]
+const defaultDateRange = currentMonthDateRange()
 
 const tabs = useWorkspaceTabsStore()
 const auth = useAuthStore()
@@ -23,9 +25,9 @@ const rows = ref<JournalListRow[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const search = ref('')
-const startDate = ref('')
-const endDate = ref('')
-const status = ref('')
+const startDate = ref(defaultDateRange.startDate)
+const endDate = ref(defaultDateRange.endDate)
+const status = ref<WorkspaceStatusFilter>([])
 const selectedIds = ref<string[]>([])
 const sorting = ref<SortingState>(defaultJournalSorting)
 const pagination = ref<WorkspacePagination>({ page: 1, perPage: 10, total: 0, lastPage: 1 })
@@ -94,11 +96,11 @@ async function load() {
       search: search.value || undefined,
       date_from: startDate.value || undefined,
       date_to: endDate.value || undefined,
-      status: status.value || undefined,
-      include_void: !status.value || status.value === 'void',
+      status: status.value.length === 1 ? status.value[0] : undefined,
+      include_void: status.value.length === 0 || status.value.includes('void'),
       sort_by: 'journal_date',
       sort_direction: 'desc',
-    }))
+    })).filter((row) => status.value.length === 0 || status.value.includes(row.status))
     selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => row.id === id && canVoidJournal(row)))
     updatePagination()
   } catch (cause) {
@@ -114,11 +116,28 @@ function applyFilters() {
   void load()
 }
 
+function updateSearch(value: string) {
+  search.value = value
+  applyFilters()
+}
+
+function updateDates(range: { startDate: string; endDate: string }) {
+  startDate.value = range.startDate
+  endDate.value = range.endDate
+  applyFilters()
+}
+
+function updateStatus(value: WorkspaceStatusFilter) {
+  status.value = value
+  applyFilters()
+}
+
 function resetFilters() {
   search.value = ''
-  startDate.value = ''
-  endDate.value = ''
-  status.value = ''
+  const nextDateRange = currentMonthDateRange()
+  startDate.value = nextDateRange.startDate
+  endDate.value = nextDateRange.endDate
+  status.value = []
   sorting.value = defaultJournalSorting
   clearSelection()
   pagination.value = { ...pagination.value, page: 1 }
@@ -193,16 +212,13 @@ onMounted(load)
     :status="status"
     :pagination="pagination"
     :sorting="sorting"
-    show-filter-actions
     @refresh="refresh"
-    @search="search = $event"
-    @date-change="({ startDate: nextStart, endDate: nextEnd }) => { startDate = nextStart; endDate = nextEnd }"
-    @status-change="status = $event"
+    @search="updateSearch"
+    @date-change="updateDates"
+    @status-change="updateStatus"
     @page-change="updatePage"
     @per-page-change="updatePerPage"
     @sort-change="updateSorting"
-    @apply-filters="applyFilters"
-    @reset-filters="resetFilters"
     @action-click="handleAction"
     @bulk-action-click="handleBulkAction"
   >

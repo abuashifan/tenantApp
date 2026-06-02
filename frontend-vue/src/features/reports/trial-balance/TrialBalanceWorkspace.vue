@@ -5,6 +5,7 @@ import { Printer, RefreshCw, Upload } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DateInput from '@/components/ui/DateInput.vue'
 import DataTable from '@/components/table/DataTable.vue'
 import ToneBadge from '@/components/ui/ToneBadge.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
@@ -108,11 +109,11 @@ onMounted(load)
         </label>
         <label class="block space-y-1.5 xl:w-[160px]">
           <span class="text-xs font-bold text-slate-500">Start Date</span>
-          <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
+          <DateInput v-model="startDate" />
         </label>
         <label class="block space-y-1.5 xl:w-[160px]">
           <span class="text-xs font-bold text-slate-500">End Date</span>
-          <input v-model="endDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
+          <DateInput v-model="endDate" />
         </label>
         <label class="block space-y-1.5 xl:w-[160px]">
           <span class="text-xs font-bold text-slate-500">Account Type</span>

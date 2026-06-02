@@ -8,6 +8,8 @@ const props = defineProps<{
   open: boolean
   transactionNumber: string
   loading?: boolean
+  actionLabel?: string
+  requiresReason?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -24,13 +26,15 @@ watch(
   },
 )
 
-const canConfirm = computed(() => reason.value.trim().length > 0)
+const actionText = computed(() => props.actionLabel ?? 'Void')
+const reasonRequired = computed(() => props.requiresReason ?? true)
+const canConfirm = computed(() => !reasonRequired.value || reason.value.trim().length > 0)
 </script>
 
 <template>
-  <BaseModal :open="open" title="Void Transaction" @close="emit('close')">
+  <BaseModal :open="open" :title="`${actionText} Transaction`" @close="emit('close')">
     <p class="text-sm leading-6 text-slate-600">
-      Void transaksi <span class="font-bold text-slate-800">{{ transactionNumber }}</span>.
+      {{ actionText }} transaksi <span class="font-bold text-slate-800">{{ transactionNumber }}</span>.
     </p>
 
     <label class="mt-4 block space-y-1.5">
@@ -39,7 +43,7 @@ const canConfirm = computed(() => reason.value.trim().length > 0)
         v-model="reason"
         rows="3"
         class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-        placeholder="Masukkan alasan void…"
+        :placeholder="`Masukkan alasan ${actionText.toLowerCase()}...`"
       />
       <p v-if="!canConfirm" class="text-xs font-semibold text-rose-600">Reason wajib diisi.</p>
     </label>
@@ -47,7 +51,7 @@ const canConfirm = computed(() => reason.value.trim().length > 0)
     <div class="mt-6 flex flex-wrap items-center justify-end gap-2">
       <BaseButton variant="secondary" :disabled="loading" @click="emit('close')">Cancel</BaseButton>
       <BaseButton variant="danger" :disabled="!canConfirm" :loading="loading" @click="emit('confirm', { reason: reason.trim() })">
-        Confirm Void
+        Confirm {{ actionText }}
       </BaseButton>
     </div>
   </BaseModal>

@@ -2,7 +2,9 @@
 import { onMounted, ref } from 'vue'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DateInput from '@/components/ui/DateInput.vue'
 import { fetchAccessAudit, type AccessAuditLog } from '@/services/access/audit.service'
+import { formatDisplayDate } from '@/utils/date'
 
 const logs = ref<AccessAuditLog[]>([])
 const userId = ref('')
@@ -38,8 +40,8 @@ onMounted(load)
       <label class="text-sm font-bold text-slate-700">User ID<input v-model="userId" type="number" class="mt-2 block rounded-lg border border-slate-200 px-3 py-2" /></label>
       <label class="text-sm font-bold text-slate-700">Role ID<input v-model="roleId" type="number" class="mt-2 block rounded-lg border border-slate-200 px-3 py-2" /></label>
       <label class="text-sm font-bold text-slate-700">Action<input v-model="action" class="mt-2 block rounded-lg border border-slate-200 px-3 py-2" placeholder="permission, role..." /></label>
-      <label class="text-sm font-bold text-slate-700">From<input v-model="dateFrom" type="date" class="mt-2 block rounded-lg border border-slate-200 px-3 py-2" /></label>
-      <label class="text-sm font-bold text-slate-700">To<input v-model="dateTo" type="date" class="mt-2 block rounded-lg border border-slate-200 px-3 py-2" /></label>
+      <label class="text-sm font-bold text-slate-700">From<DateInput v-model="dateFrom" class="mt-2" compact /></label>
+      <label class="text-sm font-bold text-slate-700">To<DateInput v-model="dateTo" class="mt-2" compact /></label>
       <BaseButton variant="primary" type="submit">Filter</BaseButton>
     </form>
     <p v-if="error" class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{{ error }}</p>
@@ -48,7 +50,7 @@ onMounted(load)
       <table v-else class="w-full text-sm">
         <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="px-4 py-3 text-left">Time</th><th class="px-4 py-3 text-left">User</th><th class="px-4 py-3 text-left">Action</th><th class="px-4 py-3 text-left">Detail</th></tr></thead>
         <tbody>
-          <tr v-for="log in logs" :key="log.id" class="border-t border-slate-100"><td class="px-4 py-3 text-slate-500">{{ log.created_at }}</td><td class="px-4 py-3">{{ log.user?.name ?? '-' }}</td><td class="px-4 py-3 font-bold">{{ log.action }}</td><td class="px-4 py-3 text-slate-500">{{ log.description ?? '-' }}</td></tr>
+          <tr v-for="log in logs" :key="log.id" class="border-t border-slate-100"><td class="px-4 py-3 text-slate-500">{{ formatDisplayDate(log.created_at) }}</td><td class="px-4 py-3">{{ log.user?.name ?? '-' }}</td><td class="px-4 py-3 font-bold">{{ log.action }}</td><td class="px-4 py-3 text-slate-500">{{ log.description ?? '-' }}</td></tr>
           <tr v-if="logs.length === 0"><td colspan="4" class="px-4 py-8 text-center text-slate-500">No access audit events found.</td></tr>
         </tbody>
       </table>

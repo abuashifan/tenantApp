@@ -301,8 +301,14 @@ const columns = computed<ColumnDef<CoaNode, unknown>[]>(() => [
     header: 'Account Code',
     cell: ({ row }) => h('div', { class: 'flex items-center gap-2', style: { paddingLeft: `${row.original.level * 16}px` } }, [
       row.original.hasChildren
-        ? h('button', { type: 'button', class: 'grid h-6 w-6 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600', onClick: () => toggleExpand(row.original) },
-            [h(expandedIds.value.has(row.original.id) ? ChevronDown : ChevronRight, { class: 'h-4 w-4' })])
+        ? h('button', {
+            type: 'button',
+            class: 'grid h-6 w-6 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600',
+            onClick: (event: MouseEvent) => {
+              event.stopPropagation()
+              toggleExpand(row.original)
+            },
+          }, [h(expandedIds.value.has(row.original.id) ? ChevronDown : ChevronRight, { class: 'h-4 w-4' })])
         : h('span', { class: 'h-6 w-6' }),
       h('span', { class: 'font-semibold text-slate-900' }, row.original.code),
     ]),
@@ -310,7 +316,6 @@ const columns = computed<ColumnDef<CoaNode, unknown>[]>(() => [
   { accessorKey: 'name', header: 'Account Name', cell: ({ row }) => row.original.name },
   { accessorKey: 'type', header: 'Account Type', cell: ({ row }) => row.original.type },
   { accessorKey: 'balance', header: 'Balance', cell: ({ row }) => new Intl.NumberFormat('id-ID').format(row.original.balance) },
-  { id: 'actions', header: '', cell: ({ row }) => h('button', { type: 'button', class: 'text-xs font-bold text-slate-500 hover:text-slate-900', onClick: () => openEditForm(row.original) }, 'Edit') },
 ])
 
 const config = computed<WorkspaceListConfig<CoaNode>>(() => ({ ...chartOfAccountsConfig, columns: columns.value, rowKey: 'id' }))
@@ -346,13 +351,13 @@ onMounted(load)
     :search="search"
     :start-date="''"
     :end-date="''"
-    :status="''"
+    :status="[]"
     :pagination="pagination"
     @refresh="load"
     @search="updateSearch"
     @page-change="updatePage"
     @per-page-change="updatePerPage"
-    @action-click="(payload) => (payload.key === 'create' ? openCreateForm() : undefined)"
+    @action-click="(payload) => (payload.key === 'create' ? openCreateForm() : payload.key === 'edit' && payload.row ? openEditForm(payload.row) : undefined)"
   >
     <template #toolbar-right>
       <div class="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-extrabold text-slate-600">

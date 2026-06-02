@@ -3,6 +3,7 @@ import { computed, h, onMounted, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DateInput from '@/components/ui/DateInput.vue'
 import DataTable from '@/components/table/DataTable.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
 import {
@@ -191,11 +192,11 @@ onMounted(load)
       <div class="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-end">
         <label v-if="kind !== 'balance-sheet'" class="block space-y-1.5 xl:w-[180px]">
           <span class="text-xs font-bold text-slate-500">Start Date</span>
-          <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
+          <DateInput v-model="startDate" />
         </label>
         <label class="block space-y-1.5 xl:w-[180px]">
           <span class="text-xs font-bold text-slate-500">{{ kind === 'balance-sheet' ? 'As Of Date' : 'End Date' }}</span>
-          <input v-model="endDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" />
+          <DateInput v-model="endDate" />
         </label>
         <BaseButton variant="primary" size="md" @click="load">Apply</BaseButton>
       </div>

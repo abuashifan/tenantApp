@@ -3,6 +3,7 @@ import type { ColumnDef } from '@tanstack/vue-table'
 
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
 import type { WorkspaceListConfig } from '@/types/workspace'
+import { formatDisplayDate } from '@/utils/date'
 
 export type JournalListRow = {
   id: string
@@ -27,7 +28,7 @@ export const journalListColumns: ColumnDef<JournalListRow, unknown>[] = [
   {
     accessorKey: 'journal_date',
     header: 'Date',
-    cell: ({ row }) => row.original.journal_date,
+    cell: ({ row }) => formatDisplayDate(row.original.journal_date),
   },
   {
     accessorKey: 'memo',

@@ -3,10 +3,12 @@ import { computed, h, onMounted, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DateInput from '@/components/ui/DateInput.vue'
 import DataTable from '@/components/table/DataTable.vue'
 import WorkspaceEmptyState from '@/components/workspace/WorkspaceEmptyState.vue'
 import WorkspaceStatusBadge from '@/components/workspace/WorkspaceStatusBadge.vue'
 import { getGeneralLedger, listLedgerAccounts, reportErrorMessage, type LedgerAccountOption, type LedgerDetail, type LedgerLine } from './generalLedger.service'
+import { formatDisplayDate } from '@/utils/date'
 
 const accounts = ref<LedgerAccountOption[]>([])
 const selectedAccountId = ref<number | null>(null)
@@ -67,7 +69,7 @@ async function load() {
 }
 
 const columns = computed<ColumnDef<LedgerLine, unknown>[]>(() => [
-  { accessorKey: 'journal_date', header: 'Date', cell: ({ row }) => row.original.journal_date },
+  { accessorKey: 'journal_date', header: 'Date', cell: ({ row }) => formatDisplayDate(row.original.journal_date) },
   { accessorKey: 'journal_number', header: 'Journal No', cell: ({ row }) => row.original.journal_number },
   { accessorKey: 'description', header: 'Description', cell: ({ row }) => row.original.description ?? '-' },
   { accessorKey: 'source_type', header: 'Source', cell: ({ row }) => row.original.source_type ?? '-' },
@@ -97,11 +99,11 @@ onMounted(load)
         </label>
         <label class="block space-y-1.5 xl:w-[165px]">
           <span class="text-xs font-bold text-slate-500">Start Date</span>
-          <input v-model="startDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
+          <DateInput v-model="startDate" />
         </label>
         <label class="block space-y-1.5 xl:w-[165px]">
           <span class="text-xs font-bold text-slate-500">End Date</span>
-          <input v-model="endDate" type="date" class="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" />
+          <DateInput v-model="endDate" />
         </label>
         <label class="block min-w-0 space-y-1.5 xl:min-w-[220px] xl:flex-1">
           <span class="text-xs font-bold text-slate-500">Search</span>
