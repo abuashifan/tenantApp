@@ -159,7 +159,7 @@ function handleCardDoubleClick(companyId: string | number) {
       </header>
 
       <section class="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-lg shadow-slate-900/5 backdrop-blur">
-        <div class="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+        <div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
           <div class="min-w-0">
             <SearchInput v-model="query" placeholder="Cari perusahaan..." />
           </div>
@@ -167,16 +167,6 @@ function handleCardDoubleClick(companyId: string | number) {
             <Star class="mr-1 h-3.5 w-3.5" />
             {{ filtered.length }} company
           </ToneBadge>
-          <BaseButton
-            class="hidden lg:inline-flex lg:min-w-36"
-            size="md"
-            :disabled="selected == null"
-            :loading="selecting"
-            @click="handleContinue"
-          >
-            Lanjutkan
-            <ChevronRight class="h-4 w-4" />
-          </BaseButton>
         </div>
 
         <p
