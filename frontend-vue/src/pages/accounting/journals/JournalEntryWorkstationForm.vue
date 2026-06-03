@@ -678,10 +678,10 @@ function saveAndCloseFromDialog() {
               <tr>
                 <th class="w-44 border border-slate-200 px-3 py-2 text-left font-black">Account</th>
                 <th class="w-[320px] border border-slate-200 px-3 py-2 text-left font-black">Description</th>
-                <th class="w-32 border border-slate-200 px-3 py-2 text-left font-black">Dept</th>
-                <th class="w-32 border border-slate-200 px-3 py-2 text-left font-black">Project</th>
                 <th class="w-40 border border-slate-200 px-3 py-2 text-right font-black">Debit</th>
                 <th class="w-40 border border-slate-200 px-3 py-2 text-right font-black">Credit</th>
+                <th class="w-32 border border-slate-200 px-3 py-2 text-left font-black">Dept</th>
+                <th class="w-32 border border-slate-200 px-3 py-2 text-left font-black">Project</th>
                 <th class="w-16 border border-slate-200 px-3 py-2 text-center font-black">Action</th>
               </tr>
             </thead>
@@ -706,6 +706,26 @@ function saveAndCloseFromDialog() {
                     placeholder="Description"
                   >
                 </td>
+                <td class="border border-slate-200 p-0">
+                  <input
+                    :value="amountInputValue(line.debit)"
+                    :readonly="readonly"
+                    type="text"
+                    inputmode="numeric"
+                    class="h-9 w-full border-0 bg-transparent px-3 text-right text-xs font-semibold tabular-nums outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#24a1db]/30 read-only:bg-slate-50"
+                    @input="updateAmount(line, 'debit', ($event.target as HTMLInputElement).value)"
+                  >
+                </td>
+                <td class="border border-slate-200 p-0">
+                  <input
+                    :value="amountInputValue(line.credit)"
+                    :readonly="readonly"
+                    type="text"
+                    inputmode="numeric"
+                    class="h-9 w-full border-0 bg-transparent px-3 text-right text-xs font-semibold tabular-nums outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#24a1db]/30 read-only:bg-slate-50"
+                    @input="updateAmount(line, 'credit', ($event.target as HTMLInputElement).value)"
+                  >
+                </td>
                 <td class="border border-slate-200 p-0" @dblclick="openLookup('department', line)">
                   <input
                     :value="lookupDisplay(line, 'department')"
@@ -726,26 +746,6 @@ function saveAndCloseFromDialog() {
                     title="Double click untuk memilih project"
                     @input="updateLookupText(line, 'project', ($event.target as HTMLInputElement).value)"
                     @dblclick.stop="openLookup('project', line)"
-                  >
-                </td>
-                <td class="border border-slate-200 p-0">
-                  <input
-                    :value="amountInputValue(line.debit)"
-                    :readonly="readonly"
-                    type="text"
-                    inputmode="numeric"
-                    class="h-9 w-full border-0 bg-transparent px-3 text-right text-xs font-semibold tabular-nums outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#24a1db]/30 read-only:bg-slate-50"
-                    @input="updateAmount(line, 'debit', ($event.target as HTMLInputElement).value)"
-                  >
-                </td>
-                <td class="border border-slate-200 p-0">
-                  <input
-                    :value="amountInputValue(line.credit)"
-                    :readonly="readonly"
-                    type="text"
-                    inputmode="numeric"
-                    class="h-9 w-full border-0 bg-transparent px-3 text-right text-xs font-semibold tabular-nums outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-[#24a1db]/30 read-only:bg-slate-50"
-                    @input="updateAmount(line, 'credit', ($event.target as HTMLInputElement).value)"
                   >
                 </td>
                 <td class="border border-slate-200 p-0 text-center">
